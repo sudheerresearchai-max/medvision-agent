@@ -1,0 +1,4 @@
+# Never commit model binaries — push via Git LFS instead.
+*.onnx
+*.ckpt
+*.pth
