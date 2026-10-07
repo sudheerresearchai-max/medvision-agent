@@ -172,15 +172,15 @@ export function UploadForm() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary animate-pulse" />
-              <CardTitle className="text-base font-bold">Interactive Evaluation Showcase (1-Click Demo)</CardTitle>
+              <Sparkles className="h-4 w-4 text-primary" />
+              <CardTitle className="text-base font-semibold">Preloaded Sample Cases</CardTitle>
             </div>
-            <Badge variant="outline" className="border-primary/40 text-primary font-medium text-xs">
-              Viva &amp; Demonstration Mode
+            <Badge variant="outline" className="text-xs">
+              Sample Data
             </Badge>
           </div>
           <CardDescription>
-            Select a verified clinical oncology study to automatically populate high-resolution scan imaging and patient referral history.
+            Select a sample scan to automatically populate imaging and clinical notes.
           </CardDescription>
         </CardHeader>
         <CardContent>

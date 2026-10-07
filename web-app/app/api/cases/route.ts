@@ -19,13 +19,14 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const limit = Math.min(100, Math.max(1, Number(searchParams.get('limit') ?? 20)));
 
-  const cases = await listCases(limit);
+  const { cases, error } = await listCases(limit);
 
   return NextResponse.json({
-    ok: true,
+    ok: !error,
     storageMode: storageMode(),
     supabaseConfigured: isSupabaseConfigured(),
     count: cases.length,
     cases,
+    ...(error ? { supabaseError: error } : {}),
   });
 }
