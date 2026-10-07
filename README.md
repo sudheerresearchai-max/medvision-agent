@@ -21,11 +21,11 @@ Input → validation → PDF/text extraction → organ/modality routing
 
 Three interchangeable lightweight 2-D U-Net heads are routed by organ/modality:
 
-| Organ    | Modality | Model                | Reference datasets            |
-| -------- | -------- | -------------------- | ----------------------------- |
-| Brain    | MRI      | `brain_unet.onnx`    | BraTS                         |
-| Lung     | CT       | `lung_unet.onnx`     | LUNA16 / LIDC-IDRI / MSD T06  |
-| Pancreas | CT/MRI   | `pancreas_unet.onnx` | MSD Task07 Pancreas           |
+| Organ    | Modality | Model                | Reference datasets                      |
+| -------- | -------- | -------------------- | --------------------------------------- |
+| Brain    | MRI      | `brain_unet.onnx`    | LGG Segmentation (Kaggle)               |
+| Lung     | CT/X-ray | `lung_unet.onnx`     | Chest X-Ray Masks / Lungs in CT (Kaggle)|
+| Pancreas | CT/MRI   | `pancreas_unet.onnx` | MSD Task07 Pancreas                     |
 
 Unknown organ/modality falls back to **manual user selection**.
 

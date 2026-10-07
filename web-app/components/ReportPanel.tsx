@@ -81,33 +81,33 @@ export function ReportPanel({ report }: ReportPanelProps) {
         <div className="rounded-lg border bg-secondary/15 p-4 print:border-b-2 print:rounded-none">
           <div className="flex justify-between items-start border-b pb-3 mb-3">
             <div>
-              <h3 className="font-extrabold text-base tracking-tight text-primary">
-                MULTI AGENT MED AI PLATFORM
+              <h3 className="font-bold text-base tracking-tight text-foreground">
+                MEDVISION ANALYSIS REPORT
               </h3>
-              <p className="text-xs text-muted-foreground">Department of Diagnostic Imaging &amp; Computational Oncology</p>
+              <p className="text-xs text-muted-foreground">Automated Medical Image Segmentation Summary</p>
             </div>
             <div className="text-right text-xs text-muted-foreground">
-              <p className="font-mono font-semibold text-foreground">REPORT REF: {report.generatedAt.slice(0, 19).replace(/[^0-9]/g, '')}</p>
-              <p>Status: Multi-Agent Consensus Evaluation</p>
+              <p className="font-mono font-medium text-foreground">REPORT REF: {report.generatedAt.slice(0, 19).replace(/[^0-9]/g, '')}</p>
+              <p>Status: Evaluation Complete</p>
             </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
             <div>
               <span className="text-muted-foreground block text-[10px] uppercase">Service Modality</span>
-              <span className="font-semibold">5-Agent Swarm + U-Net</span>
+              <span className="font-medium text-foreground">U-Net Pipeline</span>
             </div>
             <div>
-              <span className="text-muted-foreground block text-[10px] uppercase">Segmentation Protocol</span>
-              <span className="font-semibold">RECIST 1.1 Standard</span>
+              <span className="text-muted-foreground block text-[10px] uppercase">Measurement Protocol</span>
+              <span className="font-medium text-foreground">RECIST 1.1 Standard</span>
             </div>
             <div>
-              <span className="text-muted-foreground block text-[10px] uppercase">Confidence Metric</span>
-              <span className="font-semibold text-emerald-600 dark:text-emerald-400">High Resolution</span>
+              <span className="text-muted-foreground block text-[10px] uppercase">Evaluation Mode</span>
+              <span className="font-medium text-foreground">Automated 2D</span>
             </div>
             <div>
               <span className="text-muted-foreground block text-[10px] uppercase">Audit Trail</span>
-              <span className="font-semibold flex items-center gap-1">
-                <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Verified Multi-Agent Trace
+              <span className="font-medium text-foreground flex items-center gap-1">
+                <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" /> Pipeline Trace
               </span>
             </div>
           </div>

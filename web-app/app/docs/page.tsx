@@ -35,15 +35,11 @@ export default function DocsPage() {
     <div className="mx-auto max-w-4xl space-y-10">
       {/* Header */}
       <header className="space-y-3">
-        <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
-          <BookCheck className="h-4 w-4" /> Technical Architecture &amp; Benchmark Specifications
-        </div>
-        <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl text-foreground">
-          Multi Agent Med AI Documentation
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl text-foreground">
+          System Documentation
         </h1>
-        <p className="text-muted-foreground text-base leading-relaxed">
-          Comprehensive engineering documentation covering neural architecture benchmarks,
-          direct sources of training datasets, multi-tier system topology, and the 5-agent collaborative swarm protocol.
+        <p className="text-muted-foreground text-sm leading-relaxed">
+          Technical specifications for model architectures, reference training datasets, system architecture, and processing pipeline modules.
         </p>
 
         {/* Quick Navigation Filter Tabs */}
@@ -54,7 +50,7 @@ export default function DocsPage() {
             onClick={() => setActiveTab('overview')}
             className="text-xs h-8"
           >
-            <Award className="mr-1.5 h-3.5 w-3.5" /> Benchmarks &amp; Overview
+            <Boxes className="mr-1.5 h-3.5 w-3.5" /> Models &amp; Architecture
           </Button>
           <Button
             variant={activeTab === 'datasets' ? 'default' : 'outline'}
@@ -62,7 +58,7 @@ export default function DocsPage() {
             onClick={() => setActiveTab('datasets')}
             className="text-xs h-8"
           >
-            <Database className="mr-1.5 h-3.5 w-3.5" /> Source of Datasets (Direct Links)
+            <Database className="mr-1.5 h-3.5 w-3.5" /> Reference Datasets
           </Button>
           <Button
             variant={activeTab === 'topology' ? 'default' : 'outline'}
@@ -70,7 +66,7 @@ export default function DocsPage() {
             onClick={() => setActiveTab('topology')}
             className="text-xs h-8"
           >
-            <Boxes className="mr-1.5 h-3.5 w-3.5" /> Multi-Tier Topology
+            <Layers className="mr-1.5 h-3.5 w-3.5" /> System Topology
           </Button>
           <Button
             variant={activeTab === 'tools' ? 'default' : 'outline'}
@@ -78,7 +74,7 @@ export default function DocsPage() {
             onClick={() => setActiveTab('tools')}
             className="text-xs h-8"
           >
-            <Route className="mr-1.5 h-3.5 w-3.5" /> 13 Agent Tools
+            <Route className="mr-1.5 h-3.5 w-3.5" /> Pipeline Modules
           </Button>
         </div>
       </header>
@@ -88,85 +84,85 @@ export default function DocsPage() {
         <section id="datasets" className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h2 className="flex items-center gap-2 text-xl font-bold">
-                <Database className="h-5 w-5 text-primary" /> Source of Datasets (Direct Navigation)
+              <h2 className="flex items-center gap-2 text-lg font-bold">
+                <Database className="h-5 w-5 text-primary" /> Reference Datasets
               </h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Direct external links to official medical imaging challenge repositories and scientific portals.
+                Public datasets used for training and testing the segmentation models.
               </p>
             </div>
             <Link href="/datasets">
               <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-                Full Dataset Explorer <ExternalLink className="h-3.5 w-3.5" />
+                Dataset Explorer <ExternalLink className="h-3.5 w-3.5" />
               </Button>
             </Link>
           </div>
 
           <div className="grid gap-3.5 sm:grid-cols-3">
-            {/* BraTS 2021 Card */}
-            <Card className="border-border/80 bg-card hover:border-blue-500/50 transition-all flex flex-col justify-between">
+            {/* LGG MRI Card */}
+            <Card className="border bg-card flex flex-col justify-between">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <div className="rounded-lg bg-blue-500/10 p-2 text-blue-500">
                     <Brain className="h-5 w-5" />
                   </div>
-                  <Badge variant="outline" className="border-blue-500/30 text-blue-600 dark:text-blue-400 text-[10px]">
-                    1,251 Scans
+                  <Badge variant="outline" className="text-[10px]">
+                    3,929 Slice Pairs
                   </Badge>
                 </div>
-                <CardTitle className="text-base font-bold mt-2">BraTS 2021 (Brain MRI)</CardTitle>
+                <CardTitle className="text-base font-semibold mt-2">TCGA-LGG (Brain MRI)</CardTitle>
                 <CardDescription className="text-xs">
-                  RSNA-ASNR-MICCAI Brain Tumor Segmentation
+                  Lower-Grade Glioma Segmentation
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 text-xs">
-                <p className="text-muted-foreground line-clamp-2">
-                  Multi-parametric MRI (T1, T1-CE, T2, FLAIR) for Glioblastoma segmentation.
+                <p className="text-muted-foreground">
+                  2D FLAIR MRI slices and consensus binary tumor masks from 110 patients.
                 </p>
                 <div className="pt-2 border-t">
                   <a
-                    href="https://www.synapse.org/#!Synapse:syn25829067/wiki/610863"
+                    href="https://www.kaggle.com/datasets/mateuszbuda/lgg-mri-segmentation"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full inline-block"
                   >
-                    <Button size="sm" variant="secondary" className="w-full gap-1 text-xs font-semibold">
-                      Open BraTS Portal <ExternalLink className="h-3.5 w-3.5" />
+                    <Button size="sm" variant="outline" className="w-full gap-1 text-xs">
+                      Kaggle Dataset <ExternalLink className="h-3.5 w-3.5" />
                     </Button>
                   </a>
                 </div>
               </CardContent>
             </Card>
 
-            {/* LUNA16 / LIDC-IDRI Card */}
-            <Card className="border-border/80 bg-card hover:border-cyan-500/50 transition-all flex flex-col justify-between">
+            {/* Chest X-Ray / CT Card */}
+            <Card className="border bg-card flex flex-col justify-between">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <div className="rounded-lg bg-cyan-500/10 p-2 text-cyan-500">
                     <Wind className="h-5 w-5" />
                   </div>
-                  <Badge variant="outline" className="border-cyan-500/30 text-cyan-600 dark:text-cyan-400 text-[10px]">
-                    888 CT Scans
+                  <Badge variant="outline" className="text-[10px]">
+                    800+ Scans
                   </Badge>
                 </div>
-                <CardTitle className="text-base font-bold mt-2">LUNA16 / LIDC-IDRI</CardTitle>
+                <CardTitle className="text-base font-semibold mt-2">Chest X-Ray &amp; CT Lungs</CardTitle>
                 <CardDescription className="text-xs">
-                  TCIA Thoracic Lung Nodule Benchmark
+                  Thoracic Lung Field Segmentation
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 text-xs">
-                <p className="text-muted-foreground line-clamp-2">
-                  Helical thoracic CT scans annotated by 4 thoracic radiologists for NSCLC nodules.
+                <p className="text-muted-foreground">
+                  Chest radiographs and thoracic CT slices paired with ground truth lung masks.
                 </p>
                 <div className="pt-2 border-t">
                   <a
-                    href="https://luna16.grand-challenge.org/"
+                    href="https://www.kaggle.com/datasets/nikhilpandey360/chest-xray-masks-and-labels"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full inline-block"
                   >
-                    <Button size="sm" variant="secondary" className="w-full gap-1 text-xs font-semibold">
-                      Open LUNA16 Portal <ExternalLink className="h-3.5 w-3.5" />
+                    <Button size="sm" variant="outline" className="w-full gap-1 text-xs">
+                      Kaggle Dataset <ExternalLink className="h-3.5 w-3.5" />
                     </Button>
                   </a>
                 </div>
@@ -174,24 +170,24 @@ export default function DocsPage() {
             </Card>
 
             {/* MSD Task07 Pancreas Card */}
-            <Card className="border-border/80 bg-card hover:border-purple-500/50 transition-all flex flex-col justify-between">
+            <Card className="border bg-card flex flex-col justify-between">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <div className="rounded-lg bg-purple-500/10 p-2 text-purple-500">
                     <Dna className="h-5 w-5" />
                   </div>
-                  <Badge variant="outline" className="border-purple-500/30 text-purple-600 dark:text-purple-400 text-[10px]">
-                    420 CT Scans
+                  <Badge variant="outline" className="text-[10px]">
+                    420 CT Volumes
                   </Badge>
                 </div>
-                <CardTitle className="text-base font-bold mt-2">MSD Task07 (Pancreas)</CardTitle>
+                <CardTitle className="text-base font-semibold mt-2">MSD Task07 (Pancreas)</CardTitle>
                 <CardDescription className="text-xs">
-                  Medical Segmentation Decathlon (MSKCC)
+                  Medical Segmentation Decathlon
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 text-xs">
-                <p className="text-muted-foreground line-clamp-2">
-                  Portal venous abdominal CT scans for Pancreatic Ductal Adenocarcinoma (PDAC).
+                <p className="text-muted-foreground">
+                  Portal venous phase abdominal CT scans with annotated pancreatic parenchyma.
                 </p>
                 <div className="pt-2 border-t">
                   <a
@@ -200,8 +196,8 @@ export default function DocsPage() {
                     rel="noopener noreferrer"
                     className="w-full inline-block"
                   >
-                    <Button size="sm" variant="secondary" className="w-full gap-1 text-xs font-semibold">
-                      Open MSD Portal <ExternalLink className="h-3.5 w-3.5" />
+                    <Button size="sm" variant="outline" className="w-full gap-1 text-xs">
+                      MSD Portal <ExternalLink className="h-3.5 w-3.5" />
                     </Button>
                   </a>
                 </div>
@@ -211,64 +207,60 @@ export default function DocsPage() {
         </section>
       )}
 
-      {/* SECTION 2: Model Benchmark Matrix Table */}
+      {/* SECTION 2: Model Specifications Table */}
       {(activeTab === 'overview' || activeTab === 'datasets') && (
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-xl font-bold">
-              <Award className="h-5 w-5 text-primary" /> Model Benchmark &amp; Validation Matrix
+            <h2 className="flex items-center gap-2 text-lg font-bold">
+              <Boxes className="h-5 w-5 text-primary" /> Model Architecture Specifications
             </h2>
-            <Badge variant="outline" className="border-primary/40 text-primary">
-              Tested on Reference Test Sets
+            <Badge variant="outline" className="text-xs">
+              ONNX Runtime 2D
             </Badge>
           </div>
-          <Card className="overflow-hidden border-border/80">
+          <Card className="overflow-hidden border">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="border-b bg-secondary/50 font-semibold text-muted-foreground">
+                <thead className="border-b bg-muted/50 font-semibold text-muted-foreground">
                   <tr>
                     <th className="p-3">Target Organ</th>
                     <th className="p-3">Reference Dataset</th>
                     <th className="p-3">Architecture</th>
-                    <th className="p-3 text-center">Dice Coeff (%)</th>
-                    <th className="p-3 text-center">Mean IoU (%)</th>
-                    <th className="p-3 text-center">Parameters</th>
-                    <th className="p-3 text-right">CPU Latency</th>
+                    <th className="p-3 text-center">Input Size</th>
+                    <th className="p-3 text-center">Channels</th>
+                    <th className="p-3 text-right">Model Weights</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60">
-                  <tr className="hover:bg-secondary/20">
-                    <td className="p-3 font-semibold flex items-center gap-1.5">
+                  <tr className="hover:bg-muted/20">
+                    <td className="p-3 font-medium flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-blue-500" /> Brain (Glioma)
                     </td>
-                    <td className="p-3 text-muted-foreground">BraTS 2021 (T1-CE / FLAIR)</td>
-                    <td className="p-3 font-mono">Residual U-Net (ONNX)</td>
-                    <td className="p-3 text-center font-bold text-emerald-600 dark:text-emerald-400">91.4%</td>
-                    <td className="p-3 text-center font-bold">84.2%</td>
-                    <td className="p-3 text-center font-mono">7.8M</td>
-                    <td className="p-3 text-right font-mono text-muted-foreground">~82 ms</td>
+                    <td className="p-3 text-muted-foreground">TCGA-LGG MRI</td>
+                    <td className="p-3 font-mono">2D MiniUNet</td>
+                    <td className="p-3 text-center font-mono">256×256</td>
+                    <td className="p-3 text-center font-mono">3 (RGB)</td>
+                    <td className="p-3 text-right font-mono text-muted-foreground">brain_unet.onnx</td>
                   </tr>
-                  <tr className="hover:bg-secondary/20">
-                    <td className="p-3 font-semibold flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-cyan-500" /> Lung (Nodule/NSCLC)
+                  <tr className="hover:bg-muted/20">
+                    <td className="p-3 font-medium flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-cyan-500" /> Lung (Thorax)
                     </td>
-                    <td className="p-3 text-muted-foreground">LUNA16 / LIDC-IDRI (CT)</td>
-                    <td className="p-3 font-mono">Attention U-Net (ONNX)</td>
-                    <td className="p-3 text-center font-bold text-emerald-600 dark:text-emerald-400">89.7%</td>
-                    <td className="p-3 text-center font-bold">81.8%</td>
-                    <td className="p-3 text-center font-mono">8.2M</td>
-                    <td className="p-3 text-right font-mono text-muted-foreground">~95 ms</td>
+                    <td className="p-3 text-muted-foreground">Chest X-Ray / CT Lungs</td>
+                    <td className="p-3 font-mono">2D MiniUNet</td>
+                    <td className="p-3 text-center font-mono">256×256</td>
+                    <td className="p-3 text-center font-mono">1 (Grayscale)</td>
+                    <td className="p-3 text-right font-mono text-muted-foreground">lung_unet.onnx</td>
                   </tr>
-                  <tr className="hover:bg-secondary/20">
-                    <td className="p-3 font-semibold flex items-center gap-1.5">
+                  <tr className="hover:bg-muted/20">
+                    <td className="p-3 font-medium flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-purple-500" /> Pancreas (PDAC)
                     </td>
-                    <td className="p-3 text-muted-foreground">MSD Task07 (Abdominal CT)</td>
-                    <td className="p-3 font-mono">Dense-UNet 2D (ONNX)</td>
-                    <td className="p-3 text-center font-bold text-emerald-600 dark:text-emerald-400">86.3%</td>
-                    <td className="p-3 text-center font-bold">76.5%</td>
-                    <td className="p-3 text-center font-mono">9.4M</td>
-                    <td className="p-3 text-right font-mono text-muted-foreground">~110 ms</td>
+                    <td className="p-3 text-muted-foreground">MSD Task07 CT</td>
+                    <td className="p-3 font-mono">2D MiniUNet</td>
+                    <td className="p-3 text-center font-mono">256×256</td>
+                    <td className="p-3 text-center font-mono">1 (HU Grayscale)</td>
+                    <td className="p-3 text-right font-mono text-muted-foreground">pancreas_unet.onnx</td>
                   </tr>
                 </tbody>
               </table>
@@ -328,9 +320,9 @@ export default function DocsPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 font-bold text-sm text-primary">
                   <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[11px]">2</span>
-                  Tier 2: Multi-Agent Autonomous Swarm Orchestrator
+                  Tier 2: Multi-Agent Processing Pipeline
                 </div>
-                <Badge className="bg-primary/20 text-primary border-none text-[10px]">5 Collaborative Agents</Badge>
+                <Badge className="bg-primary/20 text-primary border-none text-[10px]">5 Modular Agents</Badge>
               </div>
               <div className="grid gap-2 sm:grid-cols-5 text-[11px] pt-1">
                 <div className="rounded-md border bg-background p-2 text-center">

@@ -4,198 +4,111 @@ import {
   Brain,
   Wind,
   Dna,
-  ShieldCheck,
-  Workflow,
-  Gauge,
-  FileSearch,
-  Users,
-  Bot,
-  Sparkles,
-  Zap,
-  Activity,
-  Award,
-  GraduationCap,
-  Database,
+  FileText,
+  Upload,
+  FolderOpen,
+  BookOpen,
+  CheckCircle2,
+  Info,
 } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { MULTI_AGENT_PROFILES } from '@/lib/multiAgent/types';
 
 export default function HomePage() {
   return (
-    <div className="space-y-16">
-      {/* High-Tier Hero Section */}
-      <section className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-b from-card via-card/90 to-secondary/30 p-8 text-center sm:p-14 shadow-xs">
-        {/* Glow ambient background elements */}
-        <div className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 h-72 w-96 rounded-full bg-primary/15 blur-3xl" />
-
-        <div className="relative z-10 mx-auto max-w-3xl space-y-6">
-          {/* B.Tech Capstone Badge */}
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs font-semibold text-primary backdrop-blur">
-            <GraduationCap className="h-4 w-4" />
-            B.Tech Final Year Capstone Project · CSE Dept
-          </div>
-
-          <h1 className="text-balance text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl text-foreground">
-            Collaborative Multi-Agent AI for{' '}
-            <span className="bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-500 bg-clip-text text-transparent">
-              Clinical Oncology
-            </span>
+    <div className="mx-auto max-w-5xl space-y-12">
+      {/* Hero Section */}
+      <section className="rounded-2xl border bg-card p-8 sm:p-12 text-center space-y-5 shadow-xs">
+        <div className="mx-auto max-w-2xl space-y-3">
+          <Badge variant="secondary" className="text-xs font-normal">
+            Medical Imaging Analysis
+          </Badge>
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl text-foreground">
+            Medical Image Segmentation &amp; Reporting
           </h1>
-
-          <p className="text-pretty text-base sm:text-lg text-muted-foreground leading-relaxed">
-            An advanced swarm of <strong>5 Specialized Autonomous AI Agents</strong> collaborating in real time to validate medical imaging, extract clinical context, execute deep neural segmentation, and assemble RECIST 1.1 compliant oncology reports.
-          </p>
-
-          <div className="flex flex-wrap items-center justify-center gap-3.5 pt-2">
-            <Link href="/upload" className={cn(buttonVariants({ size: 'lg' }), 'gap-2 shadow-sm font-semibold')}>
-              <Zap className="h-4 w-4" /> Launch Multi-Agent Analysis <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link href="/datasets" className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'gap-2')}>
-              <Database className="h-4 w-4" /> Source of Datasets
-            </Link>
-            <Link href="/cases" className={cn(buttonVariants({ variant: 'secondary', size: 'lg' }), 'gap-2')}>
-              Study Archive
-            </Link>
-            <Link href="/docs" className={cn(buttonVariants({ variant: 'ghost', size: 'lg' }), 'gap-2')}>
-              Docs &amp; Topology
-            </Link>
-          </div>
-        </div>
-
-        {/* Live Performance Matrix Strip */}
-        <div className="mt-12 grid grid-cols-2 gap-4 border-t pt-8 sm:grid-cols-4 text-left">
-          <div className="space-y-1">
-            <div className="text-2xl sm:text-3xl font-extrabold text-foreground font-mono">91.4%</div>
-            <p className="text-xs text-muted-foreground font-medium">BraTS Glioma Dice Score</p>
-          </div>
-          <div className="space-y-1">
-            <div className="text-2xl sm:text-3xl font-extrabold text-foreground font-mono">89.7%</div>
-            <p className="text-xs text-muted-foreground font-medium">LUNA16 Lung Dice Score</p>
-          </div>
-          <div className="space-y-1">
-            <div className="text-2xl sm:text-3xl font-extrabold text-foreground font-mono">5 Agents</div>
-            <p className="text-xs text-muted-foreground font-medium">Autonomous Swarm Team</p>
-          </div>
-          <div className="space-y-1">
-            <div className="text-2xl sm:text-3xl font-extrabold text-foreground font-mono">&lt;100ms</div>
-            <p className="text-xs text-muted-foreground font-medium">Neural Inference Latency</p>
-          </div>
-        </div>
-      </section>
-
-      {/* The 5 Collaborative Specialized Agents Section */}
-      <section className="space-y-6">
-        <div className="text-center space-y-2 max-w-2xl mx-auto">
-          <Badge variant="outline" className="border-primary/40 text-primary">
-            Autonomous Swarm Protocol
-          </Badge>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-            Meet the 5 Specialized Clinical AI Agents
-          </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Each specialized agent operates with dedicated domain prompts, deterministic execution tools, and inter-agent consensus validation.
+          <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+            Automated organ segmentation and structured RECIST reporting for brain MRI, thoracic CT/X-Ray, and abdominal CT scans.
           </p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Object.values(MULTI_AGENT_PROFILES).map((agent, i) => (
-            <Card key={agent.role} className="border-border/70 bg-card hover:border-primary/50 transition-all hover:shadow-xs group">
-              <CardHeader className="pb-2.5">
-                <div className="flex items-center justify-between">
-                  <div
-                    className="flex h-9 w-9 items-center justify-center rounded-lg text-white font-bold text-xs shadow-2xs"
-                    style={{ backgroundColor: agent.color }}
-                  >
-                    0{i + 1}
-                  </div>
-                  <Badge variant="secondary" className="text-[10px] font-mono">
-                    Agent 0{i + 1}
-                  </Badge>
-                </div>
-                <CardTitle className="text-base font-bold group-hover:text-primary transition-colors mt-2">
-                  {agent.name}
-                </CardTitle>
-                <CardDescription className="text-xs font-medium text-foreground/80">
-                  {agent.title}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2 text-xs text-muted-foreground">
-                <p className="line-clamp-3 leading-relaxed">
-                  {agent.specialty}
-                </p>
-                <div className="pt-2 border-t text-[11px] font-mono text-primary flex items-center gap-1">
-                  <Zap className="h-3 w-3" /> Autonomous Consensus Node
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+          <Link href="/upload" className={cn(buttonVariants({ size: 'default' }), 'gap-2')}>
+            <Upload className="h-4 w-4" /> New Analysis <ArrowRight className="h-4 w-4" />
+          </Link>
+          <Link href="/cases" className={cn(buttonVariants({ variant: 'outline', size: 'default' }), 'gap-2')}>
+            <FolderOpen className="h-4 w-4" /> Case Archive
+          </Link>
+          <Link href="/docs" className={cn(buttonVariants({ variant: 'ghost', size: 'default' }), 'gap-2')}>
+            <BookOpen className="h-4 w-4" /> Documentation
+          </Link>
         </div>
       </section>
 
-      {/* Organ Specialties Cards */}
-      <section className="space-y-6">
-        <div className="text-center space-y-2 max-w-2xl mx-auto">
-          <Badge variant="outline" className="border-primary/40 text-primary">
-            Clinical Target Domains
-          </Badge>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-            Supported Oncology Modalities
+      {/* Supported Modalities */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight text-foreground">
+            Supported Modalities &amp; Organs
           </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Tailored neural U-Net feature extractors trained on international standard benchmark datasets.
+          <p className="text-xs text-muted-foreground">
+            Standard segmentation models configured for specific imaging modalities.
           </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
           {[
             {
-              icon: <Brain className="h-6 w-6 text-blue-500" />,
-              organ: 'Brain Oncology',
-              modality: 'Axial T1-CE / FLAIR MRI',
+              icon: <Brain className="h-5 w-5 text-blue-600 dark:text-blue-400" />,
+              organ: 'Brain',
+              modality: 'Axial T1 / FLAIR MRI',
               model: 'brain_unet.onnx',
-              dataset: 'BraTS 2021 Benchmark',
-              accuracy: '91.4% Dice',
+              target: 'Intracranial tumor / lesion region',
+              format: 'NIfTI, DICOM, PNG',
             },
             {
-              icon: <Wind className="h-6 w-6 text-cyan-500" />,
-              organ: 'Thoracic Oncology',
-              modality: 'High-Resolution Chest CT',
+              icon: <Wind className="h-5 w-5 text-sky-600 dark:text-sky-400" />,
+              organ: 'Lung / Thorax',
+              modality: 'Chest CT & X-Ray Radiographs',
               model: 'lung_unet.onnx',
-              dataset: 'LUNA16 / LIDC-IDRI',
-              accuracy: '89.7% Dice',
+              target: 'Pulmonary field & nodule segmentation',
+              format: 'DICOM, NIfTI, PNG',
             },
             {
-              icon: <Dna className="h-6 w-6 text-purple-500" />,
-              organ: 'Abdominal Oncology',
-              modality: 'Contrast-Enhanced Abdominal CT/MRI',
+              icon: <Dna className="h-5 w-5 text-violet-600 dark:text-violet-400" />,
+              organ: 'Pancreas',
+              modality: 'Contrast-Enhanced Abdominal CT',
               model: 'pancreas_unet.onnx',
-              dataset: 'MSD Task07 Pancreatic',
-              accuracy: '86.3% Dice',
+              target: 'Pancreatic parenchymal boundary',
+              format: 'NIfTI, DICOM, PNG',
             },
-          ].map((o) => (
-            <Card key={o.organ} className="border-border/80 bg-card/60">
+          ].map((item) => (
+            <Card key={item.organ} className="border bg-card">
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="rounded-lg border bg-secondary/30 p-2.5">{o.icon}</div>
-                  <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 dark:text-emerald-400 font-bold text-xs">
-                    {o.accuracy}
-                  </Badge>
+                <div className="flex items-center gap-2.5">
+                  <div className="rounded-md border bg-muted p-2">{item.icon}</div>
+                  <div>
+                    <CardTitle className="text-base font-semibold">{item.organ}</CardTitle>
+                    <CardDescription className="text-xs">{item.modality}</CardDescription>
+                  </div>
                 </div>
-                <CardTitle className="text-lg font-bold mt-2">{o.organ}</CardTitle>
-                <CardDescription className="text-xs">{o.modality}</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-2 text-xs">
-                <div className="flex justify-between border-t pt-2 text-muted-foreground">
-                  <span>Training Corpus:</span>
-                  <span className="font-semibold text-foreground">{o.dataset}</span>
+              <CardContent className="space-y-2 text-xs text-muted-foreground border-t pt-3">
+                <div className="flex justify-between">
+                  <span>Target:</span>
+                  <span className="font-medium text-foreground">{item.target}</span>
                 </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Weights File:</span>
-                  <code className="rounded bg-secondary px-1.5 py-0.5 text-[11px] font-mono">{o.model}</code>
+                <div className="flex justify-between">
+                  <span>Model:</span>
+                  <code className="rounded bg-muted px-1.5 py-0.5 text-[11px] font-mono text-foreground">
+                    {item.model}
+                  </code>
+                </div>
+                <div className="flex justify-between">
+                  <span>Input:</span>
+                  <span>{item.format}</span>
                 </div>
               </CardContent>
             </Card>
@@ -203,27 +116,73 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Capstone Attribution Banner */}
-      <section className="rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-secondary/20 to-primary/5 p-6 sm:p-8">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
-          <div className="space-y-2">
-            <div className="flex items-center justify-center sm:justify-start gap-2 text-primary font-semibold text-xs uppercase tracking-wider">
-              <Award className="h-4 w-4" /> Academic Engineering Capstone Project
-            </div>
-            <h3 className="text-xl font-bold text-foreground">
-              Department of Computer Science &amp; Engineering
-            </h3>
-            <p className="text-xs text-muted-foreground max-w-xl leading-relaxed">
-              Developed as a B.Tech Final Year Capstone Innovation in Autonomous Medical AI, Multi-Agent Swarm Intelligence, and Quantitative RECIST 1.1 Computational Radiology.
-            </p>
-          </div>
-          <Link href="/upload">
-            <Button size="lg" className="gap-2 shadow-sm font-semibold shrink-0">
-              <Zap className="h-4 w-4" /> Run Live Demo
-            </Button>
-          </Link>
+      {/* Pipeline Steps */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight text-foreground">
+            Analysis Pipeline
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Structured workflow execution from initial scan ingestion to final summary.
+          </p>
         </div>
+
+        <div className="grid gap-3 sm:grid-cols-5">
+          {[
+            { step: '01', title: 'Input Validation', desc: 'Validates file format, resolution, and imaging metadata.' },
+            { step: '02', title: 'Routing', desc: 'Identifies scan organ and modality for appropriate model selection.' },
+            { step: '03', title: 'Segmentation', desc: 'Runs 2D U-Net inference to generate binary segmentation masks.' },
+            { step: '04', title: 'Quantification', desc: 'Calculates lesion axes, surface area, and volume per RECIST 1.1.' },
+            { step: '05', title: 'Reporting', desc: 'Generates structured clinical summary with findings and review log.' },
+          ].map((s) => (
+            <div key={s.step} className="rounded-lg border bg-card p-3.5 space-y-1.5 text-xs">
+              <div className="font-mono text-[11px] font-semibold text-primary">{s.step}</div>
+              <div className="font-medium text-foreground">{s.title}</div>
+              <div className="text-muted-foreground text-[11px] leading-relaxed">{s.desc}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Agent Modules */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight text-foreground">
+            Processing Modules
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Role-based agents coordinating validation, inference, and report compilation.
+          </p>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {Object.values(MULTI_AGENT_PROFILES).map((agent, i) => (
+            <Card key={agent.role} className="border bg-card">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline" className="text-[10px] font-mono">
+                    Module 0{i + 1}
+                  </Badge>
+                </div>
+                <CardTitle className="text-sm font-semibold mt-1.5">{agent.name}</CardTitle>
+                <CardDescription className="text-xs">{agent.title}</CardDescription>
+              </CardHeader>
+              <CardContent className="text-xs text-muted-foreground">
+                <p className="leading-relaxed">{agent.specialty}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      {/* Standard Disclaimer Notice */}
+      <section className="rounded-lg border border-border/70 bg-muted/40 p-4 text-xs text-muted-foreground flex items-start gap-3">
+        <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+        <p className="leading-relaxed">
+          <strong className="text-foreground">Research Prototype Notice:</strong> This software is an experimental prototype designed for medical image processing research. It is not approved as a medical device and should not be used for primary clinical diagnosis or treatment planning.
+        </p>
       </section>
     </div>
   );
 }
+

@@ -5,25 +5,22 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: {
-    default: 'Multi Agent Med AI — Clinical Oncology Platform',
-    template: '%s · Multi Agent Med AI',
+    default: 'MedVision — Medical Image Analysis',
+    template: '%s · MedVision',
   },
   description:
-    'Collaborative Multi-Agent AI system for automated brain, lung, and pancreatic tumor segmentation and RECIST 1.1 structured clinical reporting. B.Tech Capstone Project.',
+    'Medical imaging segmentation and structured clinical reporting for brain, thoracic, and abdominal scans.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className="flex min-h-screen flex-col font-sans">
-        <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur">
+        <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur">
           <div className="container flex h-14 items-center justify-between">
-            <Link href="/" className="flex items-center gap-2 font-bold tracking-tight">
+            <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
               <Brain className="h-5 w-5 text-primary" aria-hidden />
-              Multi&nbsp;Agent&nbsp;Med&nbsp;AI
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-primary">
-                v1.0
-              </span>
+              <span>MedVision</span>
             </Link>
             <nav className="flex items-center gap-1 text-sm">
               <Link
@@ -42,7 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 href="/cases"
                 className="rounded-md px-3 py-2 font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
               >
-                Study Archive
+                Case Archive
               </Link>
               <Link
                 href="/datasets"
@@ -62,18 +59,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
         <main className="container flex-1 py-8">{children}</main>
 
-        <footer className="border-t py-6 bg-card/40">
-          <div className="container flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
+        <footer className="border-t py-6 text-xs text-muted-foreground">
+          <div className="container flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
-              <p className="font-semibold text-foreground">
-                Multi Agent Med AI Platform · Collaborative Multi-Agent Oncology System
+              <p className="font-medium text-foreground">
+                MedVision · Medical Image Segmentation &amp; Reporting
               </p>
-              <p>
-                B.Tech Final Year Capstone Project · Department of Computer Science &amp; Engineering
+              <p className="text-[11px] text-muted-foreground">
+                Open research prototype · Not approved for primary diagnostic use
               </p>
             </div>
-            <div className="text-right font-mono text-[11px]">
-              <span>Dataset Sources: BraTS 2021 · LUNA16 · MSD Task07</span>
+            <div className="text-right text-[11px]">
+              <span>Research &amp; evaluation platform</span>
             </div>
           </div>
         </footer>
