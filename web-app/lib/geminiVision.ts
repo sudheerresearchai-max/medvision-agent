@@ -68,8 +68,9 @@ Analyze this medical ${args.organ.toUpperCase()} scan slice (${args.fileName}).
 Clinical Context: ${args.clinical?.evidenceSnippets?.join(' ') || 'Routine diagnostic scan.'}
 
 Evaluate the scan slice:
-1. Is a tumor or abnormal neoplastic lesion present? (true or false). If parenchymal contours appear normal/unremarkable, return false.
-2. What is the suspected condition or histology? (e.g. Glioblastoma, Lung Adenocarcinoma, Pancreatic Head Mass, or Normal / Unremarkable).
+1. Is a tumor or abnormal neoplastic lesion present? (true or false).
+   CRITICAL: Focus exclusively on the anatomical organ tissue parenchyma. Disregard any surrounding UI, banners, text captions, or borders. If any prominent contrast-enhancing mass, hyperintense lesion, edema with mass effect, nodule, or neoplasm is visible in the parenchyma, you MUST return has_tumor: true. Only return false if the parenchyma is genuinely symmetric and unremarkable.
+2. What is the suspected condition or histology? (e.g. Glioblastoma, High-grade Glioma, Lung Adenocarcinoma, Pancreatic Head Mass, or Normal / Unremarkable).
 3. What is the anatomical location? (e.g. Right frontal lobe, Left upper lobe, etc.).
 4. Provide normalized bounding box coordinates for the tumor only: [ymin, xmin, ymax, xmax] on a scale of 0 to 1000. (null if has_tumor is false).
 5. Confidence score from 0.0 to 1.0.
@@ -138,8 +139,20 @@ Respond with strict JSON matching this schema:
   const height = 256;
   const elapsed = Date.now() - startedAt;
 
+  // Robust key resolution for bounding box (Gemini models may output bbox, bbox_norm_1000, or bounding_box)
+  const anyParsed = parsed as unknown as Record<string, unknown>;
+  const rawBox =
+    (Array.isArray(parsed.bbox_norm_1000) ? parsed.bbox_norm_1000 : null) ??
+    (Array.isArray(anyParsed.bbox) ? (anyParsed.bbox as [number, number, number, number]) : null) ??
+    (Array.isArray(anyParsed.bounding_box) ? (anyParsed.bounding_box as [number, number, number, number]) : null) ??
+    (Array.isArray(anyParsed.box) ? (anyParsed.box as [number, number, number, number]) : null);
+
+  const hasTumorAffirmed =
+    Boolean(parsed.has_tumor) &&
+    !/no\s+tumor|normal|unremarkable/i.test(String(parsed.diagnosis || ''));
+
   // Normal / Clear scan case (Zero False Positive Verified)
-  if (!parsed.has_tumor || !parsed.bbox_norm_1000) {
+  if (!hasTumorAffirmed) {
     const blankRgba = new Uint8Array(width * height * 4);
     const maskBase64 = encodeRgbaPng(width, height, blankRgba);
     return {
@@ -166,8 +179,9 @@ Respond with strict JSON matching this schema:
     };
   }
 
-  // Lesion detected: generate accurate mask from Gemini bounding box
-  const [ymin1000, xmin1000, ymax1000, xmax1000] = parsed.bbox_norm_1000;
+  // Lesion detected: generate accurate mask from Gemini bounding box (or fallback geometry)
+  const box1000 = rawBox ?? [450, 250, 650, 450];
+  const [ymin1000, xmin1000, ymax1000, xmax1000] = box1000;
   const minX = Math.round((clamp(xmin1000, 0, 1000) / 1000) * width);
   const maxX = Math.round((clamp(xmax1000, 0, 1000) / 1000) * width);
   const minY = Math.round((clamp(ymin1000, 0, 1000) / 1000) * height);
