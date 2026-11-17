@@ -54,13 +54,13 @@ async function dataUrlToFile(dataUrl: string, fileName: string): Promise<File> {
 }
 
 const THINKING_STAGES = [
-  'Ingesting DICOM/PNG payload...',
+  'Searching the web...',
   'Inspecting scan with Gemini Vision...',
   'Delineating neoplastic boundary contours...',
-  'Deriving RECIST 1.1 morphometry...',
+  'Searching clinical databases for guidelines & precautions...',
   'Cross-examining multi-agent clinical consensus...',
-  'Synthesizing diagnostic verdict...',
-  'Finalizing consensus...',
+  'Synthesizing diagnostic verdict & side effects...',
+  'Thinking...',
 ];
 
 export function UploadForm() {

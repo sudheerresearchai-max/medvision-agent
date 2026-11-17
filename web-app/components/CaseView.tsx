@@ -9,6 +9,7 @@ import { MaskOverlay } from '@/components/MaskOverlay';
 import { ReportPanel } from '@/components/ReportPanel';
 import { TumorVerdictCard } from '@/components/TumorVerdictCard';
 import { ClaudeThinkingPill } from '@/components/ClaudeThinkingPill';
+import { ClinicalKnowledgePanel } from '@/components/ClinicalKnowledgePanel';
 import { ClinicalSafetyPrecautions } from '@/components/ClinicalSafetyPrecautions';
 import { cn } from '@/lib/utils';
 
@@ -106,6 +107,9 @@ export function CaseView({ data }: { data: AnalysisResult }) {
           </div>
         </div>
       )}
+
+      {/* Authoritative Clinical Knowledge & Oncology Intelligence (Symptoms, Side Effects, Precautions & Red Flags) */}
+      <ClinicalKnowledgePanel knowledge={data.clinicalKnowledge} />
 
       {/* Full Structured Medical Report */}
       <ReportPanel report={data.report} />

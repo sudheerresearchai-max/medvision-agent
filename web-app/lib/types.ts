@@ -190,6 +190,31 @@ export interface SafetyWarning {
   message: string;
 }
 
+export interface MedicalSourceRef {
+  name: string;
+  sourceType: 'guideline' | 'registry' | 'peer_reviewed' | 'database';
+  url: string;
+  citation: string;
+}
+
+export interface ClinicalKnowledgeBrief {
+  condition: string;
+  category: string;
+  whoClassification?: string;
+  summary: string;
+  pathologyDetails: string;
+  commonSymptoms: string[];
+  clinicalSideEffects: {
+    diseaseRelated: string[];
+    treatmentRelated: string[];
+  };
+  treatmentModalities: string[];
+  mandatoryPrecautions: string[];
+  emergencyRedFlags: string[];
+  sources: MedicalSourceRef[];
+  retrievedAt: string;
+}
+
 // ---------------------------------------------------------------------------
 // Full result persisted per case
 // ---------------------------------------------------------------------------
@@ -220,6 +245,7 @@ export interface AnalysisResult {
   safety: SafetyWarning[];
   trace: AgentStep[];
   multiAgentTrace?: import('./multiAgent/types').MultiAgentSessionTrace;
+  clinicalKnowledge?: ClinicalKnowledgeBrief;
 }
 
 // ---------------------------------------------------------------------------

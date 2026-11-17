@@ -31,6 +31,7 @@ import {
   type StructuredReport,
 } from './types';
 import { buildMultiAgentSessionTrace } from './multiAgent/orchestrator';
+import { fetchMedicalKnowledge } from './medicalKnowledge';
 import { errorMessage, fileExtension, newCaseId, round } from './utils';
 import { extractClinicalInfo as runClinicalExtraction } from './clinicalInfo';
 import { extractTextFromPdf } from './pdfExtract';
@@ -818,6 +819,28 @@ export async function runAnalysis(input: AnalysisInput): Promise<AnalysisResult>
     totalLatencyMs,
   });
 
+  // ---- Evidence-Based Oncology Knowledge & Safety Synthesis -----------------
+  let diagnosisHint = 'Suspected Neoplasm';
+  const geminiWarning = inference?.warnings.find((w) => w.startsWith('Gemini Vision Detection:'));
+  if (geminiWarning) {
+    const match = geminiWarning.match(/Gemini Vision Detection:\s*([^.]+?)\s+identified in/i);
+    if (match) diagnosisHint = match[1].trim();
+  } else if (clinical.suspectedConditions.length > 0) {
+    diagnosisHint = clinical.suspectedConditions[0];
+  } else if (routing.modelKey === 'brain') {
+    diagnosisHint = 'Glioblastoma Multiforme';
+  } else if (routing.modelKey === 'lung') {
+    diagnosisHint = 'Non-Small Cell Lung Carcinoma';
+  } else if (routing.modelKey === 'pancreas') {
+    diagnosisHint = 'Pancreatic Ductal Adenocarcinoma';
+  }
+
+  const clinicalKnowledge = await fetchMedicalKnowledge({
+    diagnosis: diagnosisHint,
+    organ: routing.modelKey ?? 'brain',
+    hasTumor: Boolean(inference && inference.metrics.areaPx > 0),
+  });
+
   const result: AnalysisResult = {
     caseId,
     createdAt: new Date().toISOString(),
@@ -833,6 +856,7 @@ export async function runAnalysis(input: AnalysisInput): Promise<AnalysisResult>
     safety,
     trace: trace.steps,
     multiAgentTrace,
+    clinicalKnowledge,
   };
 
   await saveCase(result);
