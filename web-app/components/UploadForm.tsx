@@ -9,6 +9,11 @@ import {
   ArrowRight,
   Sparkles,
   Zap,
+  Stethoscope,
+  Brain,
+  Wind,
+  Droplet,
+  CheckCircle,
 } from 'lucide-react';
 import type { Organ } from '@/lib/types';
 import { IMAGE_MAX_BYTES, PDF_MAX_BYTES, SUPPORTED_IMAGE_EXTENSIONS } from '@/lib/types';
@@ -22,6 +27,41 @@ type OrganChoice = Organ | 'auto';
 
 const ACCEPT_ATTR =
   '.png,.jpg,.jpeg,.dcm,.nii,.gz,image/png,image/jpeg,application/dicom';
+
+const SYMPTOM_PRESETS = [
+  {
+    id: 'neuro',
+    icon: '🧠',
+    label: 'Neuro / Brain',
+    summary: 'Morning headache & focal seizure',
+    text: '58-year-old male with 3-week progressive morning headache, new-onset focal motor seizure, and left upper extremity weakness. Denies fever or head trauma.',
+    organ: 'brain' as Organ,
+  },
+  {
+    id: 'lung',
+    icon: '🫁',
+    label: 'Thoracic / Lung',
+    summary: 'Hemoptysis & dyspnea',
+    text: '64-year-old female, 40 pack-year smoking history, presenting with persistent cough, mild hemoptysis for 2 weeks, and 12-lb unintentional weight loss.',
+    organ: 'lung' as Organ,
+  },
+  {
+    id: 'pancreas',
+    icon: '🩸',
+    label: 'GI / Pancreas',
+    summary: 'Painless jaundice & tea urine',
+    text: '61-year-old male presenting with progressive painless obstructive jaundice, pruritus, tea-colored dark urine, clay stools, and epigastric discomfort radiating to back.',
+    organ: 'pancreas' as Organ,
+  },
+  {
+    id: 'routine',
+    icon: '🟢',
+    label: 'Routine / Baseline',
+    summary: 'Mild tension headache',
+    text: '42-year-old female with mild intermittent band-like tension headache responsive to acetaminophen. Neurological examination completely unremarkable; routine baseline screening.',
+    organ: 'brain' as Organ,
+  },
+];
 
 function extOf(name: string): string {
   const lower = name.toLowerCase();
@@ -131,8 +171,11 @@ export function UploadForm() {
     e.preventDefault();
     setError(null);
 
-    if (!imageFile) {
-      setError('Please select or drop a medical scan image (MRI/CT).');
+    const hasImage = Boolean(imageFile);
+    const hasSymptoms = Boolean(notes.trim());
+
+    if (!hasImage && !hasSymptoms) {
+      setError('Please provide at least one clinical input: patient symptoms text, or a medical scan image (or both).');
       return;
     }
 
@@ -141,9 +184,11 @@ export function UploadForm() {
       const form = new FormData();
       form.append('organ', organChoice);
       form.append('notes', notes);
-      form.append('image', imageFile);
-      const preview = imagePreview || (await makePreview(imageFile));
-      if (preview) form.append('imagePreview', preview);
+      if (imageFile) {
+        form.append('image', imageFile);
+        const preview = imagePreview || (await makePreview(imageFile));
+        if (preview) form.append('imagePreview', preview);
+      }
 
       const res = await fetch('/api/analyze', { method: 'POST', body: form });
       const payload = await res.json().catch(() => null);
@@ -172,11 +217,22 @@ export function UploadForm() {
   const lungSample = SAMPLE_CASES.find((s) => s.id === 'case02_lung_nsclc') || SAMPLE_CASES[1];
   const normalSample = SAMPLE_CASES.find((s) => s.isControl) || SAMPLE_CASES[3];
 
+  const hasImage = Boolean(imageFile);
+  const hasSymptoms = Boolean(notes.trim());
+  const canSubmit = hasImage || hasSymptoms;
+
+  const buttonText =
+    hasImage && hasSymptoms
+      ? 'Analyze Multimodal Scan & Symptoms'
+      : hasSymptoms
+        ? 'Analyze Clinical Symptoms with Multi-Agent AI'
+        : 'Analyze Medical Scan with Multi-Agent AI';
+
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">
-      {/* Quick-Load Minimal Pills */}
+      {/* Quick-Load Minimal Pills (Scan Presets) */}
       <div className="flex flex-wrap items-center justify-center gap-2 text-xs">
-        <span className="text-muted-foreground text-[11px] font-mono mr-1">Quick Scans:</span>
+        <span className="text-muted-foreground text-[11px] font-mono mr-1">Sample Scans:</span>
         <button
           type="button"
           disabled={submitting}
@@ -219,7 +275,7 @@ export function UploadForm() {
       </div>
 
       <form onSubmit={onSubmit} className="space-y-4">
-        {/* Minimalist Drag-and-Drop Area */}
+        {/* Minimalist Drag-and-Drop Area for Scans */}
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -234,7 +290,7 @@ export function UploadForm() {
             }
           }}
           className={cn(
-            'relative rounded-2xl border-2 border-dashed transition-all p-6 sm:p-8 text-center',
+            'relative rounded-2xl border-2 border-dashed transition-all p-6 sm:p-7 text-center',
             dragOver
               ? 'border-primary bg-primary/5 scale-[1.005]'
               : imageFile
@@ -283,14 +339,14 @@ export function UploadForm() {
                 disabled={submitting}
                 onChange={(e) => handleFile(e.target.files?.[0])}
               />
-              <div className="w-12 h-12 rounded-2xl bg-secondary/80 flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">
-                <UploadCloud className="w-6 h-6" />
+              <div className="w-11 h-11 rounded-2xl bg-secondary/80 flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">
+                <UploadCloud className="w-5 h-5" />
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium text-foreground">
-                  Click to browse or drop an axial scan slice
+                  Upload axial scan slice (optional if providing symptoms)
                 </p>
-                <p className="text-xs font-mono text-muted-foreground">
+                <p className="text-[11px] font-mono text-muted-foreground">
                   MRI (.png, .jpg) · CT (.dcm, .nii) · Up to 50 MB
                 </p>
               </div>
@@ -298,16 +354,57 @@ export function UploadForm() {
           )}
         </div>
 
-        {/* Minimal Clinical Context Note */}
-        <div>
-          <input
-            type="text"
+        {/* Clinical Symptoms & Patient Presentation Narrative */}
+        <div className="rounded-2xl border border-border/70 bg-card/60 p-4 sm:p-5 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Stethoscope className="w-4 h-4 text-primary" />
+              <label htmlFor="symptoms-input" className="text-xs font-mono font-semibold text-foreground">
+                Patient Symptoms &amp; Clinical Narrative
+              </label>
+            </div>
+            <span className="text-[10px] font-mono text-muted-foreground">
+              Multi-agent differential diagnosis &amp; triage
+            </span>
+          </div>
+
+          {/* Quick Symptom Chips */}
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            <span className="text-[10px] font-mono text-muted-foreground self-center mr-1">Presets:</span>
+            {SYMPTOM_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                disabled={submitting}
+                onClick={() => {
+                  setNotes(preset.text);
+                  setOrganChoice(preset.organ);
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-border/60 bg-secondary/50 hover:bg-secondary text-[11px] font-mono text-foreground/80 hover:text-foreground transition-all"
+                title={preset.summary}
+              >
+                <span>{preset.icon}</span>
+                <span>{preset.label}</span>
+              </button>
+            ))}
+          </div>
+
+          <textarea
+            id="symptoms-input"
+            rows={3}
             value={notes}
             disabled={submitting}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Clinical history or symptoms (optional, e.g. 'progressive headache, left-sided weakness')..."
-            className="w-full px-4 py-2.5 rounded-xl border border-border/70 bg-card/60 hover:bg-card focus:bg-card text-xs font-mono placeholder:text-muted-foreground/60 focus:outline-hidden focus:ring-1 focus:ring-primary/60 transition-all"
+            placeholder="Enter patient symptoms, duration, clinical history, or vitals (e.g. '58yo male with 3-week progressive morning headache, new focal seizure, left arm numbness')..."
+            className="w-full px-3.5 py-2.5 rounded-xl border border-border/70 bg-card hover:bg-card focus:bg-card text-xs font-mono placeholder:text-muted-foreground/60 focus:outline-hidden focus:ring-1 focus:ring-primary/60 transition-all resize-y leading-relaxed"
           />
+
+          {hasImage && hasSymptoms && (
+            <div className="flex items-center gap-2 text-[11px] font-mono text-primary pt-1">
+              <Sparkles className="w-3.5 h-3.5 shrink-0" />
+              <span>Multimodal Mode Active: Visual lesion segmentation + clinical symptom concordance</span>
+            </div>
+          )}
         </div>
 
         {/* Error Alert */}
@@ -331,10 +428,10 @@ export function UploadForm() {
             <Button
               type="submit"
               size="lg"
-              disabled={!imageFile}
+              disabled={!canSubmit}
               className="w-full sm:w-auto px-8 rounded-full font-mono text-xs tracking-wide bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs gap-2"
             >
-              Analyze Scan with Multi-Agent AI <ArrowRight className="w-3.5 h-3.5" />
+              {buttonText} <ArrowRight className="w-3.5 h-3.5" />
             </Button>
           </div>
         )}

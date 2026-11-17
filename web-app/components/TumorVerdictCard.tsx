@@ -21,12 +21,19 @@ export function TumorVerdictCard({ data }: TumorVerdictCardProps) {
   let diagnosis = isTumor ? 'Suspected Neoplasm' : 'Normal / Unremarkable';
   let location = `${organName} Parenchyma`;
 
+  const isSymptomsOnly = !inference && Boolean(data.symptomAnalysis);
+  const symptomTop = data.symptomAnalysis?.differentials?.[0];
+  const symptomAcuity = data.symptomAnalysis?.acuityLevel;
+
   if (geminiWarning) {
     const match = geminiWarning.match(/Gemini Vision Detection:\s*([^.]+?)\s+identified in\s+([^.]+)/i);
     if (match) {
       diagnosis = match[1].trim();
       location = match[2].trim();
     }
+  } else if (isSymptomsOnly && symptomTop) {
+    diagnosis = symptomTop.condition;
+    location = symptomTop.organSystem;
   } else if (data.clinical.suspectedConditions.length > 0) {
     diagnosis = data.clinical.suspectedConditions[0];
   }
@@ -36,7 +43,21 @@ export function TumorVerdictCard({ data }: TumorVerdictCardProps) {
   let dangerTitle = 'Clear / No Lesion (0/5)';
   let urgency = 'Parenchymal contours within normal morphological limits. Routine follow-up.';
 
-  if (isTumor) {
+  if (isSymptomsOnly && symptomTop) {
+    if (symptomAcuity === 'emergency') {
+      dangerLevel = 5;
+      dangerTitle = 'Emergency Acuity (Level 5/5)';
+      urgency = 'Immediate emergency department / specialist referral indicated. Stat diagnostic cross-sectional imaging required.';
+    } else if (symptomAcuity === 'urgent') {
+      dangerLevel = 3;
+      dangerTitle = 'Urgent Workup (Level 3/5)';
+      urgency = 'Prompt outpatient specialist consultation and scheduled diagnostic imaging recommended.';
+    } else {
+      dangerLevel = 0;
+      dangerTitle = 'Routine Baseline (Level 0/5)';
+      urgency = 'Symptoms consistent with non-acute etiology. Routine primary care follow-up indicated.';
+    }
+  } else if (isTumor) {
     const diagLower = diagnosis.toLowerCase();
     if (diagLower.includes('glioblastoma') || diagLower.includes('gbm') || diagLower.includes('grade iv')) {
       dangerLevel = 5;
@@ -53,18 +74,20 @@ export function TumorVerdictCard({ data }: TumorVerdictCardProps) {
     }
   }
 
+  const isAlert = isTumor || (isSymptomsOnly && (symptomAcuity === 'emergency' || symptomAcuity === 'urgent'));
+
   return (
     <div
       className={cn(
         'rounded-2xl border p-4 sm:p-5 transition-all text-xs font-mono backdrop-blur-xs',
-        isTumor
+        isAlert
           ? 'border-destructive/40 bg-destructive/5 text-foreground'
           : 'border-emerald-500/30 bg-emerald-500/5 text-foreground',
       )}
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          {isTumor ? (
+          {isAlert ? (
             <div className="w-8 h-8 rounded-full bg-destructive/15 text-destructive flex items-center justify-center shrink-0">
               <ShieldAlert className="w-4 h-4 animate-pulse" />
             </div>
@@ -77,7 +100,7 @@ export function TumorVerdictCard({ data }: TumorVerdictCardProps) {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-semibold text-sm tracking-tight text-foreground">
-                {isTumor ? diagnosis : 'Negative Study · Clear Scan'}
+                {isSymptomsOnly ? diagnosis : isTumor ? diagnosis : 'Negative Study · Clear Scan'}
               </span>
               <span className="text-muted-foreground">·</span>
               <span className="text-muted-foreground">{location}</span>
@@ -94,11 +117,22 @@ export function TumorVerdictCard({ data }: TumorVerdictCardProps) {
           <span
             className={cn(
               'px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wider select-none border',
-              isTumor
+              isAlert
                 ? 'border-destructive/30 bg-destructive/15 text-destructive'
                 : 'border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
             )}
           >
+            {isSymptomsOnly
+              ? symptomAcuity === 'emergency'
+                ? 'EMERGENCY TRIAGE'
+                : symptomAcuity === 'urgent'
+                  ? 'URGENT WORKUP'
+                  : 'ROUTINE EVALUATION'
+              : isTumor
+                ? 'TUMOR DETECTED'
+                : 'NORMAL / CLEAR'}
+          </span>
+          <span className="text-[10px] text-muted-foreground border border-border/70 rounded-full px-2 py-0.5 select-none">
             {dangerTitle}
           </span>
         </div>

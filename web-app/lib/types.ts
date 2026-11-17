@@ -215,6 +215,44 @@ export interface ClinicalKnowledgeBrief {
   retrievedAt: string;
 }
 
+export interface DifferentialDiagnosis {
+  condition: string;
+  probability: 'high' | 'moderate' | 'low';
+  confidenceScore: number;
+  organSystem: string;
+  rationale: string;
+  supportingSymptoms: string[];
+  refutingFactors: string[];
+}
+
+export interface RecommendedImagingOrder {
+  modality: string;
+  protocol: string;
+  indication: string;
+  urgency: string;
+}
+
+export interface RecommendedLabTest {
+  testName: string;
+  rationale: string;
+  priority: string;
+}
+
+export interface SymptomAnalysisResult {
+  primaryComplaint: string;
+  symptomSeverity: 'critical' | 'high' | 'moderate' | 'mild';
+  acuityLevel: 'emergency' | 'urgent' | 'routine';
+  differentials: DifferentialDiagnosis[];
+  recommendedImaging: RecommendedImagingOrder[];
+  recommendedLabs: RecommendedLabTest[];
+  clinicalRedFlags: string[];
+  suggestedActionPlan: string[];
+  multimodalConcordance?: {
+    isConcordant: boolean;
+    summary: string;
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Full result persisted per case
 // ---------------------------------------------------------------------------
@@ -246,6 +284,7 @@ export interface AnalysisResult {
   trace: AgentStep[];
   multiAgentTrace?: import('./multiAgent/types').MultiAgentSessionTrace;
   clinicalKnowledge?: ClinicalKnowledgeBrief;
+  symptomAnalysis?: SymptomAnalysisResult;
 }
 
 // ---------------------------------------------------------------------------

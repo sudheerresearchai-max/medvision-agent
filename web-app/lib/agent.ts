@@ -32,6 +32,7 @@ import {
 } from './types';
 import { buildMultiAgentSessionTrace } from './multiAgent/orchestrator';
 import { fetchMedicalKnowledge } from './medicalKnowledge';
+import { analyzeClinicalSymptoms } from './symptomAnalyzer';
 import { errorMessage, fileExtension, newCaseId, round } from './utils';
 import { extractClinicalInfo as runClinicalExtraction } from './clinicalInfo';
 import { extractTextFromPdf } from './pdfExtract';
@@ -718,23 +719,26 @@ export async function runAnalysis(input: AnalysisInput): Promise<AnalysisResult>
 
   const routing = routeToModel(detection, trace);
 
-  // ---- Inference (hard requirement: an image must exist) --------------------
-  if (!input.image) {
+  // ---- Multimodal Input Verification --------------------------------------
+  if (!input.image && !input.clinicalText?.trim() && !input.pdf) {
     throw new AgentFailure(
-      'No medical scan image was provided. The tumor models require an image (.png/.jpg/.jpeg/.dcm/.nii/.nii.gz).',
+      'Provide at least one clinical input: patient symptoms text, a medical scan image, or a clinical PDF report.',
       trace.steps,
     );
   }
-  const rawInference = await dispatchModel(routing.modelKey!, input.image, trace, clinical);
 
-  // ---- Post-processing & measurement ---------------------------------------
-  let inference = postprocessMask(rawInference, trace);
+  // ---- Inference (dispatched when a medical scan image is present) ---------
+  let rawInference: InferenceResult | null = null;
+  if (input.image) {
+    rawInference = await dispatchModel(routing.modelKey!, input.image, trace, clinical);
+  }
+  let inference = rawInference ? postprocessMask(rawInference, trace) : null;
 
   // Negative scan clinical concordance check:
   // If clinical notes report a normal/negative study, but visual AI inference detected a substantial lesion:
   // Visual evidence MUST take precedence over referral text to avoid dangerous false negatives (clinical-radiological discordance).
   // Only suppress if it is sub-threshold noise on a local mock/ONNX model (< 50 px, low confidence).
-  if (clinical.isNormalOrNegative && inference.metrics.areaPx > 0) {
+  if (inference && clinical.isNormalOrNegative && inference.metrics.areaPx > 0) {
     const isHighConfidenceVisualLesion =
       inference.engine === 'gemini-vision' ||
       inference.metrics.areaPx >= 50 ||
@@ -765,7 +769,7 @@ export async function runAnalysis(input: AnalysisInput): Promise<AnalysisResult>
     }
   }
 
-  const measurements = calculateMeasurements(inference, trace);
+  const measurements = inference ? calculateMeasurements(inference, trace) : [];
 
   // ---- Report & safety -----------------------------------------------------
   trace.start('generateStructuredReport', 'Generate structured report');
@@ -819,12 +823,40 @@ export async function runAnalysis(input: AnalysisInput): Promise<AnalysisResult>
     totalLatencyMs,
   });
 
+  // ---- Symptom Analysis & Clinical Differential Diagnosis ------------------
+  trace.start('analyzeSymptoms', 'Synthesizing patient symptoms and differential diagnoses');
+  const symptomText = input.clinicalText?.trim() || clinical.evidenceSnippets?.join(' ') || '';
+  let symptomAnalysis: import('./types').SymptomAnalysisResult | null = null;
+  if (symptomText) {
+    try {
+      symptomAnalysis = await analyzeClinicalSymptoms({
+        text: symptomText,
+        organHint: routing.modelKey ?? undefined,
+        inference,
+        clinical,
+      });
+      trace.finish(
+        'analyzeSymptoms',
+        'ok',
+        symptomAnalysis
+          ? `Evaluated ${symptomAnalysis.differentials.length} differential diagnoses (Acuity: ${symptomAnalysis.acuityLevel.toUpperCase()}).`
+          : 'Symptom analysis completed.',
+      );
+    } catch (err) {
+      trace.finish('analyzeSymptoms', 'warn', `Symptom analysis fallback used: ${errorMessage(err)}`);
+    }
+  } else {
+    trace.finish('analyzeSymptoms', 'ok', 'No explicit clinical symptom text provided.');
+  }
+
   // ---- Evidence-Based Oncology Knowledge & Safety Synthesis -----------------
   let diagnosisHint = 'Suspected Neoplasm';
   const geminiWarning = inference?.warnings.find((w) => w.startsWith('Gemini Vision Detection:'));
   if (geminiWarning) {
     const match = geminiWarning.match(/Gemini Vision Detection:\s*([^.]+?)\s+identified in/i);
     if (match) diagnosisHint = match[1].trim();
+  } else if (symptomAnalysis?.differentials?.[0]?.condition) {
+    diagnosisHint = symptomAnalysis.differentials[0].condition;
   } else if (clinical.suspectedConditions.length > 0) {
     diagnosisHint = clinical.suspectedConditions[0];
   } else if (routing.modelKey === 'brain') {
@@ -857,6 +889,7 @@ export async function runAnalysis(input: AnalysisInput): Promise<AnalysisResult>
     trace: trace.steps,
     multiAgentTrace,
     clinicalKnowledge,
+    symptomAnalysis: symptomAnalysis ?? undefined,
   };
 
   await saveCase(result);

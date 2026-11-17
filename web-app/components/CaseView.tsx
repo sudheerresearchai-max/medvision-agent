@@ -11,6 +11,7 @@ import { TumorVerdictCard } from '@/components/TumorVerdictCard';
 import { ClaudeThinkingPill } from '@/components/ClaudeThinkingPill';
 import { ClinicalKnowledgePanel } from '@/components/ClinicalKnowledgePanel';
 import { ClinicalSafetyPrecautions } from '@/components/ClinicalSafetyPrecautions';
+import { SymptomAnalysisCard } from '@/components/SymptomAnalysisCard';
 import { cn } from '@/lib/utils';
 
 export function CaseView({ data }: { data: AnalysisResult }) {
@@ -57,14 +58,31 @@ export function CaseView({ data }: { data: AnalysisResult }) {
       {/* Primary Diagnosis & Danger Verdict Strip */}
       <TumorVerdictCard data={data} />
 
-      {/* Interactive Scan Visualizer (Illuminated Red Mask) */}
-      <div className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs">
-        <MaskOverlay
-          originalSrc={preview}
-          inference={data.inference}
-          measurements={data.measurements}
-        />
-      </div>
+      {/* Multimodal & Clinical Symptoms Reasoning Card */}
+      {data.symptomAnalysis && (
+        <SymptomAnalysisCard symptoms={data.symptomAnalysis} />
+      )}
+
+      {/* Interactive Scan Visualizer or Symptoms-Only Notification */}
+      {data.inference ? (
+        <div className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs">
+          <MaskOverlay
+            originalSrc={preview}
+            inference={data.inference}
+            measurements={data.measurements}
+          />
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-border/80 bg-card/40 p-6 text-center space-y-2">
+          <div className="flex items-center justify-center gap-2 text-xs font-mono font-medium text-foreground">
+            <Stethoscope className="w-4 h-4 text-primary" />
+            <span>Clinical Symptoms Consultation (No Radiological Scan Attached)</span>
+          </div>
+          <p className="text-[11px] font-mono text-muted-foreground max-w-md mx-auto">
+            The multi-agent panel completed differential diagnosis triage and recommended diagnostic imaging protocols detailed in the clinical workup above.
+          </p>
+        </div>
+      )}
 
       {/* Authentic Claude Thinking Pill / Accordion */}
       <div className="py-1">
