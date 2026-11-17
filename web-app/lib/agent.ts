@@ -665,6 +665,14 @@ export function addSafetyWarnings(
     });
   }
 
+  if (args.inference?.warnings.length) {
+    for (const w of args.inference.warnings) {
+      if (w.includes('DISCORDANCE')) {
+        warnings.push({ level: 'critical', message: w });
+      }
+    }
+  }
+
   trace.finish('addSafetyWarnings', 'ok', `${warnings.length} warning(s) attached.`);
   return warnings;
 }
@@ -721,25 +729,39 @@ export async function runAnalysis(input: AnalysisInput): Promise<AnalysisResult>
   // ---- Post-processing & measurement ---------------------------------------
   let inference = postprocessMask(rawInference, trace);
 
-  // Negative scan clinical concordance gating:
+  // Negative scan clinical concordance check:
+  // If clinical notes report a normal/negative study, but visual AI inference detected a substantial lesion:
+  // Visual evidence MUST take precedence over referral text to avoid dangerous false negatives (clinical-radiological discordance).
+  // Only suppress if it is sub-threshold noise on a local mock/ONNX model (< 50 px, low confidence).
   if (clinical.isNormalOrNegative && inference.metrics.areaPx > 0) {
-    inference.warnings.push(
-      `Negative clinical study gating: ${inference.metrics.areaPx} px candidate region suppressed in concordance with normal/negative clinical report.`
-    );
-    inference.metrics = {
-      areaPx: 0,
-      areaFraction: 0,
-      bbox: null,
-      centroid: null,
-      equivalentDiameterPx: null,
-    };
-    inference.confidence = 0.0;
-    inference.maskBase64 = encodeRgbaPng(
-      inference.width,
-      inference.height,
-      new Uint8Array(inference.width * inference.height * 4),
-    );
-    inference.overlayBase64 = undefined;
+    const isHighConfidenceVisualLesion =
+      inference.engine === 'gemini-vision' ||
+      inference.metrics.areaPx >= 50 ||
+      inference.confidence >= 0.70;
+
+    if (isHighConfidenceVisualLesion) {
+      inference.warnings.push(
+        `🚨 CRITICAL CLINICAL-RADIOLOGICAL DISCORDANCE: Clinical referral narrative indicated a normal study, but multimodal visual inspection identified an unequivocal focal lesion (${inference.metrics.areaPx} px). Direct imaging findings take precedence over negative clinical indications to prevent missed malignancy.`
+      );
+    } else {
+      inference.warnings.push(
+        `Negative clinical study gating: ${inference.metrics.areaPx} px candidate region suppressed in concordance with normal/negative clinical report.`
+      );
+      inference.metrics = {
+        areaPx: 0,
+        areaFraction: 0,
+        bbox: null,
+        centroid: null,
+        equivalentDiameterPx: null,
+      };
+      inference.confidence = 0.0;
+      inference.maskBase64 = encodeRgbaPng(
+        inference.width,
+        inference.height,
+        new Uint8Array(inference.width * inference.height * 4),
+      );
+      inference.overlayBase64 = undefined;
+    }
   }
 
   const measurements = calculateMeasurements(inference, trace);

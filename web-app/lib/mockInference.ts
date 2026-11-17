@@ -232,11 +232,18 @@ export function detectIsLesionPresent(
   const hasPositiveFilename =
     /\b(tumor|tumour|mass|lesion|nodule|cancer|carcinoma|gbm|glioma|case01|case02|case03)\b/.test(fn);
 
-  if (hasAffirmativeClinical || hasPositiveFilename) {
+  const hasHighContrastAnomaly = variance > 2000;
+  if (hasAffirmativeClinical || hasPositiveFilename || hasHighContrastAnomaly) {
     return {
       hasLesion: true,
       shape: ORGAN_SHAPE[organ],
-      reason: `Focal lesion features confirmed by ${hasAffirmativeClinical ? 'clinical evidence' : 'image metadata'}.`,
+      reason: `Focal lesion features identified via ${
+        hasAffirmativeClinical
+          ? 'clinical evidence'
+          : hasHighContrastAnomaly
+            ? 'high-contrast parenchymal hyperdensity'
+            : 'image metadata'
+      }.`,
     };
   }
 

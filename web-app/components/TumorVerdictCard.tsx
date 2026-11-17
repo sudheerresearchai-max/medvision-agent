@@ -109,6 +109,29 @@ export function TumorVerdictCard({ data }: TumorVerdictCardProps) {
       </div>
 
       <CardContent className="p-5 space-y-5">
+        {/* Active AI Engine Attribution */}
+        {inference?.engine === 'gemini-vision' ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-purple-500/30 bg-purple-500/10 px-3.5 py-2 text-xs font-semibold text-purple-700 dark:text-purple-300">
+            <span className="flex items-center gap-1.5">
+              <Zap className="h-4 w-4 text-purple-600 animate-pulse" />
+              AI Engine: Google Gemini Flash Multimodal Vision
+            </span>
+            <span className="text-[11px] font-mono text-purple-600/90 dark:text-purple-300/90">
+              Confidence: {(inference.confidence * 100).toFixed(1)}% · Visual BBox Verified
+            </span>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
+            <span className="flex items-center gap-1.5">
+              <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+              Engine: Local Fallback (Mock Engine)
+            </span>
+            <span className="text-[11px] text-amber-700/80 dark:text-amber-300/80">
+              Gemini API was inactive for this run · Click "New analysis" above to run Gemini Vision
+            </span>
+          </div>
+        )}
+
         {/* Danger Level Meter */}
         <div className={cn('rounded-lg border p-4 space-y-2.5', dangerBg)}>
           <div className="flex items-center justify-between">

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { HealthResponse } from '@/lib/types';
 import { DISCLAIMER } from '@/lib/types';
 import { checkInferenceService, isInferenceConfigured } from '@/lib/inferenceClient';
+import { isGeminiVisionConfigured } from '@/lib/geminiVision';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { storageMode } from '@/lib/caseStore';
 
@@ -26,6 +27,7 @@ export async function GET() {
     disclaimer: DISCLAIMER,
     config: {
       inferenceConfigured,
+      geminiConfigured: isGeminiVisionConfigured(),
       llmConfigured: Boolean(process.env.LLM_API_KEY?.trim() && process.env.LLM_BASE_URL?.trim()),
       supabaseConfigured: isSupabaseConfigured(),
       ocrEnabled: process.env.OCR_ENABLED === '1',

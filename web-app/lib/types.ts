@@ -232,6 +232,7 @@ export interface HealthResponse {
   disclaimer: string;
   config: {
     inferenceConfigured: boolean;
+    geminiConfigured: boolean;
     llmConfigured: boolean;
     supabaseConfigured: boolean;
     ocrEnabled: boolean;

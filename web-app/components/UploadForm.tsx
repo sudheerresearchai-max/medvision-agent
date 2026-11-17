@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Brain, Wind, Dna, UploadCloud, FileText, Loader2, AlertTriangle } from 'lucide-react';
+import { Brain, Wind, Dna, UploadCloud, FileText, Loader2, AlertTriangle, Zap, Sparkles, CheckCircle2 } from 'lucide-react';
 import type { Organ } from '@/lib/types';
 import { IMAGE_MAX_BYTES, PDF_MAX_BYTES, SUPPORTED_IMAGE_EXTENSIONS } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,9 +16,7 @@ import { DisclaimerBanner } from '@/components/DisclaimerBanner';
 import { ClinicalSafetyPrecautions } from '@/components/ClinicalSafetyPrecautions';
 import { AgentStatusPanel } from '@/components/AgentStatusPanel';
 import { cn, formatBytes } from '@/lib/utils';
-
 import { SAMPLE_CASES, type SampleCase } from '@/lib/sampleCases';
-import { Sparkles, CheckCircle2 } from 'lucide-react';
 
 type OrganChoice = Organ | 'auto';
 
@@ -80,6 +78,14 @@ export function UploadForm() {
   const [dragOver, setDragOver] = React.useState(false);
   const [activeSampleId, setActiveSampleId] = React.useState<string | null>(null);
   const [caseFilter, setCaseFilter] = React.useState<'all' | 'tumor' | 'control'>('all');
+  const [geminiConfigured, setGeminiConfigured] = React.useState<boolean | null>(null);
+
+  React.useEffect(() => {
+    fetch('/api/health')
+      .then((r) => r.json())
+      .then((d) => setGeminiConfigured(Boolean(d?.config?.geminiConfigured)))
+      .catch(() => setGeminiConfigured(false));
+  }, []);
 
   const filteredSamples = SAMPLE_CASES.filter((sample) => {
     if (caseFilter === 'tumor') return !sample.isControl;
@@ -102,7 +108,10 @@ export function UploadForm() {
 
   const pickImage = (file: File | undefined | null) => {
     setError(null);
-    setActiveSampleId(null);
+    if (activeSampleId) {
+      setNotes('');
+      setActiveSampleId(null);
+    }
     if (!file) return;
     const ext = extOf(file.name);
     if (!SUPPORTED_IMAGE_EXTENSIONS.includes(ext as (typeof SUPPORTED_IMAGE_EXTENSIONS)[number])) {
@@ -175,6 +184,46 @@ export function UploadForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
+      {/* ---- AI Engine Status Banner ---- */}
+      <div
+        className={cn(
+          'flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4 text-xs transition-all shadow-sm',
+          geminiConfigured
+            ? 'border-purple-500/40 bg-purple-500/10 text-purple-900 dark:text-purple-200'
+            : 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200',
+        )}
+      >
+        <div className="flex items-center gap-3">
+          {geminiConfigured ? (
+            <Zap className="h-5 w-5 text-purple-600 animate-pulse shrink-0" />
+          ) : (
+            <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+          )}
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm tracking-tight">
+                {geminiConfigured
+                  ? '✦ Active Vision AI: Google Gemini Flash Multimodal Vision (Online)'
+                  : 'Vision Engine: Local Standalone Fallback'}
+              </span>
+              <Badge
+                className={cn(
+                  'text-[10px] font-bold uppercase tracking-wider',
+                  geminiConfigured ? 'bg-purple-600 text-white' : 'bg-amber-600 text-white',
+                )}
+              >
+                {geminiConfigured ? 'Direct Scan Inspection Active' : 'Offline Mode'}
+              </Badge>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+              {geminiConfigured
+                ? 'Uploaded scans are directly inspected by Gemini Vision to detect neoplasms, illuminate boundaries in red, and determine 5-level danger severity.'
+                : 'Using local synthetic mock models. Configure GEMINI_API_KEY in .env.local to activate real-time Gemini Vision analysis.'}
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* ---- Interactive Clinical Demo Showcase ---- */}
       <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-secondary/30">
         <CardHeader className="pb-3">
