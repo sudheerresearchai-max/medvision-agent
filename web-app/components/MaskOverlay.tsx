@@ -93,29 +93,6 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
       </CardHeader>
 
       <CardContent className="space-y-4 pt-4">
-        {inference.metrics.areaPx === 0 && (
-          <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2 text-xs font-medium text-emerald-700 dark:text-emerald-300">
-            <Sparkles className="h-4 w-4 shrink-0" />
-            <span>
-              <strong>Zero False Positive Verified:</strong> Automated neural evaluation identified 0 lesion pixels above threshold. Parenchymal contours appear within normal morphological limits.
-            </span>
-          </div>
-        )}
-
-        {inference.metrics.areaPx > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-xs font-medium text-destructive">
-            <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4 shrink-0 text-destructive animate-pulse" />
-              <span>
-                <strong>Tumor Region Lit Up:</strong> Active neoplastic lesion delineated in Neon Red ({inference.metrics.areaPx.toLocaleString()} px, {(inference.metrics.areaFraction * 100).toFixed(2)}% of slice).
-              </span>
-            </div>
-            <span className="font-mono text-[11px] uppercase tracking-wider font-bold">
-              Confidence: {(inference.confidence * 100).toFixed(1)}%
-            </span>
-          </div>
-        )}
-
         {/* Visualizer Canvas Container */}
         <div className="relative overflow-hidden rounded-lg border bg-black/95 shadow-inner">
           <div

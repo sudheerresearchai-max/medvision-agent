@@ -2,34 +2,23 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Brain, Wind, Dna, UploadCloud, FileText, Loader2, AlertTriangle, Zap, Sparkles, CheckCircle2 } from 'lucide-react';
+import {
+  UploadCloud,
+  FileImage,
+  X,
+  ArrowRight,
+  Sparkles,
+  Zap,
+} from 'lucide-react';
 import type { Organ } from '@/lib/types';
 import { IMAGE_MAX_BYTES, PDF_MAX_BYTES, SUPPORTED_IMAGE_EXTENSIONS } from '@/lib/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { DisclaimerBanner } from '@/components/DisclaimerBanner';
-import { ClinicalSafetyPrecautions } from '@/components/ClinicalSafetyPrecautions';
-import { AgentStatusPanel } from '@/components/AgentStatusPanel';
 import { cn, formatBytes } from '@/lib/utils';
 import { SAMPLE_CASES, type SampleCase } from '@/lib/sampleCases';
+import { ClaudeThinkingPill } from '@/components/ClaudeThinkingPill';
+import { ClinicalSafetyPrecautions } from '@/components/ClinicalSafetyPrecautions';
 
 type OrganChoice = Organ | 'auto';
-
-const ORGAN_CARDS: Array<{
-  value: Organ;
-  label: string;
-  hint: string;
-  icon: React.ReactNode;
-}> = [
-  { value: 'brain', label: 'Brain', hint: 'MRI · BraTS axial protocol', icon: <Brain className="h-5 w-5" /> },
-  { value: 'lung', label: 'Lung', hint: 'CT · Thoracic nodule & parenchyma', icon: <Wind className="h-5 w-5" /> },
-  { value: 'pancreas', label: 'Pancreas', hint: 'CT/MRI · Abdominal parenchymal slices', icon: <Dna className="h-5 w-5" /> },
-];
 
 const ACCEPT_ATTR =
   '.png,.jpg,.jpeg,.dcm,.nii,.gz,image/png,image/jpeg,application/dicom';
@@ -41,7 +30,6 @@ function extOf(name: string): string {
   return i === -1 ? '' : lower.slice(i);
 }
 
-/** Downscale an uploaded scan client-side into a small JPEG preview data URL. */
 async function makePreview(file: File): Promise<string | null> {
   if (!/^image\/(png|jpeg|svg\+xml)$/.test(file.type)) return null;
   try {
@@ -59,39 +47,45 @@ async function makePreview(file: File): Promise<string | null> {
   }
 }
 
-// Convert data URL to File object for 1-click sample demo
 async function dataUrlToFile(dataUrl: string, fileName: string): Promise<File> {
   const res = await fetch(dataUrl);
   const blob = await res.blob();
   return new File([blob], fileName, { type: blob.type || 'image/png' });
 }
 
+const THINKING_STAGES = [
+  'Ingesting DICOM/PNG payload...',
+  'Inspecting scan with Gemini Vision...',
+  'Delineating neoplastic boundary contours...',
+  'Deriving RECIST 1.1 morphometry...',
+  'Cross-examining multi-agent clinical consensus...',
+  'Synthesizing diagnostic verdict...',
+  'Finalizing consensus...',
+];
+
 export function UploadForm() {
   const router = useRouter();
 
   const [organChoice, setOrganChoice] = React.useState<OrganChoice>('auto');
   const [imageFile, setImageFile] = React.useState<File | null>(null);
-  const [pdfFile, setPdfFile] = React.useState<File | null>(null);
+  const [imagePreview, setImagePreview] = React.useState<string | null>(null);
   const [notes, setNotes] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [dragOver, setDragOver] = React.useState(false);
   const [activeSampleId, setActiveSampleId] = React.useState<string | null>(null);
-  const [caseFilter, setCaseFilter] = React.useState<'all' | 'tumor' | 'control'>('all');
-  const [geminiConfigured, setGeminiConfigured] = React.useState<boolean | null>(null);
+  const [stageIndex, setStageIndex] = React.useState(0);
+  const [thinkingStartMs, setThinkingStartMs] = React.useState<number | null>(null);
 
+  // Animate thinking stages when submitting
   React.useEffect(() => {
-    fetch('/api/health')
-      .then((r) => r.json())
-      .then((d) => setGeminiConfigured(Boolean(d?.config?.geminiConfigured)))
-      .catch(() => setGeminiConfigured(false));
-  }, []);
-
-  const filteredSamples = SAMPLE_CASES.filter((sample) => {
-    if (caseFilter === 'tumor') return !sample.isControl;
-    if (caseFilter === 'control') return sample.isControl;
-    return true;
-  });
+    if (!submitting) return;
+    setThinkingStartMs(Date.now());
+    const interval = setInterval(() => {
+      setStageIndex((prev) => (prev + 1) % THINKING_STAGES.length);
+    }, 1800);
+    return () => clearInterval(interval);
+  }, [submitting]);
 
   const loadSampleCase = async (sample: SampleCase) => {
     setError(null);
@@ -101,15 +95,15 @@ export function UploadForm() {
     try {
       const file = await dataUrlToFile(sample.imageDataUrl, sample.fileName);
       setImageFile(file);
+      setImagePreview(sample.imageDataUrl);
     } catch (err) {
       setError('Could not load sample case image: ' + String(err));
     }
   };
 
-  const pickImage = (file: File | undefined | null) => {
+  const handleFile = async (file: File | undefined | null) => {
     setError(null);
     if (activeSampleId) {
-      setNotes('');
       setActiveSampleId(null);
     }
     if (!file) return;
@@ -119,32 +113,26 @@ export function UploadForm() {
       return;
     }
     if (file.size > IMAGE_MAX_BYTES) {
-      setError(`Scan too large (${formatBytes(file.size)}). Limit ${formatBytes(IMAGE_MAX_BYTES)} — downscale/export a slice first.`);
+      setError(`Scan too large (${formatBytes(file.size)}). Limit ${formatBytes(IMAGE_MAX_BYTES)}.`);
       return;
     }
     setImageFile(file);
+    const prev = await makePreview(file);
+    setImagePreview(prev);
   };
 
-  const pickPdf = (file: File | undefined | null) => {
-    setError(null);
-    if (!file) return;
-    if (file.size > PDF_MAX_BYTES) {
-      setError(`PDF too large (${formatBytes(file.size)}). Limit ${formatBytes(PDF_MAX_BYTES)}.`);
-      return;
-    }
-    setPdfFile(file);
+  const clearFile = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    setActiveSampleId(null);
   };
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
 
-    if (!imageFile && !pdfFile && !notes.trim()) {
-      setError('Provide at least one input: a scan image, a PDF report, or clinical text.');
-      return;
-    }
     if (!imageFile) {
-      setError('A medical scan image is required for tumor model inference (.png/.jpg/.jpeg/.dcm/.nii/.nii.gz).');
+      setError('Please select or drop a medical scan image (MRI/CT).');
       return;
     }
 
@@ -154,8 +142,7 @@ export function UploadForm() {
       form.append('organ', organChoice);
       form.append('notes', notes);
       form.append('image', imageFile);
-      if (pdfFile) form.append('pdf', pdfFile);
-      const preview = await makePreview(imageFile);
+      const preview = imagePreview || (await makePreview(imageFile));
       if (preview) form.append('imagePreview', preview);
 
       const res = await fetch('/api/analyze', { method: 'POST', body: form });
@@ -165,359 +152,196 @@ export function UploadForm() {
         const detail =
           payload?.detail ??
           payload?.error ??
-          `Analysis failed (HTTP ${res.status}). Check that the inference service is reachable (/api/health).`;
+          `Analysis failed (HTTP ${res.status}).`;
         throw new Error(detail);
       }
 
-      // Mirror the case into sessionStorage for instant client-side rendering
       try {
         sessionStorage.setItem(`medvision.case.${payload.result.caseId}`, JSON.stringify(payload.result));
       } catch {
-        /* quota exceeded — server copy still works */
+        /* fallback to server */
       }
       router.push(`/case/${payload.result.caseId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unexpected error during analysis.');
+      setError(err instanceof Error ? err.message : 'Analysis failed.');
       setSubmitting(false);
     }
   };
 
+  const positiveSample = SAMPLE_CASES.find((s) => s.id === 'case01_brain_gbm') || SAMPLE_CASES[0];
+  const lungSample = SAMPLE_CASES.find((s) => s.id === 'case02_lung_nsclc') || SAMPLE_CASES[1];
+  const normalSample = SAMPLE_CASES.find((s) => s.isControl) || SAMPLE_CASES[3];
+
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
-      {/* ---- AI Engine Status Banner (Anthropic Minimalist Style) ---- */}
-      <div
-        className={cn(
-          'flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 text-xs transition-all shadow-xs',
-          geminiConfigured
-            ? 'border-primary/30 bg-primary/5 text-foreground'
-            : 'border-border/80 bg-secondary/30 text-muted-foreground',
-        )}
-      >
-        <div className="flex items-center gap-3">
-          {geminiConfigured ? (
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20">
-              <Zap className="h-4 w-4 animate-pulse" />
-            </div>
-          ) : (
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground border">
-              <AlertTriangle className="h-4 w-4" />
-            </div>
+    <div className="w-full max-w-2xl mx-auto space-y-6">
+      {/* Quick-Load Minimal Pills */}
+      <div className="flex flex-wrap items-center justify-center gap-2 text-xs">
+        <span className="text-muted-foreground text-[11px] font-mono mr-1">Quick Scans:</span>
+        <button
+          type="button"
+          disabled={submitting}
+          onClick={() => loadSampleCase(positiveSample)}
+          className={cn(
+            'px-3 py-1 rounded-full border text-[11px] font-mono transition-all',
+            activeSampleId === positiveSample.id
+              ? 'border-primary bg-primary/10 text-primary font-semibold'
+              : 'border-border/70 hover:border-border bg-card/60 hover:bg-card text-foreground/80',
           )}
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-sm tracking-tight text-foreground">
-                {geminiConfigured
-                  ? 'Active Multimodal AI: Google Gemini Flash Vision (Online)'
-                  : 'Vision Engine: Local Standalone Fallback'}
-              </span>
-              <Badge
-                className={cn(
-                  'text-[10px] font-semibold tracking-wider',
-                  geminiConfigured
-                    ? 'bg-primary text-primary-foreground border-0'
-                    : 'bg-secondary text-muted-foreground border-border',
-                )}
-              >
-                {geminiConfigured ? 'Direct Scan Inspection Active' : 'Offline Mode'}
-              </Badge>
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-              {geminiConfigured
-                ? 'Every scan is directly evaluated by Gemini Multimodal Vision to illuminate neoplastic boundaries, classify tumor histology, and determine danger severity.'
-                : 'Using local synthetic models. Configure GEMINI_API_KEY in .env.local to activate real-time Gemini Vision analysis.'}
-            </p>
-          </div>
-        </div>
+        >
+          🔴 Glioblastoma MRI (Positive)
+        </button>
+        <button
+          type="button"
+          disabled={submitting}
+          onClick={() => loadSampleCase(lungSample)}
+          className={cn(
+            'px-3 py-1 rounded-full border text-[11px] font-mono transition-all',
+            activeSampleId === lungSample.id
+              ? 'border-primary bg-primary/10 text-primary font-semibold'
+              : 'border-border/70 hover:border-border bg-card/60 hover:bg-card text-foreground/80',
+          )}
+        >
+          🟠 Lung Nodule CT (Positive)
+        </button>
+        <button
+          type="button"
+          disabled={submitting}
+          onClick={() => loadSampleCase(normalSample)}
+          className={cn(
+            'px-3 py-1 rounded-full border text-[11px] font-mono transition-all',
+            activeSampleId === normalSample.id
+              ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold'
+              : 'border-border/70 hover:border-border bg-card/60 hover:bg-card text-foreground/80',
+          )}
+        >
+          🟢 Normal Cranial MRI (Control)
+        </button>
       </div>
 
-      {/* ---- Interactive Clinical Demo Showcase ---- */}
-      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-secondary/30">
-        <CardHeader className="pb-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <CardTitle className="text-base font-semibold">Preloaded Clinical Evaluation Cases</CardTitle>
-            </div>
-            <div className="flex items-center gap-1.5 rounded-lg border bg-background/80 p-0.5 text-xs">
-              <button
-                type="button"
-                onClick={() => setCaseFilter('all')}
-                className={cn(
-                  'rounded px-2.5 py-1 font-medium transition-colors',
-                  caseFilter === 'all' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                All ({SAMPLE_CASES.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setCaseFilter('tumor')}
-                className={cn(
-                  'rounded px-2.5 py-1 font-medium transition-colors',
-                  caseFilter === 'tumor' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                Tumor Positives ({SAMPLE_CASES.filter((c) => !c.isControl).length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setCaseFilter('control')}
-                className={cn(
-                  'rounded px-2.5 py-1 font-medium transition-colors',
-                  caseFilter === 'control' ? 'bg-emerald-600 text-white' : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                Normal Controls ({SAMPLE_CASES.filter((c) => c.isControl).length})
-              </button>
-            </div>
-          </div>
-          <CardDescription>
-            Test both positive lesions and normal/negative controls to verify zero false positive performance.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {filteredSamples.map((sample) => {
-              const isSelected = activeSampleId === sample.id;
-              return (
-                <button
-                  key={sample.id}
-                  type="button"
-                  onClick={() => loadSampleCase(sample)}
-                  className={cn(
-                    'group relative flex flex-col justify-between rounded-lg border p-3.5 text-left transition-all',
-                    isSelected
-                      ? sample.isControl
-                        ? 'border-emerald-500 bg-emerald-500/10 shadow-sm ring-2 ring-emerald-500/40'
-                        : 'border-primary bg-primary/10 shadow-sm ring-2 ring-primary/40'
-                      : 'border-border/70 bg-card hover:border-primary/50 hover:bg-secondary/50',
-                  )}
-                >
-                  <div>
-                    <div className="flex items-center justify-between gap-1 mb-1">
-                      <span
-                        className={cn(
-                          'text-[10px] font-semibold uppercase tracking-wider',
-                          sample.isControl ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-primary',
-                        )}
-                      >
-                        {sample.badge}
-                      </span>
-                      {isSelected && (
-                        <CheckCircle2
-                          className={cn('h-4 w-4', sample.isControl ? 'text-emerald-600' : 'text-primary')}
-                        />
-                      )}
-                    </div>
-                    <p className="text-sm font-semibold leading-snug group-hover:text-primary transition-colors">
-                      {sample.title}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
-                      {sample.patientProfile}
-                    </p>
-                  </div>
-                  <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground font-mono">
-                    <span className="rounded bg-secondary px-1.5 py-0.5">{sample.modality}</span>
-                    <span className="truncate">{sample.fileName}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ---- Step 1: organ selector ------------------------------------- */}
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg">1 · Target organ</CardTitle>
-          <CardDescription>
-            Leave on Auto-detect to let the agent infer organ &amp; modality from your
-            text/PDF/filename — or force a model below.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
-            {ORGAN_CARDS.map((card) => (
-              <button
-                key={card.value}
-                type="button"
-                onClick={() => setOrganChoice(card.value)}
-                aria-pressed={organChoice === card.value}
-                className={cn(
-                  'flex items-start gap-3 rounded-lg border p-4 text-left transition-all',
-                  organChoice === card.value
-                    ? 'border-primary bg-primary/5 ring-2 ring-ring'
-                    : 'hover:border-primary/50 hover:bg-secondary/60',
-                )}
-              >
-                <span className="mt-0.5 text-primary">{card.icon}</span>
-                <span>
-                  <span className="block font-semibold">{card.label}</span>
-                  <span className="block text-xs text-muted-foreground">{card.hint}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Label htmlFor="organ-mode" className="text-sm">Routing mode</Label>
-            <Select
-              id="organ-mode"
-              value={organChoice}
-              onChange={(e) => setOrganChoice(e.target.value as OrganChoice)}
-              className="max-w-[240px]"
-            >
-              <option value="auto">Auto-detect (agent decides)</option>
-              <option value="brain">Force brain model</option>
-              <option value="lung">Force lung model</option>
-              <option value="pancreas">Force pancreas model</option>
-            </Select>
-            {organChoice !== 'auto' && <Badge variant="secondary">manual override active</Badge>}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ---- Step 2: inputs --------------------------------------------- */}
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-lg">2 · Inputs</CardTitle>
-          <CardDescription>
-            Scan image required for inference; clinical text and/or PDF optional but improve routing.
-            Use de-identified data only.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {/* Image dropzone */}
-          <div className="space-y-1.5">
-            <Label>Medical scan image <span className="text-destructive">*</span></Label>
-            <label
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragOver(false);
-                pickImage(e.dataTransfer.files?.[0]);
-              }}
-              className={cn(
-                'flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-8 text-center transition-colors',
-                dragOver ? 'border-primary bg-primary/5' : 'border-input hover:bg-secondary/50',
+      <form onSubmit={onSubmit} className="space-y-4">
+        {/* Minimalist Drag-and-Drop Area */}
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            if (e.dataTransfer.files?.[0]) {
+              handleFile(e.dataTransfer.files[0]);
+            }
+          }}
+          className={cn(
+            'relative rounded-2xl border-2 border-dashed transition-all p-6 sm:p-8 text-center',
+            dragOver
+              ? 'border-primary bg-primary/5 scale-[1.005]'
+              : imageFile
+                ? 'border-border/80 bg-card/70'
+                : 'border-border/60 hover:border-border bg-card/30 hover:bg-card/60',
+          )}
+        >
+          {imageFile ? (
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              {imagePreview && (
+                <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-border shadow-xs shrink-0 bg-black">
+                  <img
+                    src={imagePreview}
+                    alt="Scan thumbnail"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
               )}
-            >
-              <UploadCloud className="h-8 w-8 text-muted-foreground" aria-hidden />
-              <span className="text-sm font-medium">
-                Drop a scan here or click to browse
-              </span>
-              <span className="text-xs text-muted-foreground">
-                .png .jpg .jpeg .dcm .nii .nii.gz — max {formatBytes(IMAGE_MAX_BYTES)}
-              </span>
+              <div className="text-left space-y-1">
+                <div className="flex items-center gap-2">
+                  <FileImage className="w-4 h-4 text-primary shrink-0" />
+                  <span className="font-mono text-xs font-semibold text-foreground truncate max-w-xs sm:max-w-sm">
+                    {imageFile.name}
+                  </span>
+                </div>
+                <p className="text-[11px] font-mono text-muted-foreground">
+                  {formatBytes(imageFile.size)} · Ready for multimodal inspection
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={clearFile}
+                className="ml-auto p-1.5 rounded-full hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                title="Remove scan"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <label className="cursor-pointer flex flex-col items-center justify-center gap-3">
               <input
                 type="file"
                 accept={ACCEPT_ATTR}
-                className="sr-only"
-                onChange={(e) => pickImage(e.target.files?.[0])}
+                className="hidden"
+                disabled={submitting}
+                onChange={(e) => handleFile(e.target.files?.[0])}
               />
-            </label>
-            {imageFile && (
-              <p className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400">
-                ✓ {imageFile.name}{' '}
-                <Badge variant="secondary">{formatBytes(imageFile.size)}</Badge>
-                <button type="button" className="text-xs underline text-muted-foreground" onClick={() => setImageFile(null)}>
-                  remove
-                </button>
-              </p>
-            )}
-          </div>
-
-          {/* PDF */}
-          <div className="space-y-1.5">
-            <Label htmlFor="pdf-input">Report PDF (optional)</Label>
-            <div className="flex items-center gap-3">
-              <InputFilePdf id="pdf-input" onPick={pickPdf} />
-              {pdfFile && (
-                <p className="flex items-center gap-2 truncate text-sm text-emerald-700 dark:text-emerald-400">
-                  <FileText className="h-4 w-4 shrink-0" aria-hidden /> {pdfFile.name}{' '}
-                  <Badge variant="secondary">{formatBytes(pdfFile.size)}</Badge>
-                  <button type="button" className="text-xs underline text-muted-foreground" onClick={() => setPdfFile(null)}>
-                    remove
-                  </button>
+              <div className="w-12 h-12 rounded-2xl bg-secondary/80 flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">
+                <UploadCloud className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">
+                  Click to browse or drop an axial scan slice
                 </p>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Radiology report, referral, or prior-study summary. Scanned PDFs are flagged OCR_REQUIRED.
-            </p>
-          </div>
+                <p className="text-xs font-mono text-muted-foreground">
+                  MRI (.png, .jpg) · CT (.dcm, .nii) · Up to 50 MB
+                </p>
+              </div>
+            </label>
+          )}
+        </div>
 
-          {/* Clinical text */}
-          <div className="space-y-1.5">
-            <Label htmlFor="notes">Clinical text (optional)</Label>
-            <Textarea
-              id="notes"
-              rows={6}
-              placeholder={'e.g.\n58-year-old male, progressive headaches and one seizure episode.\nMRI brain requested. Prior note mentions left frontal enhancing lesion.'}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="resize-y"
-            />
-            <p className="text-xs text-muted-foreground">
-              Symptoms, doctor notes, history — used for organ/modality routing and the report.
-              Never enter identifying patient information.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ---- Errors ------------------------------------------------------ */}
-      {error && (
-        <Alert variant="critical">
-          <AlertTriangle className="h-4 w-4" aria-hidden />
-          <AlertTitle>Cannot analyze yet</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {/* ---- Submit + live status --------------------------------------- */}
-      <Card>
-        <CardContent className="flex flex-col gap-5 pt-6 sm:flex-row sm:items-start">
-          <Button
-            type="submit"
-            size="lg"
+        {/* Minimal Clinical Context Note */}
+        <div>
+          <input
+            type="text"
+            value={notes}
             disabled={submitting}
-            className="w-full shrink-0 sm:w-64"
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-                Analyzing…
-              </>
-            ) : (
-              'Run agentic analysis'
-            )}
-          </Button>
-          <AgentStatusPanel running={submitting} className="flex-1" />
-        </CardContent>
-      </Card>
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Clinical history or symptoms (optional, e.g. 'progressive headache, left-sided weakness')..."
+            className="w-full px-4 py-2.5 rounded-xl border border-border/70 bg-card/60 hover:bg-card focus:bg-card text-xs font-mono placeholder:text-muted-foreground/60 focus:outline-hidden focus:ring-1 focus:ring-primary/60 transition-all"
+          />
+        </div>
 
-      {/* Clinical Operating Instructions & Safety Precautions */}
-      <ClinicalSafetyPrecautions />
-    </form>
-  );
-}
+        {/* Error Alert */}
+        {error && (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-xs text-destructive font-mono">
+            {error}
+          </div>
+        )}
 
-function InputFilePdf({ id, onPick }: { id: string; onPick: (f: File | null) => void }) {
-  return (
-    <label
-      htmlFor={id}
-      className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
-    >
-      Choose PDF…
-      <input
-        id={id}
-        type="file"
-        accept="application/pdf,.pdf"
-        className="sr-only"
-        onChange={(e) => onPick(e.target.files?.[0] ?? null)}
-      />
-    </label>
+        {/* Dynamic Claude Thinking Pill or Analyze Button */}
+        {submitting ? (
+          <div className="py-2 text-center space-y-3">
+            <ClaudeThinkingPill
+              isThinking={true}
+              statusText={THINKING_STAGES[stageIndex]}
+              elapsedMs={thinkingStartMs ? Date.now() - thinkingStartMs : 0}
+            />
+          </div>
+        ) : (
+          <div className="flex items-center justify-center pt-2">
+            <Button
+              type="submit"
+              size="lg"
+              disabled={!imageFile}
+              className="w-full sm:w-auto px-8 rounded-full font-mono text-xs tracking-wide bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs gap-2"
+            >
+              Analyze Scan with Multi-Agent AI <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        )}
+      </form>
+
+      {/* Understated Safety Note (Collapsed by default) */}
+      <ClinicalSafetyPrecautions className="pt-2" />
+    </div>
   );
 }

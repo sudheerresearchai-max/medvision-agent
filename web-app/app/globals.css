@@ -135,3 +135,31 @@
     opacity: 0;
   }
 }
+
+/* Authentic Claude thinking dot wave */
+@keyframes claudePulseDot {
+  0%, 80%, 100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+.claude-dot-1 {
+  animation: claudePulseDot 1.4s infinite ease-in-out;
+  animation-delay: 0s;
+}
+
+.claude-dot-2 {
+  animation: claudePulseDot 1.4s infinite ease-in-out;
+  animation-delay: 0.22s;
+}
+
+.claude-dot-3 {
+  animation: claudePulseDot 1.4s infinite ease-in-out;
+  animation-delay: 0.44s;
+}
+
