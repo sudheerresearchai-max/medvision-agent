@@ -149,7 +149,7 @@ export interface MaskMetrics {
 export interface InferenceResult {
   organ: ModelKey;
   modelFile: string;
-  engine: 'onnx' | 'mock';
+  engine: 'onnx' | 'mock' | 'gemini-vision';
   width: number;
   height: number;
   /** RGBA PNG (red lesion on transparent background), base64. */

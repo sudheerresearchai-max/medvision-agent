@@ -56,6 +56,11 @@ export function CaseView({ data }: { data: AnalysisResult }) {
               Lesion Detected · {data.inference.metrics.areaPx} px
             </Badge>
           )}
+          {data.inference?.engine === 'gemini-vision' && (
+            <Badge className="bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 text-xs font-semibold">
+              ✦ Gemini Vision AI
+            </Badge>
+          )}
           {data.inference?.engine === 'mock' && (
             <Badge variant="outline" className="text-xs">
               mock engine

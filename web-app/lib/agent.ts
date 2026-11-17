@@ -553,7 +553,7 @@ export function generateStructuredReport(args: {
 
   const technique = inf
     ? [
-        `Routed model: \`${inf.modelFile}\` (${inf.engine === 'mock' ? 'MOCK — synthetic demo output' : 'ONNX Runtime'}).`,
+        `Routed model: \`${inf.modelFile}\` (${inf.engine === 'gemini-vision' ? 'Google Gemini Vision AI' : inf.engine === 'mock' ? 'MOCK — synthetic demo output' : 'ONNX Runtime'}).`,
         `Analyzed 2-D slice resized to ${inf.width}×${inf.height}px; threshold 0.5.`,
         isNegative
           ? 'Zero false positive check: verified absence of focal neoplastic enhancement.'

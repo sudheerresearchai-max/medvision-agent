@@ -10,6 +10,7 @@
  * When INFERENCE_API_URL is unset we fall back to the local mock engine so the
  * product remains demoable end-to-end.
  */
+import { callGeminiVision, isGeminiVisionConfigured } from './geminiVision';
 import { generateMockPrediction } from './mockInference';
 import type { InferenceResult, MaskMetrics, ModelKey } from './types';
 import { errorMessage, fetchWithTimeout } from './utils';
@@ -66,6 +67,18 @@ export async function predictOrgan(args: {
   fileBytes: Uint8Array;
   clinical?: import('./types').ClinicalInfo;
 }): Promise<InferenceResult> {
+  // If Gemini Multimodal Vision API is configured, use it for direct visual lesion detection & classification
+  if (isGeminiVisionConfigured()) {
+    try {
+      const geminiResult = await callGeminiVision(args);
+      if (geminiResult) {
+        return geminiResult;
+      }
+    } catch {
+      // Degrade gracefully to local inference
+    }
+  }
+
   const url = baseUrl();
   if (!url) {
     return generateMockPrediction(args.organ, args.fileBytes, {
