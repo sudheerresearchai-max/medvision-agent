@@ -103,7 +103,7 @@ export function ClinicalSafetyPrecautions() {
               <div className="rounded-lg border bg-secondary/20 p-3 space-y-1">
                 <span className="font-bold text-foreground block">4. Audit Multi-Agent Log</span>
                 <p>
-                  Review the consensus trace across Dr. Triage, Dr. Lexicon NLP, Dr. Vision AI, Dr. Metric AI, and the Chief Scribe.
+                  Review the consensus trace across Dr. Alex Vance, Dr. Samantha Chen, Dr. Robert Miller, Dr. Emily Zhang, and Dr. Marcus Patel.
                 </p>
               </div>
             </div>

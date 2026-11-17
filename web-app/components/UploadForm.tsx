@@ -184,32 +184,38 @@ export function UploadForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
-      {/* ---- AI Engine Status Banner ---- */}
+      {/* ---- AI Engine Status Banner (Anthropic Minimalist Style) ---- */}
       <div
         className={cn(
-          'flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4 text-xs transition-all shadow-sm',
+          'flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 text-xs transition-all shadow-xs',
           geminiConfigured
-            ? 'border-purple-500/40 bg-purple-500/10 text-purple-900 dark:text-purple-200'
-            : 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200',
+            ? 'border-primary/30 bg-primary/5 text-foreground'
+            : 'border-border/80 bg-secondary/30 text-muted-foreground',
         )}
       >
         <div className="flex items-center gap-3">
           {geminiConfigured ? (
-            <Zap className="h-5 w-5 text-purple-600 animate-pulse shrink-0" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20">
+              <Zap className="h-4 w-4 animate-pulse" />
+            </div>
           ) : (
-            <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground border">
+              <AlertTriangle className="h-4 w-4" />
+            </div>
           )}
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm tracking-tight">
+              <span className="font-semibold text-sm tracking-tight text-foreground">
                 {geminiConfigured
-                  ? '✦ Active Vision AI: Google Gemini Flash Multimodal Vision (Online)'
+                  ? 'Active Multimodal AI: Google Gemini Flash Vision (Online)'
                   : 'Vision Engine: Local Standalone Fallback'}
               </span>
               <Badge
                 className={cn(
-                  'text-[10px] font-bold uppercase tracking-wider',
-                  geminiConfigured ? 'bg-purple-600 text-white' : 'bg-amber-600 text-white',
+                  'text-[10px] font-semibold tracking-wider',
+                  geminiConfigured
+                    ? 'bg-primary text-primary-foreground border-0'
+                    : 'bg-secondary text-muted-foreground border-border',
                 )}
               >
                 {geminiConfigured ? 'Direct Scan Inspection Active' : 'Offline Mode'}
@@ -217,8 +223,8 @@ export function UploadForm() {
             </div>
             <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
               {geminiConfigured
-                ? 'Uploaded scans are directly inspected by Gemini Vision to detect neoplasms, illuminate boundaries in red, and determine 5-level danger severity.'
-                : 'Using local synthetic mock models. Configure GEMINI_API_KEY in .env.local to activate real-time Gemini Vision analysis.'}
+                ? 'Every scan is directly evaluated by Gemini Multimodal Vision to illuminate neoplastic boundaries, classify tumor histology, and determine danger severity.'
+                : 'Using local synthetic models. Configure GEMINI_API_KEY in .env.local to activate real-time Gemini Vision analysis.'}
             </p>
           </div>
         </div>

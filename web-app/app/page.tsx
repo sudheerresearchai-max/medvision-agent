@@ -10,41 +10,69 @@ import {
   BookOpen,
   CheckCircle2,
   Info,
+  Sparkles,
+  Zap,
+  Activity,
+  ShieldCheck,
+  FileCheck,
+  Stethoscope,
+  Scan,
+  Ruler,
 } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MULTI_AGENT_PROFILES } from '@/lib/multiAgent/types';
+import { MULTI_AGENT_PROFILES, type AgentRole } from '@/lib/multiAgent/types';
 import { ClinicalSafetyPrecautions } from '@/components/ClinicalSafetyPrecautions';
 
 export default function HomePage() {
+  const getAgentIcon = (role: AgentRole) => {
+    switch (role) {
+      case 'triage_agent':
+        return <FileCheck className="h-4 w-4" />;
+      case 'clinical_nlp_agent':
+        return <Stethoscope className="h-4 w-4" />;
+      case 'radiologist_vision_agent':
+        return <Scan className="h-4 w-4" />;
+      case 'biomarker_agent':
+        return <Ruler className="h-4 w-4" />;
+      case 'synthesis_scribe_agent':
+        return <FileText className="h-4 w-4" />;
+      default:
+        return <Zap className="h-4 w-4" />;
+    }
+  };
+
   return (
     <div className="mx-auto max-w-5xl space-y-12">
-      {/* Hero Section */}
-      <section className="rounded-2xl border bg-card p-8 sm:p-12 text-center space-y-5 shadow-xs">
-        <div className="mx-auto max-w-3xl space-y-3">
+      {/* Minimalist Hero Section */}
+      <section className="rounded-2xl border border-border/80 bg-card p-8 sm:p-12 text-center space-y-6 shadow-xs">
+        <div className="mx-auto max-w-3xl space-y-3.5">
           <Badge className="bg-primary/10 text-primary border-primary/20 text-xs font-semibold px-3 py-1">
-            ✦ Multi-Model Agentic AI · Oncology Decision Support
+            ✦ Anthropic-Style Agentic Intelligence · Multimodal Oncology
           </Badge>
           <h1 className="text-3xl font-extrabold tracking-tight sm:text-5xl text-foreground leading-tight">
-            Multi-Model Medical Vision Analysis using Agentic AI on Tumors
+            Multi model medical vision analysis using Agentic AI on tumors and medical
           </h1>
-          <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-            Collaborative multi-agent reasoning across Google Gemini Multimodal Vision &amp; deep U-Net architectures.
-            Accurately illuminates tumor boundaries, calculates RECIST 1.1 dimensions, stratifies clinical danger levels, and enforces strict safety precautions.
+          <p className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-2xl mx-auto">
+            Autonomous multi-agent clinical consensus engine orchestrating Google Gemini Multimodal Vision AI,
+            deep convolutional neural networks, and RECIST 1.1 biomarker morphometry to detect, illuminate, and stage neoplastic lesions.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-          <Link href="/upload" className={cn(buttonVariants({ size: 'default' }), 'gap-2 font-semibold shadow-sm')}>
-            <Upload className="h-4 w-4" /> Analyze Scan Now <ArrowRight className="h-4 w-4" />
+          <Link
+            href="/upload"
+            className={cn(buttonVariants({ size: 'default' }), 'gap-2 font-semibold shadow-xs bg-primary hover:bg-primary/90 text-primary-foreground')}
+          >
+            <Upload className="h-4 w-4" /> Start Scan Analysis <ArrowRight className="h-4 w-4" />
           </Link>
-          <Link href="/cases" className={cn(buttonVariants({ variant: 'outline', size: 'default' }), 'gap-2')}>
+          <Link href="/cases" className={cn(buttonVariants({ variant: 'outline', size: 'default' }), 'gap-2 border-border/80')}>
             <FolderOpen className="h-4 w-4" /> Case Archive
           </Link>
           <Link href="/docs" className={cn(buttonVariants({ variant: 'ghost', size: 'default' }), 'gap-2')}>
-            <BookOpen className="h-4 w-4" /> Documentation &amp; Protocols
+            <BookOpen className="h-4 w-4" /> Clinical Protocols
           </Link>
         </div>
       </section>
@@ -52,67 +80,118 @@ export default function HomePage() {
       {/* Mandatory Clinical Operating Instructions & Safety Precautions */}
       <ClinicalSafetyPrecautions />
 
+      {/* Autonomous Clinical Specialist Panel (NOT Simple Bots) */}
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Specialized Multi-Agent Clinical Panel
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Autonomous clinical intelligence panel where each agent owns a specific medical discipline (NOT simple generic bots).
+            </p>
+          </div>
+          <Badge variant="outline" className="text-[10px] font-mono border-primary/30 text-primary">
+            5 Autonomous Agents Active
+          </Badge>
+        </div>
+
+        <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+          {Object.values(MULTI_AGENT_PROFILES).map((agent, i) => (
+            <Card key={agent.role} className="border border-border/80 bg-card hover:border-primary/40 transition-all shadow-xs">
+              <CardHeader className="pb-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20">
+                    {getAgentIcon(agent.role)}
+                  </div>
+                  <Badge variant="secondary" className="text-[9px] font-mono">
+                    Specialist 0{i + 1}
+                  </Badge>
+                </div>
+                <CardTitle className="text-sm font-bold mt-2 text-foreground">{agent.name}</CardTitle>
+                <CardDescription className="text-xs text-primary font-medium">{agent.title}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 text-xs text-muted-foreground border-t border-border/60 pt-2.5">
+                <div>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
+                    Domain Specialty
+                  </span>
+                  <p className="text-foreground text-[11px] leading-snug">{agent.specialty}</p>
+                </div>
+                <div>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
+                    System Mandate
+                  </span>
+                  <p className="line-clamp-2 text-[10px] text-muted-foreground font-mono bg-secondary/30 p-1.5 rounded border border-border/60">
+                    {agent.systemPrompt}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
+
       {/* Supported Modalities */}
       <section className="space-y-4">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight text-foreground">
-            Supported Modalities &amp; Organs
+          <h2 className="text-lg font-bold tracking-tight text-foreground">
+            Target Organs &amp; Modality Support
           </h2>
           <p className="text-xs text-muted-foreground">
-            Standard segmentation models configured for specific imaging modalities.
+            Calibrated for axial brain MRI, thoracic chest CT, and abdominal pancreatic imaging.
           </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
           {[
             {
-              icon: <Brain className="h-5 w-5 text-blue-600 dark:text-blue-400" />,
+              icon: <Brain className="h-5 w-5 text-primary" />,
               organ: 'Brain',
-              modality: 'Axial T1 / FLAIR MRI',
-              model: 'brain_unet.onnx',
-              target: 'Intracranial tumor / lesion region',
-              format: 'NIfTI, DICOM, PNG',
+              modality: 'Axial T1-CE / FLAIR MRI',
+              model: 'Google Gemini Vision + U-Net',
+              target: 'Intracranial neoplasm / Glioblastoma',
+              format: 'NIfTI, DICOM, PNG, JPEG',
             },
             {
-              icon: <Wind className="h-5 w-5 text-sky-600 dark:text-sky-400" />,
+              icon: <Wind className="h-5 w-5 text-primary" />,
               organ: 'Lung / Thorax',
-              modality: 'Chest CT & X-Ray Radiographs',
-              model: 'lung_unet.onnx',
-              target: 'Pulmonary field & nodule segmentation',
-              format: 'DICOM, NIfTI, PNG',
+              modality: 'Axial Chest CT & Radiography',
+              model: 'Google Gemini Vision + U-Net',
+              target: 'Spiculated pulmonary nodule / NSCLC',
+              format: 'DICOM, NIfTI, PNG, JPEG',
             },
             {
-              icon: <Dna className="h-5 w-5 text-violet-600 dark:text-violet-400" />,
+              icon: <Dna className="h-5 w-5 text-primary" />,
               organ: 'Pancreas',
               modality: 'Contrast-Enhanced Abdominal CT',
-              model: 'pancreas_unet.onnx',
-              target: 'Pancreatic parenchymal boundary',
-              format: 'NIfTI, DICOM, PNG',
+              model: 'Google Gemini Vision + U-Net',
+              target: 'Pancreatic ductal adenocarcinoma (PDAC)',
+              format: 'NIfTI, DICOM, PNG, JPEG',
             },
           ].map((item) => (
-            <Card key={item.organ} className="border bg-card">
+            <Card key={item.organ} className="border border-border/80 bg-card shadow-xs">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="rounded-md border bg-muted p-2">{item.icon}</div>
+                  <div className="rounded-lg border border-primary/20 bg-primary/10 p-2 text-primary">{item.icon}</div>
                   <div>
-                    <CardTitle className="text-base font-semibold">{item.organ}</CardTitle>
+                    <CardTitle className="text-sm font-bold text-foreground">{item.organ}</CardTitle>
                     <CardDescription className="text-xs">{item.modality}</CardDescription>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-2 text-xs text-muted-foreground border-t pt-3">
-                <div className="flex justify-between">
-                  <span>Target:</span>
-                  <span className="font-medium text-foreground">{item.target}</span>
+              <CardContent className="space-y-2 text-xs text-muted-foreground border-t border-border/60 pt-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Target:</span>
+                  <span className="font-semibold text-foreground truncate max-w-[170px]">{item.target}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Model:</span>
-                  <code className="rounded bg-muted px-1.5 py-0.5 text-[11px] font-mono text-foreground">
-                    {item.model}
-                  </code>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Inference:</span>
+                  <span className="font-mono text-[10px] text-primary">{item.model}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Input:</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Formats:</span>
                   <span>{item.format}</span>
                 </div>
               </CardContent>
@@ -121,73 +200,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Pipeline Steps */}
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight text-foreground">
-            Analysis Pipeline
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Structured workflow execution from initial scan ingestion to final summary.
-          </p>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-5">
-          {[
-            { step: '01', title: 'Input Validation', desc: 'Validates file format, resolution, and imaging metadata.' },
-            { step: '02', title: 'Routing', desc: 'Identifies scan organ and modality for appropriate model selection.' },
-            { step: '03', title: 'Segmentation', desc: 'Runs 2D U-Net inference to generate binary segmentation masks.' },
-            { step: '04', title: 'Quantification', desc: 'Calculates lesion axes, surface area, and volume per RECIST 1.1.' },
-            { step: '05', title: 'Reporting', desc: 'Generates structured clinical summary with findings and review log.' },
-          ].map((s) => (
-            <div key={s.step} className="rounded-lg border bg-card p-3.5 space-y-1.5 text-xs">
-              <div className="font-mono text-[11px] font-semibold text-primary">{s.step}</div>
-              <div className="font-medium text-foreground">{s.title}</div>
-              <div className="text-muted-foreground text-[11px] leading-relaxed">{s.desc}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Agent Modules */}
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight text-foreground">
-            Processing Modules
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Role-based agents coordinating validation, inference, and report compilation.
-          </p>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {Object.values(MULTI_AGENT_PROFILES).map((agent, i) => (
-            <Card key={agent.role} className="border bg-card">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <Badge variant="outline" className="text-[10px] font-mono">
-                    Module 0{i + 1}
-                  </Badge>
-                </div>
-                <CardTitle className="text-sm font-semibold mt-1.5">{agent.name}</CardTitle>
-                <CardDescription className="text-xs">{agent.title}</CardDescription>
-              </CardHeader>
-              <CardContent className="text-xs text-muted-foreground">
-                <p className="leading-relaxed">{agent.specialty}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      {/* Standard Disclaimer Notice */}
-      <section className="rounded-lg border border-border/70 bg-muted/40 p-4 text-xs text-muted-foreground flex items-start gap-3">
-        <Info className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+      {/* Regulatory Research Disclaimer Notice */}
+      <section className="rounded-xl border border-border/70 bg-secondary/20 p-4 text-xs text-muted-foreground flex items-start gap-3">
+        <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
         <p className="leading-relaxed">
-          <strong className="text-foreground">Research Prototype Notice:</strong> This software is an experimental prototype designed for medical image processing research. It is not approved as a medical device and should not be used for primary clinical diagnosis or treatment planning.
+          <strong className="text-foreground">Research Prototype Notice:</strong> MedVision is an investigational AI decision support platform developed for multi-modal oncology research. It is not an FDA-cleared or CE-marked medical device and should not be used as the sole basis for clinical diagnosis, radiation oncology targeting, or surgical decisions. All segmentations require board-certified physician sign-off.
         </p>
       </section>
     </div>
   );
 }
-

@@ -103,9 +103,9 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
         )}
 
         {inference.metrics.areaPx > 0 && (
-          <div className="flex items-center justify-between gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-xs font-medium text-red-700 dark:text-red-300">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-xs font-medium text-destructive">
             <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400 animate-pulse" />
+              <Zap className="h-4 w-4 shrink-0 text-destructive animate-pulse" />
               <span>
                 <strong>Tumor Region Lit Up:</strong> Active neoplastic lesion delineated in Neon Red ({inference.metrics.areaPx.toLocaleString()} px, {(inference.metrics.areaFraction * 100).toFixed(2)}% of slice).
               </span>
