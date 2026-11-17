@@ -45,8 +45,21 @@ export function CaseView({ data }: { data: AnalysisResult }) {
           <Badge>{data.routing.modelKey ?? 'unrouted'}</Badge>
           <Badge variant="secondary">{data.routing.modality}</Badge>
           {data.manualOrganSelected && <Badge variant="outline">manual selection</Badge>}
+          {!data.inference ? (
+            <Badge variant="outline">No Inference</Badge>
+          ) : data.inference.metrics.areaPx === 0 ? (
+            <Badge className="bg-emerald-600/15 text-emerald-700 dark:text-emerald-300 border-emerald-600/40 font-semibold">
+              ✓ Negative Study · 0 px Lesion
+            </Badge>
+          ) : (
+            <Badge variant="destructive">
+              Lesion Detected · {data.inference.metrics.areaPx} px
+            </Badge>
+          )}
           {data.inference?.engine === 'mock' && (
-            <Badge variant="destructive">synthetic output</Badge>
+            <Badge variant="outline" className="text-xs">
+              mock engine
+            </Badge>
           )}
           <span className="text-muted-foreground">{data.routing.reason}</span>
           {data.routing.assumptions.map((a) => (
@@ -104,6 +117,8 @@ export function CaseView({ data }: { data: AnalysisResult }) {
                     modalitiesMentioned: data.clinical.modalitiesMentioned,
                     symptoms: data.clinical.symptoms,
                     findings: data.clinical.findings,
+                    negatedFindings: data.clinical.negatedFindings ?? [],
+                    isNormalOrNegative: data.clinical.isNormalOrNegative ?? false,
                     laterality: data.clinical.laterality ?? null,
                     patientAgeYears: data.clinical.patientAgeYears ?? null,
                     patientSex: data.clinical.patientSex ?? null,

@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:supabase": "npx tsx scripts/test-supabase.ts"
+    "test:supabase": "npx tsx scripts/test-supabase.ts",
+    "test:verification": "npx tsx scripts/test-negation-and-false-positives.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.1",

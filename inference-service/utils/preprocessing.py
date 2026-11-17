@@ -15,7 +15,7 @@ from typing import Optional
 import numpy as np
 from PIL import Image
 
-SUPPORTED_EXTENSIONS = (".png", ".jpg", ".jpeg", ".dcm", ".nii", ".nii.gz")
+SUPPORTED_EXTENSIONS = (".png", ".jpg", ".jpeg", ".dcm", ".nii", ".nii.gz", ".svg")
 MODEL_INPUT_SIZE = 256
 MAX_NIFTI_DECOMPRESSED_BYTES = 256 * 1024 * 1024
 
@@ -37,7 +37,9 @@ def load_array(data: bytes, filename: str, slice_index: Optional[int] = None):
         return _load_nifti(data, slice_index)
     if name.endswith(".dcm"):
         return _load_dicom(data, slice_index)
-    if name.endswith((".png", ".jpg", ".jpeg")):
+    if name.endswith((".png", ".jpg", ".jpeg", ".svg")):
+        if data.strip().startswith(b"<svg") or b"<svg" in data[:300]:
+            return _load_svg(data)
         img = Image.open(io.BytesIO(data)).convert("L")
         # PNG/JPG carry no reliable physical spacing.
         return np.asarray(img, dtype=np.float32), None, []
@@ -45,6 +47,60 @@ def load_array(data: bytes, filename: str, slice_index: Optional[int] = None):
         f"Unsupported file extension for '{filename}'. "
         f"Supported: {', '.join(SUPPORTED_EXTENSIONS)}"
     )
+
+
+def _load_svg(data: bytes):
+    """Decode basic SVG slice into a 2-D float32 array for demo / synthetic scans."""
+    import re
+    from PIL import ImageDraw
+
+    text = data.decode("utf-8", errors="ignore")
+    w_m = re.search(r'width=["\'](\d+)', text)
+    h_m = re.search(r'height=["\'](\d+)', text)
+    w = int(w_m.group(1)) if w_m else 256
+    h = int(h_m.group(1)) if h_m else 256
+
+    img = Image.new("L", (w, h), 0)
+    draw = ImageDraw.Draw(img)
+
+    def parse_hex_color(col: str) -> int:
+        col = col.strip().lstrip("#")
+        if len(col) == 6:
+            r, g, b = int(col[0:2], 16), int(col[2:4], 16), int(col[4:6], 16)
+            return int(0.299 * r + 0.587 * g + 0.114 * b)
+        elif len(col) == 3:
+            r, g, b = int(col[0] * 2, 16), int(col[1] * 2, 16), int(col[2] * 2, 16)
+            return int(0.299 * r + 0.587 * g + 0.114 * b)
+        return 0
+
+    for rm in re.finditer(r'<rect\s+[^>]*>', text):
+        tag = rm.group(0)
+        fill_m = re.search(r'fill=["\'](#?[0-9a-fA-F]+)', tag)
+        fill = parse_hex_color(fill_m.group(1)) if fill_m else 0
+        draw.rectangle([0, 0, w, h], fill=fill)
+
+    for em in re.finditer(r'<ellipse\s+[^>]*>', text):
+        tag = em.group(0)
+        cx = float(re.search(r'cx=["\']([\d.]+)', tag).group(1)) if re.search(r'cx=["\']([\d.]+)', tag) else 0
+        cy = float(re.search(r'cy=["\']([\d.]+)', tag).group(1)) if re.search(r'cy=["\']([\d.]+)', tag) else 0
+        rx = float(re.search(r'rx=["\']([\d.]+)', tag).group(1)) if re.search(r'rx=["\']([\d.]+)', tag) else 0
+        ry = float(re.search(r'ry=["\']([\d.]+)', tag).group(1)) if re.search(r'ry=["\']([\d.]+)', tag) else 0
+        fill_m = re.search(r'fill=["\'](#?[0-9a-fA-F]+)', tag)
+        if fill_m and fill_m.group(1).lower() != 'none':
+            fill = parse_hex_color(fill_m.group(1))
+            draw.ellipse([cx - rx, cy - ry, cx + rx, cy + ry], fill=fill)
+
+    for cm in re.finditer(r'<circle\s+[^>]*>', text):
+        tag = cm.group(0)
+        cx = float(re.search(r'cx=["\']([\d.]+)', tag).group(1)) if re.search(r'cx=["\']([\d.]+)', tag) else 0
+        cy = float(re.search(r'cy=["\']([\d.]+)', tag).group(1)) if re.search(r'cy=["\']([\d.]+)', tag) else 0
+        r = float(re.search(r'r=["\']([\d.]+)', tag).group(1)) if re.search(r'r=["\']([\d.]+)', tag) else 0
+        fill_m = re.search(r'fill=["\'](#?[0-9a-fA-F]+)', tag)
+        if fill_m and fill_m.group(1).lower() != 'none':
+            fill = parse_hex_color(fill_m.group(1))
+            draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=fill)
+
+    return np.asarray(img, dtype=np.float32), None, ["decoded vector SVG scan"]
 
 
 def _load_dicom(data: bytes, slice_index: Optional[int]):

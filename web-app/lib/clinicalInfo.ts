@@ -38,33 +38,129 @@ const SYMPTOMS: string[] = [
   'cough', 'hemoptysis', 'dyspnea', 'shortness of breath', 'chest pain',
   'wheezing', 'hoarseness', 'weight loss', 'night sweats', 'fatigue',
   'abdominal pain', 'back pain', 'jaundice', 'steatorrhea', 'pale stool',
-  'dark urine', 'loss of appetite', 'early satiety', 'indigestion',
+  'dark urine', 'loss of appetite', 'early satiety', 'indigestion', 'dyspepsia',
+];
+
+export const TARGET_NEOPLASM_FINDINGS: string[] = [
+  'enhancing lesion', 'ring enhancement', 'spiculated', 'solid mass',
+  'mass', 'lesion', 'nodule', 'tumor', 'tumour', 'neoplasm', 'malignancy',
+  'metastasis', 'metastases', 'adenocarcinoma', 'carcinoma', 'glioma',
+  'glioblastoma',
+];
+
+export const SECONDARY_FINDINGS: string[] = [
+  'edema', 'oedema', 'midline shift', 'mass effect', 'necrosis',
+  'lymphadenopathy', 'irregular margins',
+];
+
+export const BENIGN_INCIDENTAL_FINDINGS: string[] = [
+  'calcification', 'pleural effusion', 'cystic',
+  'hypodense', 'hyperdense', 'hyperintense', 'hypointense',
 ];
 
 const FINDINGS: string[] = [
-  'mass', 'lesion', 'nodule', 'tumor', 'tumour', 'neoplasm', 'malignancy',
-  'metastasis', 'metastases', 'edema', 'oedema', 'midline shift', 'mass effect',
-  'enhancing lesion', 'ring enhancement', 'spiculated', 'irregular margins',
-  'hypodense', 'hyperdense', 'hyperintense', 'hypointense', 'necrosis',
-  'calcification', 'lymphadenopathy', 'pleural effusion', 'cystic', 'solid mass',
+  ...TARGET_NEOPLASM_FINDINGS,
+  ...SECONDARY_FINDINGS,
+  ...BENIGN_INCIDENTAL_FINDINGS,
 ];
 
 const CONDITION_HINTS: string[] = [
-  'glioma', 'glioblastoma', 'meningioma', 'astrocytoma', 'metastatic disease',
+  'pancreatic ductal adenocarcinoma', 'pancreatic adenocarcinoma',
+  'glioblastoma multiforme', 'glioblastoma', 'high-grade glioma', 'glioma',
+  'meningioma', 'astrocytoma', 'metastatic disease',
   'primary lung cancer', 'adenocarcinoma', 'small cell', 'non-small cell',
-  'pancreatic adenocarcinoma', 'neuroendocrine tumor', 'ipmn',
+  'neuroendocrine tumor', 'ipmn',
   'suspected neoplasm', 'suspicious for malignancy',
 ];
 
-function collectMatches(text: string, terms: string[]): string[] {
-  const hits = new Set<string>();
-  for (const term of terms) {
-    // word-boundary-ish containment, tolerant of plural/suffix variation
-    const re = new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\w{0,2}\\b`, 'i');
-    if (re.test(text)) hits.add(term);
+function collectMatchesWithNegation(
+  text: string,
+  terms: string[],
+): { affirmed: string[]; negated: string[] } {
+  const affirmed = new Set<string>();
+  const negated = new Set<string>();
+
+  // Cues that negate a subsequent finding in the same clause (supports long clauses & multi-term lists)
+  // NOTE: "rule out" is an indication, NOT a negation; only "rules out" / "ruled out" are negations.
+  const preNegationRe =
+    /\b(?:neither|nor|no|not|without|denies|denied|negative\s+for|rules\s+out|ruled\s+out|free\s+of|free\s+from|clear\s+of|unremarkable\s+for|absence\s+of|no\s+sign[s]?\s+of|no\s+evidence\s+of|without\s+evidence\s+of|with\s+no\s+evidence\s+of|no\s+focal|no\s+definite|no\s+abnormal|no\s+suspicious|no\s+discrete|no\s+obvious|no\s+gross|cleared\s+of|resolved|zero|devoid\s+of|fails?\s+to\s+(?:show|reveal|demonstrate)|shows?\s+no|reveals?\s+no|demonstrates?\s+no|unlikely|non-?suspicious|benign|vascular|physiological|physiologic)\b/i;
+
+  // Phrases that express active suspicion (e.g., "cannot rule out", "unable to exclude")
+  // These indicate a suspicious finding that MUST be treated as affirmed.
+  const activeSuspicionRe =
+    /\b(?:cannot|can\s+not|unable\s+to|hard\s+to|difficult\s+to|not)\s+(?:rule\s+out|exclude)\b/i;
+
+  // Cues that negate an antecedent finding in the same clause (excludes temporal "not seen on prior" phrases)
+  const postNegationRe =
+    /(?:\b(?:is\s+ruled\s+out|was\s+ruled\s+out|not\s+seen(?!\s+(?:previously|on\s+prior|on\s+previous|on\s+earlier|before))|not\s+identified(?!\s+(?:previously|on\s+prior|on\s+previous|on\s+earlier|before))|not\s+detected(?!\s+(?:previously|on\s+prior|on\s+previous|on\s+earlier|before))|not\s+visualized(?!\s+(?:previously|on\s+prior|on\s+previous|on\s+earlier|before))|not\s+found|not\s+noted|not\s+observed|not\s+demonstrated|(?:is|was|are|were)?\s+not\s+present|is\s+absent|was\s+absent|are\s+absent|were\s+absent|is\s+negative|was\s+negative|are\s+negative|were\s+negative|within\s+normal\s+limits|wnl|unremarkable|is\s+excluded|was\s+excluded|are\s+excluded|were\s+excluded|\bnone\b|\bzero\b|(?:has|is|was|completely)?\s*resolved\b|as\s+expected\b|expected\s+signal\b)|:\s*none\b|:\s*zero\b|[-:]\s*negative\b|[-:]\s*absent\b)/i;
+
+  // Clauses split by major sentence delimiters or contrasting conjunctions
+  const clauseDelimRe = /[.;!?\n]|\b(?:but|however|although|except|apart\s+from)\b/i;
+
+  // Sort terms by length descending so longer composite terms (e.g. 'enhancing lesion') are tested first
+  const sortedTerms = [...terms].sort((a, b) => b.length - a.length);
+
+  for (const term of sortedTerms) {
+    const termRe = new RegExp(
+      `\\b${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\w{0,2}\\b`,
+      'gi',
+    );
+    let match: RegExpExecArray | null;
+    let foundAffirmed = false;
+    let foundNegated = false;
+
+    while ((match = termRe.exec(text)) !== null) {
+      const matchStart = match.index;
+      const matchEnd = match.index + match[0].length;
+
+      // Extract clause preceding the term (look back up to 350 characters within clause)
+      const windowStart = Math.max(0, matchStart - 350);
+      const preSlice = text.slice(windowStart, matchStart);
+      const preClauses = preSlice.split(clauseDelimRe);
+      const immediatePre = preClauses[preClauses.length - 1];
+
+      // Extract clause following the term (look forward up to 150 characters within clause)
+      const windowEnd = Math.min(text.length, matchEnd + 150);
+      const postSlice = text.slice(matchEnd, windowEnd);
+      const postClauses = postSlice.split(clauseDelimRe);
+      const immediatePost = postClauses[0];
+
+      // Affirmative comma phrases (e.g., "Mass identified, not seen previously") must not be negated
+      const isAffirmedAffirmative =
+        /\b(?:identified|detected|demonstrated|seen|revealed)\s*,\s*$/i.test(immediatePre) ||
+        /^\s*(?:identified|detected|demonstrated|seen|revealed)\s*,\s*not\s+(?:seen|identified|detected)\s+(?:previously|on\s+prior)/i.test(immediatePost);
+
+      const isActiveSuspicion = activeSuspicionRe.test(immediatePre);
+      const isRuleOutIndication = !isActiveSuspicion && /\b(?:rule\s+out|r\/o)\b/i.test(immediatePre);
+
+      if (isRuleOutIndication) {
+        // Clinical question/ordering indication: neither confirmed finding nor proven absence
+        continue;
+      }
+
+      const isNegated =
+        !isActiveSuspicion &&
+        (preNegationRe.test(immediatePre) || postNegationRe.test(immediatePost)) &&
+        !isAffirmedAffirmative;
+
+      if (isNegated) {
+        foundNegated = true;
+      } else {
+        foundAffirmed = true;
+      }
+    }
+
+    if (foundAffirmed) {
+      affirmed.add(term);
+    } else if (foundNegated) {
+      negated.add(term);
+    }
   }
-  // Array.from avoids TS2802: spread of Set requires es2015+ target in the emit path.
-  return Array.from(hits);
+
+  return {
+    affirmed: Array.from(affirmed),
+    negated: Array.from(negated),
+  };
 }
 
 function firstSentenceContaining(text: string, re: RegExp): string | undefined {
@@ -80,9 +176,31 @@ function firstSentenceContaining(text: string, re: RegExp): string | undefined {
 // ---------------------------------------------------------------------------
 
 export function extractClinicalInfoWithRules(text: string): ClinicalInfo {
-  if (!text || !text.trim()) return { ...EMPTY_CLINICAL_INFO };
+  if (!text || !text.trim()) {
+    return {
+      organsMentioned: [],
+      modalitiesMentioned: [],
+      symptoms: [],
+      findings: [],
+      negatedFindings: [],
+      isNormalOrNegative: false,
+      suspectedConditions: [],
+      evidenceSnippets: [],
+      extractionMethod: 'none',
+    };
+  }
 
-  const info: ClinicalInfo = { ...EMPTY_CLINICAL_INFO, extractionMethod: 'rules' };
+  const info: ClinicalInfo = {
+    organsMentioned: [],
+    modalitiesMentioned: [],
+    symptoms: [],
+    findings: [],
+    negatedFindings: [],
+    isNormalOrNegative: false,
+    suspectedConditions: [],
+    evidenceSnippets: [],
+    extractionMethod: 'rules',
+  };
 
   for (const { organ, pattern } of ORGAN_RULES) {
     if (pattern.test(text)) {
@@ -98,9 +216,30 @@ export function extractClinicalInfoWithRules(text: string): ClinicalInfo {
     }
   }
 
-  info.symptoms = collectMatches(text, SYMPTOMS);
-  info.findings = collectMatches(text, FINDINGS);
-  info.suspectedConditions = collectMatches(text, CONDITION_HINTS);
+  const symptomsMatch = collectMatchesWithNegation(text, SYMPTOMS);
+  info.symptoms = symptomsMatch.affirmed;
+
+  const findingsMatch = collectMatchesWithNegation(text, FINDINGS);
+  info.findings = findingsMatch.affirmed;
+  info.negatedFindings = findingsMatch.negated;
+
+  const conditionsMatch = collectMatchesWithNegation(text, CONDITION_HINTS);
+  info.suspectedConditions = conditionsMatch.affirmed;
+
+  const normalStudyPattern =
+    /\b(normal|unremarkable|within normal limits|wnl|no acute abnormality|no acute intracranial abnormality|clear lung fields|clear lungs|negative for malignancy|study is negative|negative study|routine screening|normal study|normal scan|healthy control|control scan|control study|negative for neoplasm|negative for tumor|negative for mass|unremarkable study|clear study|clear scan|unremarkable brain|unremarkable chest|unremarkable pancreas|unremarkable abdomen|no focal mass|no mass identified|no nodule identified|no suspicious lesion)\b/i;
+
+  const hasNormalCue = normalStudyPattern.test(text);
+  const hasAffirmedNeoplasm =
+    info.findings.some((f) => TARGET_NEOPLASM_FINDINGS.includes(f.toLowerCase())) ||
+    info.suspectedConditions.length > 0;
+
+  const hasNegatedTarget = info.negatedFindings.some((f) =>
+    TARGET_NEOPLASM_FINDINGS.includes(f.toLowerCase()),
+  );
+
+  info.isNormalOrNegative =
+    !hasAffirmedNeoplasm && (hasNormalCue || hasNegatedTarget);
 
   const lat = text.match(/\b(left|right|bilateral)\b/i);
   if (lat) info.laterality = lat[1].toLowerCase() as ClinicalInfo['laterality'];
@@ -142,8 +281,11 @@ export async function extractClinicalInfo(
       'You are an information-extraction assistant for a RESEARCH prototype.',
       'From the clinical text, return STRICT JSON with keys:',
       '{"organs":["brain"|"lung"|"pancreas"...],"modalities":["MRI"|"CT"|"PET"...],',
-      '"symptoms":[string...],"findings":[string...],"laterality":"left"|"right"|"bilateral"|null,',
+      '"symptoms":[string...],"findings":[string...],"negatedFindings":[string...],',
+      '"isNormalOrNegative":boolean,"laterality":"left"|"right"|"bilateral"|null,',
       '"patientAgeYears":number|null,"patientSex":"male"|"female"|null,"suspectedConditions":[string...]}',
+      'CRITICAL: If a finding is absent, ruled out, or negated (e.g. "no mass", "no edema"), place it in "negatedFindings", NEVER in "findings".',
+      'Set "isNormalOrNegative" to true if the study shows normal anatomy or no acute/neoplastic lesions.',
       'Only include values explicitly supported by the text. No commentary.',
       'Never invent diagnoses. This system is not approved for clinical diagnosis.',
     ].join(' ');
@@ -195,6 +337,10 @@ export async function extractClinicalInfo(
       Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').slice(0, 20) : [];
     merged.symptoms = Array.from(new Set([...rules.symptoms, ...strArr(parsed.symptoms)]));
     merged.findings = Array.from(new Set([...rules.findings, ...strArr(parsed.findings)]));
+    merged.negatedFindings = Array.from(new Set([...rules.negatedFindings, ...strArr(parsed.negatedFindings)]));
+    if (typeof parsed.isNormalOrNegative === 'boolean') {
+      merged.isNormalOrNegative = parsed.isNormalOrNegative;
+    }
     merged.suspectedConditions = Array.from(
       new Set([...rules.suspectedConditions, ...strArr(parsed.suspectedConditions)]),
     );

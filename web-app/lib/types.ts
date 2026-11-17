@@ -91,6 +91,8 @@ export interface ClinicalInfo {
   modalitiesMentioned: Modality[];
   symptoms: string[];
   findings: string[];
+  negatedFindings: string[];
+  isNormalOrNegative: boolean;
   laterality?: 'left' | 'right' | 'bilateral';
   patientAgeYears?: number;
   patientSex?: 'male' | 'female' | 'unknown';
@@ -105,6 +107,8 @@ export const EMPTY_CLINICAL_INFO: ClinicalInfo = {
   modalitiesMentioned: [],
   symptoms: [],
   findings: [],
+  negatedFindings: [],
+  isNormalOrNegative: false,
   suspectedConditions: [],
   evidenceSnippets: [],
   extractionMethod: 'none',

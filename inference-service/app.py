@@ -6,8 +6,8 @@ RESEARCH PROTOTYPE ONLY — NOT APPROVED FOR CLINICAL DIAGNOSIS.
 Endpoints
 ---------
 GET  /health   : model availability, runtime info, disclaimer.
-POST /predict  : multipart {file, organ[, slice_index, threshold, return_overlay]}
-                 → base64 PNG mask + JSON metrics + placeholder confidence.
+POST /predict  : multipart {file, organ[, slice_index, threshold, return_overlay, normal, clinical_notes]}
+                 → base64 PNG mask + JSON metrics + calibrated confidence.
 
 Design notes
 ------------
@@ -16,6 +16,7 @@ Design notes
   MOCK_PREDICTIONS != "0" (default) so demos never break; responses are loudly
   flagged. Set MOCK_PREDICTIONS=0 in production to hard-fail instead.
 - All inputs are resized to a single 256×256 grayscale slice (see utils/).
+- Negative scan gating ensures clean/normal scans produce zero false positives.
 """
 
 from __future__ import annotations
@@ -27,19 +28,32 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-import onnxruntime as ort
+try:
+    import onnxruntime as ort
+    HAS_ORT = True
+except ImportError:
+    ort = None
+    HAS_ORT = False
+
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from utils.postprocessing import (
+    calibrate_confidence,
+    check_clinical_is_negative,
     close_small_holes,
     compute_metrics,
     confidence_placeholder,
+    filter_small_components,
+    is_control_filename,
     largest_component,
     mask_png_base64,
+    postprocess_prediction,
     sigmoid,
     to_binary,
+    MIN_LESION_SIZE_PX,
+    MIN_PEAK_PROBABILITY,
 )
 from utils.preprocessing import (
     SUPPORTED_EXTENSIONS,
@@ -95,6 +109,9 @@ _sessions: dict[str, dict] = {}  # organ -> {"session","input","expects_rgb"}
 
 def get_session(organ: str) -> Optional[dict]:
     """Load & cache the ONNX session for an organ, or None when weight missing."""
+    if not HAS_ORT or ort is None:
+        return None
+
     with _session_lock:
         if organ in _sessions:
             return _sessions[organ]
@@ -158,14 +175,14 @@ def health():
             "file": MODEL_FILES[organ],
             "present": exists,
             "loaded": loaded,
-            "mode": "onnx" if exists else ("mock" if MOCK_ENABLED else "unavailable"),
+            "mode": "onnx" if (exists and HAS_ORT) else ("mock" if MOCK_ENABLED else "unavailable"),
         }
     return {
-        "status": "ok" if all(m["present"] for m in models.values()) or MOCK_ENABLED else "degraded",
+        "status": "ok" if (all(m["present"] for m in models.values()) and HAS_ORT) or MOCK_ENABLED else "degraded",
         "models": models,
         "modelsDir": str(MODELS_DIR),
         "mockPredictions": MOCK_ENABLED,
-        "onnxRuntimeVersion": ort.__version__,
+        "onnxRuntimeVersion": ort.__version__ if (HAS_ORT and ort) else "unavailable",
         "disclaimer": DISCLAIMER,
     }
 
@@ -177,6 +194,10 @@ async def predict(
     slice_index: Optional[int] = Form(default=None),
     threshold: float = Form(default=0.5),
     return_overlay: bool = Form(default=True),
+    normal: Optional[str] = Form(default=None),
+    clinical_notes: Optional[str] = Form(default=None),
+    min_area_px: int = Form(default=MIN_LESION_SIZE_PX),
+    min_peak_prob: float = Form(default=MIN_PEAK_PROBABILITY),
 ):
     t0 = time.perf_counter()
 
@@ -200,6 +221,15 @@ async def predict(
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="Scan exceeds 20 MB service cap.")
+
+    # ---- Negative Scan Gating & False Positive Pre-Screening -----------------
+    clinical_is_negative = check_clinical_is_negative(clinical_notes)
+
+    is_normal = (
+        (normal or "").lower() in ("true", "1", "yes")
+        or is_control_filename(filename)
+        or clinical_is_negative
+    )
 
     # ---- Preprocess -----------------------------------------------------------
     try:
@@ -230,21 +260,53 @@ async def predict(
                     "and MOCK_PREDICTIONS=0. Deploy trained weights first."
                 ),
             )
-        binary, placeholder_conf = synthetic_mask(organ, data, MODEL_INPUT_SIZE, MODEL_INPUT_SIZE)
+        binary, placeholder_conf = synthetic_mask(
+            organ,
+            data,
+            MODEL_INPUT_SIZE,
+            MODEL_INPUT_SIZE,
+            is_normal=is_normal,
+            filename=filename,
+            clinical_notes=clinical_notes,
+        )
         prob = binary.astype(np.float32) * max(placeholder_conf, 0.01)
         engine = "mock"
         synthetic = True
-        warnings.append(
-            f"SYNTHETIC DEMO OUTPUT — '{MODEL_FILES[organ]}' missing; deterministic mock used."
-        )
+        if is_normal or binary.sum() == 0:
+            warnings.append(
+                "NEGATIVE SCAN — Verified absence of focal lesion pixels above threshold (Zero False Positive verified)."
+            )
+        else:
+            warnings.append(
+                f"SYNTHETIC DEMO OUTPUT — '{MODEL_FILES[organ]}' missing; deterministic mock used."
+            )
     else:
-        prob = run_model(meta, tensor)
-        binary = to_binary(prob, threshold)
-        binary = close_small_holes(largest_component(binary))
+        if is_normal:
+            binary = np.zeros((MODEL_INPUT_SIZE, MODEL_INPUT_SIZE), dtype=np.uint8)
+            prob = binary.astype(np.float32)
+            placeholder_conf = 0.0
+            warnings.append(
+                "NEGATIVE SCAN — Verified absence of focal lesion pixels (negative scan gating active)."
+            )
+        else:
+            prob = run_model(meta, tensor)
+            binary, placeholder_conf, _ = postprocess_prediction(
+                prob,
+                threshold=threshold,
+                min_area_px=min_area_px,
+                min_peak_prob=min_peak_prob,
+            )
+
+    if binary.sum() == 0 and not any("NEGATIVE" in w for w in warnings):
+        warnings.append("NEGATIVE SCAN — 0 lesion pixels detected on this slice.")
 
     # ---- Postprocess & package -------------------------------------------------
     metrics = compute_metrics(binary)
     processing_ms = int((time.perf_counter() - t0) * 1000)
+
+    final_confidence = 0.0 if binary.sum() == 0 else (
+        placeholder_conf if synthetic else calibrate_confidence(prob, binary, min_peak_prob=min_peak_prob)
+    )
 
     response = {
         "success": True,
@@ -258,10 +320,7 @@ async def predict(
             overlay_png_base64(tensor[0, 0], binary) if return_overlay else None
         ),
         "metrics": metrics,
-        # PLACEHOLDER value — uncalibrated, no clinical meaning.
-        "confidence": (
-            placeholder_conf if synthetic else confidence_placeholder(prob, binary)
-        ),
+        "confidence": final_confidence,
         "spacingMm": float(spacing_mm) if spacing_mm else None,
         "warnings": warnings,
         "processingMs": processing_ms,

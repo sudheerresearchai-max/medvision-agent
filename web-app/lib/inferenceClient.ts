@@ -64,10 +64,14 @@ export async function predictOrgan(args: {
   organ: ModelKey;
   fileName: string;
   fileBytes: Uint8Array;
+  clinical?: import('./types').ClinicalInfo;
 }): Promise<InferenceResult> {
   const url = baseUrl();
   if (!url) {
-    return generateMockPrediction(args.organ, args.fileBytes);
+    return generateMockPrediction(args.organ, args.fileBytes, {
+      clinical: args.clinical,
+      fileName: args.fileName,
+    });
   }
 
   const timeoutMs = Number(process.env.INFERENCE_TIMEOUT_MS ?? 45000);
@@ -75,6 +79,15 @@ export async function predictOrgan(args: {
   const view = new Uint8Array(args.fileBytes); // copy-free view for Blob
   form.append('file', new Blob([view]), args.fileName || 'scan.png');
   form.append('organ', args.organ);
+  if (args.clinical?.isNormalOrNegative) {
+    form.append('normal', 'true');
+  }
+  if (args.clinical?.evidenceSnippets && args.clinical.evidenceSnippets.length > 0) {
+    form.append('clinical_notes', args.clinical.evidenceSnippets.join(' '));
+  }
+  if (args.clinical?.evidenceSnippets?.length) {
+    form.append('clinical_notes', args.clinical.evidenceSnippets.join(' '));
+  }
 
   let res: Response;
   try {
@@ -122,9 +135,11 @@ export async function predictOrgan(args: {
     maskBase64: payload.maskPngBase64,
     overlayBase64: payload.overlayPngBase64,
     confidence:
-      typeof payload.confidence === 'number'
-        ? Math.min(1, Math.max(0, payload.confidence))
-        : 0,
+      (m.areaPx ?? 0) === 0
+        ? 0.0
+        : typeof payload.confidence === 'number'
+          ? Math.min(1, Math.max(0, payload.confidence))
+          : 0,
     metrics: {
       areaPx: m.areaPx ?? 0,
       areaFraction: m.areaFraction ?? 0,
@@ -142,16 +157,19 @@ export async function predictOrgan(args: {
 export const runBrainModel = (args: {
   fileName: string;
   fileBytes: Uint8Array;
+  clinical?: import('./types').ClinicalInfo;
 }) => predictOrgan({ organ: 'brain', ...args });
 
 export const runLungModel = (args: {
   fileName: string;
   fileBytes: Uint8Array;
+  clinical?: import('./types').ClinicalInfo;
 }) => predictOrgan({ organ: 'lung', ...args });
 
 export const runPancreasModel = (args: {
   fileName: string;
   fileBytes: Uint8Array;
+  clinical?: import('./types').ClinicalInfo;
 }) => predictOrgan({ organ: 'pancreas', ...args });
 
 /** Optional health probe used by /api/health. Never throws. */

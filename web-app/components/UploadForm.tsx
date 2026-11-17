@@ -78,6 +78,13 @@ export function UploadForm() {
   const [submitting, setSubmitting] = React.useState(false);
   const [dragOver, setDragOver] = React.useState(false);
   const [activeSampleId, setActiveSampleId] = React.useState<string | null>(null);
+  const [caseFilter, setCaseFilter] = React.useState<'all' | 'tumor' | 'control'>('all');
+
+  const filteredSamples = SAMPLE_CASES.filter((sample) => {
+    if (caseFilter === 'tumor') return !sample.isControl;
+    if (caseFilter === 'control') return sample.isControl;
+    return true;
+  });
 
   const loadSampleCase = async (sample: SampleCase) => {
     setError(null);
@@ -170,22 +177,51 @@ export function UploadForm() {
       {/* ---- Interactive Clinical Demo Showcase ---- */}
       <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-secondary/30">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
-              <CardTitle className="text-base font-semibold">Preloaded Sample Cases</CardTitle>
+              <CardTitle className="text-base font-semibold">Preloaded Clinical Evaluation Cases</CardTitle>
             </div>
-            <Badge variant="outline" className="text-xs">
-              Sample Data
-            </Badge>
+            <div className="flex items-center gap-1.5 rounded-lg border bg-background/80 p-0.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setCaseFilter('all')}
+                className={cn(
+                  'rounded px-2.5 py-1 font-medium transition-colors',
+                  caseFilter === 'all' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                All ({SAMPLE_CASES.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setCaseFilter('tumor')}
+                className={cn(
+                  'rounded px-2.5 py-1 font-medium transition-colors',
+                  caseFilter === 'tumor' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                Tumor Positives ({SAMPLE_CASES.filter((c) => !c.isControl).length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setCaseFilter('control')}
+                className={cn(
+                  'rounded px-2.5 py-1 font-medium transition-colors',
+                  caseFilter === 'control' ? 'bg-emerald-600 text-white' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                Normal Controls ({SAMPLE_CASES.filter((c) => c.isControl).length})
+              </button>
+            </div>
           </div>
           <CardDescription>
-            Select a sample scan to automatically populate imaging and clinical notes.
+            Test both positive lesions and normal/negative controls to verify zero false positive performance.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 sm:grid-cols-3">
-            {SAMPLE_CASES.map((sample) => {
+            {filteredSamples.map((sample) => {
               const isSelected = activeSampleId === sample.id;
               return (
                 <button
@@ -195,16 +231,27 @@ export function UploadForm() {
                   className={cn(
                     'group relative flex flex-col justify-between rounded-lg border p-3.5 text-left transition-all',
                     isSelected
-                      ? 'border-primary bg-primary/10 shadow-sm ring-2 ring-primary/40'
+                      ? sample.isControl
+                        ? 'border-emerald-500 bg-emerald-500/10 shadow-sm ring-2 ring-emerald-500/40'
+                        : 'border-primary bg-primary/10 shadow-sm ring-2 ring-primary/40'
                       : 'border-border/70 bg-card hover:border-primary/50 hover:bg-secondary/50',
                   )}
                 >
                   <div>
                     <div className="flex items-center justify-between gap-1 mb-1">
-                      <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">
+                      <span
+                        className={cn(
+                          'text-[10px] font-semibold uppercase tracking-wider',
+                          sample.isControl ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-primary',
+                        )}
+                      >
                         {sample.badge}
                       </span>
-                      {isSelected && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                      {isSelected && (
+                        <CheckCircle2
+                          className={cn('h-4 w-4', sample.isControl ? 'text-emerald-600' : 'text-primary')}
+                        />
+                      )}
                     </div>
                     <p className="text-sm font-semibold leading-snug group-hover:text-primary transition-colors">
                       {sample.title}
