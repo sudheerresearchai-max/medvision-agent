@@ -14,6 +14,8 @@ import { PdfPreview } from '@/components/PdfPreview';
 import { ReportPanel } from '@/components/ReportPanel';
 import { AgentStatusPanel } from '@/components/AgentStatusPanel';
 import { MultiAgentTrace } from '@/components/MultiAgentTrace';
+import { TumorVerdictCard } from '@/components/TumorVerdictCard';
+import { ClinicalSafetyPrecautions } from '@/components/ClinicalSafetyPrecautions';
 import { cn } from '@/lib/utils';
 
 /** Case result composition — everything the analysis produced, one screen. */
@@ -89,6 +91,12 @@ export function CaseView({ data }: { data: AnalysisResult }) {
           {w.message}
         </div>
       ))}
+
+      {/* Primary Tumor Verdict, Location, Illumination & Danger Level */}
+      <TumorVerdictCard data={data} />
+
+      {/* Clinical Operating Instructions & Safety Precautions */}
+      <ClinicalSafetyPrecautions />
 
       {/* Main grid */}
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">

@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { DisclaimerBanner } from '@/components/DisclaimerBanner';
+import { ClinicalSafetyPrecautions } from '@/components/ClinicalSafetyPrecautions';
 import { AgentStatusPanel } from '@/components/AgentStatusPanel';
 import { cn, formatBytes } from '@/lib/utils';
 
@@ -441,6 +442,9 @@ export function UploadForm() {
           <AgentStatusPanel running={submitting} className="flex-1" />
         </CardContent>
       </Card>
+
+      {/* Clinical Operating Instructions & Safety Precautions */}
+      <ClinicalSafetyPrecautions />
     </form>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Layers, Sliders, Contrast, Eye, SplitSquareHorizontal, Sparkles } from 'lucide-react';
+import { Layers, Sliders, Contrast, Eye, SplitSquareHorizontal, Sparkles, Zap } from 'lucide-react';
 import type { InferenceResult, Measurement } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -98,6 +98,20 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
             <Sparkles className="h-4 w-4 shrink-0" />
             <span>
               <strong>Zero False Positive Verified:</strong> Automated neural evaluation identified 0 lesion pixels above threshold. Parenchymal contours appear within normal morphological limits.
+            </span>
+          </div>
+        )}
+
+        {inference.metrics.areaPx > 0 && (
+          <div className="flex items-center justify-between gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3.5 py-2.5 text-xs font-medium text-red-700 dark:text-red-300">
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400 animate-pulse" />
+              <span>
+                <strong>Tumor Region Lit Up:</strong> Active neoplastic lesion delineated in Neon Red ({inference.metrics.areaPx.toLocaleString()} px, {(inference.metrics.areaFraction * 100).toFixed(2)}% of slice).
+              </span>
+            </div>
+            <span className="font-mono text-[11px] uppercase tracking-wider font-bold">
+              Confidence: {(inference.confidence * 100).toFixed(1)}%
             </span>
           </div>
         )}

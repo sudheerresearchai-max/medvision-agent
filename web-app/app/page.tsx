@@ -16,36 +16,41 @@ import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MULTI_AGENT_PROFILES } from '@/lib/multiAgent/types';
+import { ClinicalSafetyPrecautions } from '@/components/ClinicalSafetyPrecautions';
 
 export default function HomePage() {
   return (
     <div className="mx-auto max-w-5xl space-y-12">
       {/* Hero Section */}
       <section className="rounded-2xl border bg-card p-8 sm:p-12 text-center space-y-5 shadow-xs">
-        <div className="mx-auto max-w-2xl space-y-3">
-          <Badge variant="secondary" className="text-xs font-normal">
-            Medical Imaging Analysis
+        <div className="mx-auto max-w-3xl space-y-3">
+          <Badge className="bg-primary/10 text-primary border-primary/20 text-xs font-semibold px-3 py-1">
+            ✦ Multi-Model Agentic AI · Oncology Decision Support
           </Badge>
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl text-foreground">
-            Medical Image Segmentation &amp; Reporting
+          <h1 className="text-3xl font-extrabold tracking-tight sm:text-5xl text-foreground leading-tight">
+            Multi-Model Medical Vision Analysis using Agentic AI on Tumors
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-            Automated organ segmentation and structured RECIST reporting for brain MRI, thoracic CT/X-Ray, and abdominal CT scans.
+            Collaborative multi-agent reasoning across Google Gemini Multimodal Vision &amp; deep U-Net architectures.
+            Accurately illuminates tumor boundaries, calculates RECIST 1.1 dimensions, stratifies clinical danger levels, and enforces strict safety precautions.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-          <Link href="/upload" className={cn(buttonVariants({ size: 'default' }), 'gap-2')}>
-            <Upload className="h-4 w-4" /> New Analysis <ArrowRight className="h-4 w-4" />
+          <Link href="/upload" className={cn(buttonVariants({ size: 'default' }), 'gap-2 font-semibold shadow-sm')}>
+            <Upload className="h-4 w-4" /> Analyze Scan Now <ArrowRight className="h-4 w-4" />
           </Link>
           <Link href="/cases" className={cn(buttonVariants({ variant: 'outline', size: 'default' }), 'gap-2')}>
             <FolderOpen className="h-4 w-4" /> Case Archive
           </Link>
           <Link href="/docs" className={cn(buttonVariants({ variant: 'ghost', size: 'default' }), 'gap-2')}>
-            <BookOpen className="h-4 w-4" /> Documentation
+            <BookOpen className="h-4 w-4" /> Documentation &amp; Protocols
           </Link>
         </div>
       </section>
+
+      {/* Mandatory Clinical Operating Instructions & Safety Precautions */}
+      <ClinicalSafetyPrecautions />
 
       {/* Supported Modalities */}
       <section className="space-y-4">

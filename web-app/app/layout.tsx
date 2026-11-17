@@ -5,11 +5,11 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: {
-    default: 'MedVision — Medical Image Analysis',
-    template: '%s · MedVision',
+    default: 'MedVision — Multi-Model Medical Vision Analysis using Agentic AI on Tumors',
+    template: '%s · MedVision Agentic AI',
   },
   description:
-    'Medical imaging segmentation and structured clinical reporting for brain, thoracic, and abdominal scans.',
+    'Multi-model medical vision analysis using Agentic AI on brain, lung, and pancreatic tumors with automated lesion illumination, RECIST biomarker quantification, and clinical safety precautions.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -18,9 +18,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="flex min-h-screen flex-col font-sans">
         <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur">
           <div className="container flex h-14 items-center justify-between">
-            <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
+            <Link href="/" className="flex items-center gap-2 font-bold tracking-tight">
               <Brain className="h-5 w-5 text-primary" aria-hidden />
-              <span>MedVision</span>
+              <span className="text-foreground font-bold">MedVision Agent</span>
+              <span className="hidden lg:inline text-xs font-normal text-muted-foreground border-l pl-2">
+                Multi-Model Medical Vision Analysis using Agentic AI on Tumors
+              </span>
             </Link>
             <nav className="flex items-center gap-1 text-sm">
               <Link
