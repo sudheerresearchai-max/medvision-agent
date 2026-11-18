@@ -163,3 +163,46 @@
   animation-delay: 0.44s;
 }
 
+/* Print / PDF Export Styles for Clinical Consultation */
+@media print {
+  header,
+  footer,
+  nav,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #111111 !important;
+  }
+
+  main {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .border,
+  .border-b,
+  .border-t {
+    border-color: #d1d5db !important;
+  }
+
+  .bg-card,
+  .bg-secondary {
+    background: #ffffff !important;
+    color: #111111 !important;
+  }
+
+  .text-muted-foreground {
+    color: #4b5563 !important;
+  }
+
+  .shadow-xs,
+  .shadow-sm,
+  .shadow-md {
+    box-shadow: none !important;
+  }
+}
+
+

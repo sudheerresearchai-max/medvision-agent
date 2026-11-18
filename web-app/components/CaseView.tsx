@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Stethoscope, Sparkles } from 'lucide-react';
+import { ArrowLeft, Stethoscope, Sparkles, Copy, Check, Printer, Share2 } from 'lucide-react';
 import type { AnalysisResult } from '@/lib/types';
 import { buttonVariants } from '@/components/ui/button';
 import { MaskOverlay } from '@/components/MaskOverlay';
@@ -14,7 +14,78 @@ import { ClinicalSafetyPrecautions } from '@/components/ClinicalSafetyPrecaution
 import { SymptomAnalysisCard } from '@/components/SymptomAnalysisCard';
 import { cn } from '@/lib/utils';
 
+function formatConsultationSummary(data: AnalysisResult): string {
+  const isTumor = Boolean(data.inference && data.inference.metrics.areaPx > 0);
+  const diffs =
+    data.symptomAnalysis?.differentials
+      ?.map(
+        (d, i) =>
+          `  ${i + 1}. ${d.condition} [${d.probability.toUpperCase()}] (${Math.round(d.confidenceScore * 100)}%)\n     Rationale: ${d.rationale}`,
+      )
+      .join('\n') || 'None recorded.';
+  const imaging =
+    data.symptomAnalysis?.recommendedImaging
+      ?.map((im) => `  • ${im.modality} (${im.protocol})\n    Indication: ${im.indication} [${im.urgency}]`)
+      .join('\n') || 'None recorded.';
+  const labs =
+    data.symptomAnalysis?.recommendedLabs
+      ?.map((l) => `  • ${l.testName} [${l.priority}]: ${l.rationale}`)
+      .join('\n') || 'None recorded.';
+  const redFlags =
+    data.symptomAnalysis?.clinicalRedFlags?.map((rf) => `  🚨 ${rf}`).join('\n') || 'None identified.';
+  const plan =
+    data.symptomAnalysis?.suggestedActionPlan?.map((p, i) => `  ${i + 1}. ${p}`).join('\n') || 'None recorded.';
+
+  return `================================================================================
+MEDVISION AGENTIC AI — MULTIMODAL CLINICAL CONSULTATION REPORT
+================================================================================
+Case UUID : ${data.caseId}
+Timestamp : ${new Date(data.createdAt).toLocaleString()}
+Modality  : ${data.routing.modelKey ? data.routing.modelKey.toUpperCase() : 'General Multimodal'}
+Storage   : ${data.storage}
+
+1. EXECUTIVE DIAGNOSTIC FINDINGS
+--------------------------------------------------------------------------------
+Visual Lesion : ${isTumor ? `POSITIVE (${data.inference?.metrics.areaPx} px detected)` : 'NEGATIVE (0 px above threshold)'}
+Primary Verdict: ${data.clinical.suspectedConditions[0] || (isTumor ? 'Suspected Neoplasm' : 'Normal / Unremarkable')}
+Acuity Level  : ${data.symptomAnalysis?.acuityLevel ? data.symptomAnalysis.acuityLevel.toUpperCase() : 'ROUTINE'}
+
+2. PATIENT SYMPTOMS & CLINICAL PRESENTATION
+--------------------------------------------------------------------------------
+${data.symptomAnalysis?.primaryComplaint || data.clinical.evidenceSnippets?.join(' ') || 'None provided.'}
+
+3. MULTIMODAL CLINICAL-RADIOLOGICAL CONCORDANCE
+--------------------------------------------------------------------------------
+${data.symptomAnalysis?.multimodalConcordance?.summary || 'Standard visual inspection.'}
+
+4. RANKED DIFFERENTIAL DIAGNOSES (MULTI-AGENT CONSENSUS)
+--------------------------------------------------------------------------------
+${diffs}
+
+5. RECOMMENDED DIAGNOSTIC IMAGING ORDERS
+--------------------------------------------------------------------------------
+${imaging}
+
+6. RECOMMENDED LABORATORY WORKUP
+--------------------------------------------------------------------------------
+${labs}
+
+7. CLINICAL SYMPTOM RED FLAGS
+--------------------------------------------------------------------------------
+${redFlags}
+
+8. SUGGESTED ACTION PLAN
+--------------------------------------------------------------------------------
+${plan}
+
+================================================================================
+DISCLAIMER: Investigational Research Prototype. NOT FDA cleared or CE marked.
+All findings and segmentations require board-certified physician verification.
+================================================================================`;
+}
+
 export function CaseView({ data }: { data: AnalysisResult }) {
+  const [copied, setCopied] = React.useState(false);
   const preview = data.inputs.previewDataUrl ?? null;
   const isTumor = Boolean(data.inference && data.inference.metrics.areaPx > 0);
 
@@ -26,10 +97,25 @@ export function CaseView({ data }: { data: AnalysisResult }) {
   const shortAxis = data.measurements.find((m) => m.label.includes('Short Axis') || m.label.includes('Orthogonal'));
   const volumeBurden = data.measurements.find((m) => m.label.includes('Volume'));
 
+  const handleCopy = async () => {
+    try {
+      const text = formatConsultationSummary(data);
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    } catch {
+      // Fallback
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="mx-auto max-w-4xl space-y-6 py-2">
       {/* Sleek Minimalist Header */}
-      <div className="flex items-center justify-between gap-3 border-b border-border/70 pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 pb-3 no-print">
         <div className="flex items-center gap-2 text-xs font-mono">
           <Link
             href="/upload"
@@ -38,7 +124,7 @@ export function CaseView({ data }: { data: AnalysisResult }) {
             <ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> New Analysis
           </Link>
           <span className="text-muted-foreground/60">/</span>
-          <span className="text-foreground/90 font-medium truncate max-w-[200px] sm:max-w-none">
+          <span className="text-foreground/90 font-medium truncate max-w-[160px] sm:max-w-none">
             {data.caseId}
           </span>
         </div>
@@ -49,7 +135,37 @@ export function CaseView({ data }: { data: AnalysisResult }) {
               <Sparkles className="w-3 h-3" /> Gemini Multimodal Vision
             </span>
           )}
-          <span className="text-[11px] font-mono text-muted-foreground hidden sm:inline">
+
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border/70 bg-secondary/50 hover:bg-secondary text-[11px] font-mono text-muted-foreground hover:text-foreground transition-all select-none"
+            title="Copy structured clinical consultation report"
+          >
+            {copied ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-500" />
+                <span className="text-emerald-500 font-semibold">Copied</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5" />
+                <span>Copy Summary</span>
+              </>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border/70 bg-secondary/50 hover:bg-secondary text-[11px] font-mono text-muted-foreground hover:text-foreground transition-all select-none"
+            title="Print or export consultation report as PDF"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Print / PDF</span>
+          </button>
+
+          <span className="text-[11px] font-mono text-muted-foreground hidden md:inline ml-1">
             {new Date(data.createdAt).toLocaleTimeString()}
           </span>
         </div>

@@ -324,26 +324,26 @@ export default function DocsPage() {
                 </div>
                 <Badge className="bg-primary/20 text-primary border-none text-[10px]">5 Modular Agents</Badge>
               </div>
-              <div className="grid gap-2 sm:grid-cols-5 text-[11px] pt-1">
+              <div className="grid gap-2 sm:grid-cols-5 text-[11px] pt-1 font-mono">
                 <div className="rounded-md border bg-background p-2 text-center">
-                  <span className="font-bold text-blue-600 block">Dr. Triage AI</span>
-                  <span className="text-muted-foreground text-[10px]">Format Sniffing</span>
+                  <span className="font-bold text-primary block">Dr. Alex Vance, MD</span>
+                  <span className="text-muted-foreground text-[10px]">Triage &amp; Acuity</span>
                 </div>
                 <div className="rounded-md border bg-background p-2 text-center">
-                  <span className="font-bold text-purple-600 block">Dr. Lexicon AI</span>
-                  <span className="text-muted-foreground text-[10px]">Clinical NLP</span>
+                  <span className="font-bold text-primary block">Dr. Samantha Chen</span>
+                  <span className="text-muted-foreground text-[10px]">Clinical Reasoning</span>
                 </div>
                 <div className="rounded-md border bg-background p-2 text-center">
-                  <span className="font-bold text-cyan-600 block">Dr. Vision AI</span>
-                  <span className="text-muted-foreground text-[10px]">U-Net Dispatch</span>
+                  <span className="font-bold text-primary block">Dr. Robert Miller</span>
+                  <span className="text-muted-foreground text-[10px]">Vision &amp; Imaging</span>
                 </div>
                 <div className="rounded-md border bg-background p-2 text-center">
-                  <span className="font-bold text-emerald-600 block">Dr. Metric AI</span>
-                  <span className="text-muted-foreground text-[10px]">RECIST 1.1</span>
+                  <span className="font-bold text-primary block">Dr. Emily Zhang</span>
+                  <span className="text-muted-foreground text-[10px]">Biomarkers &amp; RECIST</span>
                 </div>
                 <div className="rounded-md border bg-background p-2 text-center">
-                  <span className="font-bold text-amber-600 block">Chief Scribe AI</span>
-                  <span className="text-muted-foreground text-[10px]">Consensus QA</span>
+                  <span className="font-bold text-primary block">Dr. Marcus Patel</span>
+                  <span className="text-muted-foreground text-[10px]">Chief Arbiter</span>
                 </div>
               </div>
             </div>

@@ -363,9 +363,21 @@ export function UploadForm() {
                 Patient Symptoms &amp; Clinical Narrative
               </label>
             </div>
-            <span className="text-[10px] font-mono text-muted-foreground">
-              Multi-agent differential diagnosis &amp; triage
-            </span>
+            <div className="flex items-center gap-2">
+              {notes && (
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={() => setNotes('')}
+                  className="text-[10px] font-mono text-muted-foreground hover:text-foreground transition-colors underline select-none"
+                >
+                  Clear text
+                </button>
+              )}
+              <span className="text-[10px] font-mono text-muted-foreground">
+                {notes.length > 0 ? `${notes.length} chars` : 'Multi-agent differential diagnosis & triage'}
+              </span>
+            </div>
           </div>
 
           {/* Quick Symptom Chips */}
