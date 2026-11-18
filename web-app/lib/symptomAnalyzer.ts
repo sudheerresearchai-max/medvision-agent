@@ -197,7 +197,157 @@ function getCuratedSymptomFallback(text: string, organHint?: Organ): SymptomAnal
     };
   }
 
-  // 4. Default / General Presentation
+  // 4. Breast Presentation
+  if (
+    organHint === 'breast' ||
+    /\b(breast|mammar|lump|nipple|areola|axilla|mass in breast|skin retraction|peau d'orange)\b/i.test(lower)
+  ) {
+    return {
+      primaryComplaint: text.slice(0, 120) || 'Palpable breast finding or diagnostic mammographic abnormality.',
+      symptomSeverity: 'high',
+      acuityLevel: 'urgent',
+      differentials: [
+        {
+          condition: 'Invasive Ductal Carcinoma (IDC)',
+          probability: 'high',
+          confidenceScore: 0.85,
+          organSystem: 'Breast / Surgical Oncology',
+          rationale: 'Palpable firm, fixed breast mass or microcalcifications warrants diagnostic imaging and core biopsy per BI-RADS criteria.',
+          supportingSymptoms: ['Palpable breast lump', 'Focal density', 'Axillary lymphadenopathy'],
+          refutingFactors: ['Benign fibroadenoma or cyst in young patients'],
+        },
+        {
+          condition: 'Benign Fibroadenoma / Complex Cyst',
+          probability: 'moderate',
+          confidenceScore: 0.65,
+          organSystem: 'Breast / Benign Gynecology',
+          rationale: 'Well-circumscribed mobile mass frequently seen in premenopausal women.',
+          supportingSymptoms: ['Breast lump'],
+          refutingFactors: ['Irregular borders or microcalcifications on imaging'],
+        },
+      ],
+      recommendedImaging: [
+        {
+          modality: 'Diagnostic Digital Mammography & Breast Ultrasound',
+          protocol: 'Bilateral CC and MLO views with targeted high-frequency ultrasound evaluation',
+          indication: 'BI-RADS characterization of palpable lump or asymmetric density',
+          urgency: 'Urgent (< 1 week)',
+        },
+      ],
+      recommendedLabs: [
+        { testName: 'Core Needle Biopsy Histopathology', rationale: 'Definitive tissue diagnosis with ER, PR, HER2, and Ki-67 receptor testing', priority: 'Urgent' },
+        { testName: 'Genetic Testing (BRCA1/BRCA2)', rationale: 'Risk assessment if family history of early-onset breast/ovarian cancer', priority: 'Elective' },
+      ],
+      clinicalRedFlags: ['Skin dimpling / peau d orange', 'Spontaneous bloody nipple discharge', 'Fixed axillary lymphadenopathy'],
+      suggestedActionPlan: [
+        'Diagnostic mammography and targeted breast ultrasound.',
+        'Ultrasound-guided core needle biopsy if BI-RADS 4 or 5.',
+        'Referral to Comprehensive Breast Cancer Center.',
+      ],
+    };
+  }
+
+  // 5. Renal / Urologic Presentation
+  if (
+    organHint === 'kidney' ||
+    /\b(kidney|renal|flank|hematuria|blood in urine|nephro)\b/i.test(lower)
+  ) {
+    return {
+      primaryComplaint: text.slice(0, 120) || 'Flank discomfort and urologic symptoms.',
+      symptomSeverity: 'high',
+      acuityLevel: 'urgent',
+      differentials: [
+        {
+          condition: 'Renal Cell Carcinoma (Clear Cell RCC)',
+          probability: 'high',
+          confidenceScore: 0.82,
+          organSystem: 'Urologic Oncology',
+          rationale: 'Painless gross hematuria and flank mass/pain represent the classic triad of renal cortical neoplasm.',
+          supportingSymptoms: ['Hematuria', 'Flank pain'],
+          refutingFactors: ['Urolithiasis / nephrolithiasis'],
+        },
+        {
+          condition: 'Nephrolithiasis (Kidney Stones)',
+          probability: 'moderate',
+          confidenceScore: 0.70,
+          organSystem: 'Urology',
+          rationale: 'Acute colicky flank pain and microscopic/gross hematuria.',
+          supportingSymptoms: ['Flank pain', 'Hematuria'],
+          refutingFactors: ['Constant non-colicky pain favors mass'],
+        },
+      ],
+      recommendedImaging: [
+        {
+          modality: 'CT Urogram / Multiphasic Renal CT',
+          protocol: 'Non-contrast, corticomedullary, nephrographic, and excretory phase cross-sectional CT',
+          indication: 'Evaluate solid renal cortical mass, vascular invasion (renal vein/IVC), and collecting system',
+          urgency: 'Urgent (< 48 hours)',
+        },
+      ],
+      recommendedLabs: [
+        { testName: 'Urinalysis with Microscopic Examination', rationale: 'Confirm presence of dysmorphic RBCs or proteinuria', priority: 'Stat' },
+        { testName: 'Serum Creatinine & eGFR', rationale: 'Assess baseline renal functional reserve before surgery or contrast', priority: 'Urgent' },
+      ],
+      clinicalRedFlags: ['Gross painless hematuria', 'Palpable abdominal/flank mass', 'New-onset left-sided varicocele'],
+      suggestedActionPlan: [
+        'Multiphasic contrast-enhanced CT of abdomen and pelvis.',
+        'Urology consultation for cystoscopy and surgical planning.',
+        'Baseline renal function monitoring.',
+      ],
+    };
+  }
+
+  // 6. Dermatologic / Cutaneous Presentation
+  if (
+    organHint === 'skin' ||
+    /\b(skin|mole|melanoma|pigment|nevus|lesion on skin|asymmetric|irregular border)\b/i.test(lower)
+  ) {
+    return {
+      primaryComplaint: text.slice(0, 120) || 'Cutaneous pigmented lesion evaluation.',
+      symptomSeverity: 'high',
+      acuityLevel: 'urgent',
+      differentials: [
+        {
+          condition: 'Cutaneous Malignant Melanoma',
+          probability: 'high',
+          confidenceScore: 0.86,
+          organSystem: 'Dermatologic Oncology',
+          rationale: 'ABCDE criteria (Asymmetry, Border irregularity, Color variegation, Diameter >6mm, Evolution) strongly suggest melanoma.',
+          supportingSymptoms: ['Asymmetric pigmented lesion', 'Color variegation', 'Enlarging mole'],
+          refutingFactors: ['Atypical/dysplastic nevus or seborrheic keratosis'],
+        },
+        {
+          condition: 'Basal Cell Carcinoma (Pigmented Variant)',
+          probability: 'moderate',
+          confidenceScore: 0.68,
+          organSystem: 'Dermatology',
+          rationale: 'Slowly growing pearly nodule with telangiectasia or pigment.',
+          supportingSymptoms: ['Chronic skin lesion'],
+          refutingFactors: ['Rapid evolution favors melanoma'],
+        },
+      ],
+      recommendedImaging: [
+        {
+          modality: 'Dermoscopy & High-Resolution Epiluminescence Microscopy',
+          protocol: 'Polarized and non-polarized dermoscopic structural pattern analysis',
+          indication: 'Assess pigment network, streaks, blue-white veil, and atypical vascular structures',
+          urgency: 'Immediate',
+        },
+      ],
+      recommendedLabs: [
+        { testName: 'Excisional Biopsy (1-2 mm margins)', rationale: 'Histopathologic Breslow depth measurement and ulceration status', priority: 'Stat' },
+        { testName: 'BRAF V600E Mutation Analysis', rationale: 'Molecular profiling for targeted therapy if advanced', priority: 'Reflex' },
+      ],
+      clinicalRedFlags: ['Rapid enlargement or color darkening', 'Spontaneous bleeding or ulceration', 'Satellite pigmented lesions'],
+      suggestedActionPlan: [
+        'Complete full-body cutaneous examination by a dermatologist.',
+        'Narrow-margin excisional biopsy (shave biopsy contraindicated for suspected melanoma).',
+        'Surgical staging and sentinel lymph node biopsy if Breslow depth > 0.8 mm.',
+      ],
+    };
+  }
+
+  // 7. Default / General Presentation
   return {
     primaryComplaint: text.slice(0, 120) || 'General clinical symptom presentation.',
     symptomSeverity: 'moderate',
@@ -305,45 +455,60 @@ Respond with strict JSON matching this schema:
   "suggestedActionPlan": string[]
 }`;
 
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-              response_mime_type: 'application/json',
-              temperature: 0.1,
+      const models = [
+        'gemini-3.1-flash-lite',
+        'gemini-3.5-flash-lite',
+        'gemini-flash-lite-latest',
+        'gemini-3-flash-preview',
+        'gemini-3.5-flash',
+        'gemini-flash-latest',
+      ];
+
+      for (const m of models) {
+        try {
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                  response_mime_type: 'application/json',
+                  temperature: 0.1,
+                },
+              }),
+              signal: AbortSignal.timeout(10000),
             },
-          }),
-          signal: AbortSignal.timeout(12000),
-        },
-      );
+          );
 
-      if (res.ok) {
-        const data = await res.json();
-        const outputText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (outputText) {
-          const parsed = JSON.parse(outputText) as SymptomAnalysisResult;
-          if (parsed.differentials && parsed.differentials.length > 0) {
-            // Compute multimodal concordance if a scan inference is present
-            if (args.inference) {
-              const hasLesion = args.inference.metrics.areaPx > 0;
-              const topDiff = parsed.differentials[0];
-              const isConcordant = hasLesion
-                ? topDiff.probability === 'high' || topDiff.probability === 'moderate'
-                : parsed.symptomSeverity === 'mild' || parsed.acuityLevel === 'routine';
+          if (!res.ok) continue;
 
-              parsed.multimodalConcordance = {
-                isConcordant,
-                summary: hasLesion
-                  ? `Visual neural segmentation identified a ${args.inference.metrics.areaPx} px focal lesion, which clinically corroborates the reported symptoms and top differential (${topDiff.condition}).`
-                  : 'Automated scan inspection verified 0 lesion pixels (clear baseline); clinical symptoms should be evaluated for non-structural or functional etiologies.',
-              };
+          const data = await res.json();
+          const outputText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (outputText) {
+            const parsed = JSON.parse(outputText) as SymptomAnalysisResult;
+            if (parsed.differentials && parsed.differentials.length > 0) {
+              // Compute multimodal concordance if a scan inference is present
+              if (args.inference) {
+                const hasLesion = args.inference.metrics.areaPx > 0;
+                const topDiff = parsed.differentials[0];
+                const isConcordant = hasLesion
+                  ? topDiff.probability === 'high' || topDiff.probability === 'moderate'
+                  : parsed.symptomSeverity === 'mild' || parsed.acuityLevel === 'routine';
+
+                parsed.multimodalConcordance = {
+                  isConcordant,
+                  summary: hasLesion
+                    ? `Visual neural segmentation identified a ${args.inference.metrics.areaPx} px focal lesion, which clinically corroborates the reported symptoms and top differential (${topDiff.condition}).`
+                    : 'Automated scan inspection verified 0 lesion pixels (clear baseline); clinical symptoms should be evaluated for non-structural or functional etiologies.',
+                };
+              }
+              return parsed;
             }
-            return parsed;
           }
+        } catch {
+          // Try next model
         }
       }
     } catch {

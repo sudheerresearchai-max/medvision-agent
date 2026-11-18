@@ -5,14 +5,13 @@ import { useRouter } from 'next/navigation';
 import {
   UploadCloud,
   FileImage,
+  FileText,
   X,
   ArrowRight,
   Sparkles,
-  Zap,
   Stethoscope,
-  Brain,
-  Wind,
-  Droplet,
+  Eye,
+  Sliders,
   CheckCircle,
 } from 'lucide-react';
 import type { Organ } from '@/lib/types';
@@ -26,7 +25,18 @@ import { ClinicalSafetyPrecautions } from '@/components/ClinicalSafetyPrecaution
 type OrganChoice = Organ | 'auto';
 
 const ACCEPT_ATTR =
-  '.png,.jpg,.jpeg,.dcm,.nii,.gz,image/png,image/jpeg,application/dicom';
+  '.png,.jpg,.jpeg,.webp,.dcm,.nii,.gz,.pdf,image/png,image/jpeg,image/webp,application/dicom,application/pdf';
+
+const ORGAN_OPTIONS: Array<{ key: OrganChoice; label: string; icon: string }> = [
+  { key: 'auto', label: 'Auto-Detect (AI)', icon: '✨' },
+  { key: 'brain', label: 'Brain', icon: '🧠' },
+  { key: 'lung', label: 'Lung', icon: '🫁' },
+  { key: 'pancreas', label: 'Pancreas', icon: '🩸' },
+  { key: 'breast', label: 'Breast', icon: '🎀' },
+  { key: 'kidney', label: 'Kidney / Renal', icon: '🔬' },
+  { key: 'skin', label: 'Skin / Derm', icon: '☀️' },
+  { key: 'general', label: 'General / Other', icon: '🩺' },
+];
 
 const SYMPTOM_PRESETS = [
   {
@@ -54,9 +64,33 @@ const SYMPTOM_PRESETS = [
     organ: 'pancreas' as Organ,
   },
   {
+    id: 'breast',
+    icon: '🎀',
+    label: 'Breast',
+    summary: 'Palpable breast lump & retraction',
+    text: '52-year-old female noticed a firm, non-tender palpable mass in the upper outer quadrant of the left breast with subtle overlying skin tethering.',
+    organ: 'breast' as Organ,
+  },
+  {
+    id: 'renal',
+    icon: '🔬',
+    label: 'Kidney / Renal',
+    summary: 'Gross hematuria & flank pain',
+    text: '59-year-old male presenting with painless macroscopic hematuria for 5 days and dull right flank discomfort. Denies dysuria or urinary frequency.',
+    organ: 'kidney' as Organ,
+  },
+  {
+    id: 'skin',
+    icon: '☀️',
+    label: 'Skin / Melanoma',
+    summary: 'Asymmetric enlarging mole',
+    text: '47-year-old male presents with an evolving 8mm pigmented cutaneous lesion on upper back showing asymmetry, irregular borders, and color variegation.',
+    organ: 'skin' as Organ,
+  },
+  {
     id: 'routine',
     icon: '🟢',
-    label: 'Routine / Baseline',
+    label: 'Routine Control',
     summary: 'Mild tension headache',
     text: '42-year-old female with mild intermittent band-like tension headache responsive to acetaminophen. Neurological examination completely unremarkable; routine baseline screening.',
     organ: 'brain' as Organ,
@@ -71,7 +105,7 @@ function extOf(name: string): string {
 }
 
 async function makePreview(file: File): Promise<string | null> {
-  if (!/^image\/(png|jpeg|svg\+xml)$/.test(file.type)) return null;
+  if (!/^image\/(png|jpeg|webp|svg\+xml)$/.test(file.type)) return null;
   try {
     const bitmap = await createImageBitmap(file);
     const scale = Math.min(1, 768 / Math.max(bitmap.width, bitmap.height));
@@ -108,6 +142,7 @@ export function UploadForm() {
 
   const [organChoice, setOrganChoice] = React.useState<OrganChoice>('auto');
   const [imageFile, setImageFile] = React.useState<File | null>(null);
+  const [pdfFile, setPdfFile] = React.useState<File | null>(null);
   const [imagePreview, setImagePreview] = React.useState<string | null>(null);
   const [notes, setNotes] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
@@ -132,6 +167,7 @@ export function UploadForm() {
     setActiveSampleId(sample.id);
     setOrganChoice(sample.organ);
     setNotes(sample.clinicalNotes);
+    setPdfFile(null);
     try {
       const file = await dataUrlToFile(sample.imageDataUrl, sample.fileName);
       setImageFile(file);
@@ -148,12 +184,22 @@ export function UploadForm() {
     }
     if (!file) return;
     const ext = extOf(file.name);
+
+    if (ext === '.pdf' || file.type === 'application/pdf') {
+      if (file.size > PDF_MAX_BYTES) {
+        setError(`PDF exceeds limit (${formatBytes(PDF_MAX_BYTES)}).`);
+        return;
+      }
+      setPdfFile(file);
+      return;
+    }
+
     if (!SUPPORTED_IMAGE_EXTENSIONS.includes(ext as (typeof SUPPORTED_IMAGE_EXTENSIONS)[number])) {
-      setError(`Unsupported scan format "${ext || file.name}". Supported: ${SUPPORTED_IMAGE_EXTENSIONS.join(', ')}`);
+      setError(`Unsupported format "${ext || file.name}". Supported: PNG, JPG, WebP, DICOM (.dcm), NIfTI (.nii), and PDF.`);
       return;
     }
     if (file.size > IMAGE_MAX_BYTES) {
-      setError(`Scan too large (${formatBytes(file.size)}). Limit ${formatBytes(IMAGE_MAX_BYTES)}.`);
+      setError(`Scan exceeds limit (${formatBytes(IMAGE_MAX_BYTES)}).`);
       return;
     }
     setImageFile(file);
@@ -167,15 +213,20 @@ export function UploadForm() {
     setActiveSampleId(null);
   };
 
+  const clearPdf = () => {
+    setPdfFile(null);
+  };
+
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
 
     const hasImage = Boolean(imageFile);
+    const hasPdf = Boolean(pdfFile);
     const hasSymptoms = Boolean(notes.trim());
 
-    if (!hasImage && !hasSymptoms) {
-      setError('Please provide at least one clinical input: patient symptoms text, or a medical scan image (or both).');
+    if (!hasImage && !hasPdf && !hasSymptoms) {
+      setError('Please provide at least one clinical input: symptoms in the text area, a radiological scan, or a clinical PDF report.');
       return;
     }
 
@@ -188,6 +239,9 @@ export function UploadForm() {
         form.append('image', imageFile);
         const preview = imagePreview || (await makePreview(imageFile));
         if (preview) form.append('imagePreview', preview);
+      }
+      if (pdfFile) {
+        form.append('pdf', pdfFile);
       }
 
       const res = await fetch('/api/analyze', { method: 'POST', body: form });
@@ -218,21 +272,26 @@ export function UploadForm() {
   const normalSample = SAMPLE_CASES.find((s) => s.isControl) || SAMPLE_CASES[3];
 
   const hasImage = Boolean(imageFile);
+  const hasPdf = Boolean(pdfFile);
   const hasSymptoms = Boolean(notes.trim());
-  const canSubmit = hasImage || hasSymptoms;
+  const canSubmit = hasImage || hasPdf || hasSymptoms;
 
-  const buttonText =
-    hasImage && hasSymptoms
-      ? 'Analyze Multimodal Scan & Symptoms'
-      : hasSymptoms
-        ? 'Analyze Clinical Symptoms with Multi-Agent AI'
-        : 'Analyze Medical Scan with Multi-Agent AI';
+  let buttonText = 'Analyze with Multi-Agent AI';
+  if (hasImage && hasSymptoms) {
+    buttonText = 'Analyze Multimodal Scan & Symptoms';
+  } else if (hasImage) {
+    buttonText = 'Analyze Medical Scan (Gemini Flash Vision)';
+  } else if (hasSymptoms) {
+    buttonText = 'Analyze Clinical Symptoms (Multi-Agent Panel)';
+  } else if (hasPdf) {
+    buttonText = 'Analyze Clinical PDF Document';
+  }
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">
       {/* Quick-Load Minimal Pills (Scan Presets) */}
       <div className="flex flex-wrap items-center justify-center gap-2 text-xs">
-        <span className="text-muted-foreground text-[11px] font-mono mr-1">Sample Scans:</span>
+        <span className="text-muted-foreground text-[11px] font-mono mr-1">Preloaded Scans:</span>
         <button
           type="button"
           disabled={submitting}
@@ -275,7 +334,38 @@ export function UploadForm() {
       </div>
 
       <form onSubmit={onSubmit} className="space-y-4">
-        {/* Minimalist Drag-and-Drop Area for Scans */}
+        {/* Organ Selector Bar */}
+        <div className="rounded-xl border border-border/70 bg-card/50 p-2.5 space-y-1.5">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[11px] font-mono font-medium text-muted-foreground flex items-center gap-1.5">
+              <Sliders className="w-3 h-3 text-primary" /> Target Anatomical System:
+            </span>
+            <span className="text-[10px] font-mono text-muted-foreground">
+              {organChoice === 'auto' ? 'Auto-detected via AI' : `Pinned to ${organChoice.toUpperCase()}`}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {ORGAN_OPTIONS.map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                disabled={submitting}
+                onClick={() => setOrganChoice(opt.key)}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg text-[11px] font-mono transition-all flex items-center gap-1 border',
+                  organChoice === opt.key
+                    ? 'border-primary bg-primary/10 text-primary font-semibold'
+                    : 'border-border/50 bg-secondary/30 hover:bg-secondary text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <span>{opt.icon}</span>
+                <span>{opt.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Minimalist Drag-and-Drop Area for Scans & Documents */}
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -290,10 +380,10 @@ export function UploadForm() {
             }
           }}
           className={cn(
-            'relative rounded-2xl border-2 border-dashed transition-all p-6 sm:p-7 text-center',
+            'relative rounded-2xl border-2 border-dashed transition-all p-5 sm:p-6 text-center',
             dragOver
               ? 'border-primary bg-primary/5 scale-[1.005]'
-              : imageFile
+              : imageFile || pdfFile
                 ? 'border-border/80 bg-card/70'
                 : 'border-border/60 hover:border-border bg-card/30 hover:bg-card/60',
           )}
@@ -317,7 +407,7 @@ export function UploadForm() {
                   </span>
                 </div>
                 <p className="text-[11px] font-mono text-muted-foreground">
-                  {formatBytes(imageFile.size)} · Ready for multimodal inspection
+                  {formatBytes(imageFile.size)} · Visual lesion detection active
                 </p>
               </div>
               <button
@@ -330,8 +420,34 @@ export function UploadForm() {
                 <X className="w-4 h-4" />
               </button>
             </div>
+          ) : pdfFile ? (
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <div className="w-16 h-16 rounded-xl bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive shrink-0">
+                <FileText className="w-8 h-8" />
+              </div>
+              <div className="text-left space-y-1">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-primary shrink-0" />
+                  <span className="font-mono text-xs font-semibold text-foreground truncate max-w-xs sm:max-w-sm">
+                    {pdfFile.name}
+                  </span>
+                </div>
+                <p className="text-[11px] font-mono text-muted-foreground">
+                  {formatBytes(pdfFile.size)} · Clinical report document attached
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={clearPdf}
+                className="ml-auto p-1.5 rounded-full hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                title="Remove PDF"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           ) : (
-            <label className="cursor-pointer flex flex-col items-center justify-center gap-3">
+            <label className="cursor-pointer flex flex-col items-center justify-center gap-2.5">
               <input
                 type="file"
                 accept={ACCEPT_ATTR}
@@ -339,15 +455,15 @@ export function UploadForm() {
                 disabled={submitting}
                 onChange={(e) => handleFile(e.target.files?.[0])}
               />
-              <div className="w-11 h-11 rounded-2xl bg-secondary/80 flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">
+              <div className="w-10 h-10 rounded-2xl bg-secondary/80 flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">
                 <UploadCloud className="w-5 h-5" />
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium text-foreground">
-                  Upload axial scan slice (optional if providing symptoms)
+                  Upload scan slice or medical document (Optional if entering symptoms)
                 </p>
                 <p className="text-[11px] font-mono text-muted-foreground">
-                  MRI (.png, .jpg) · CT (.dcm, .nii) · Up to 50 MB
+                  Any anatomical scan (MRI, CT, X-Ray, WebP, PNG, JPG, DICOM) or Clinical PDF
                 </p>
               </div>
             </label>
@@ -360,7 +476,7 @@ export function UploadForm() {
             <div className="flex items-center gap-2">
               <Stethoscope className="w-4 h-4 text-primary" />
               <label htmlFor="symptoms-input" className="text-xs font-mono font-semibold text-foreground">
-                Patient Symptoms &amp; Clinical Narrative
+                Patient Symptoms &amp; Clinical Narrative (Accepts Any Symptoms)
               </label>
             </div>
             <div className="flex items-center gap-2">
@@ -375,14 +491,14 @@ export function UploadForm() {
                 </button>
               )}
               <span className="text-[10px] font-mono text-muted-foreground">
-                {notes.length > 0 ? `${notes.length} chars` : 'Multi-agent differential diagnosis & triage'}
+                {notes.length > 0 ? `${notes.length} chars` : 'Multi-specialty symptom triage'}
               </span>
             </div>
           </div>
 
-          {/* Quick Symptom Chips */}
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            <span className="text-[10px] font-mono text-muted-foreground self-center mr-1">Presets:</span>
+          {/* Quick Symptom Chips Across Specialties */}
+          <div className="flex flex-wrap gap-1.5 pt-0.5">
+            <span className="text-[10px] font-mono text-muted-foreground self-center mr-1">Quick Clinical Profiles:</span>
             {SYMPTOM_PRESETS.map((preset) => (
               <button
                 key={preset.id}
@@ -403,18 +519,24 @@ export function UploadForm() {
 
           <textarea
             id="symptoms-input"
-            rows={3}
+            rows={4}
             value={notes}
             disabled={submitting}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Enter patient symptoms, duration, clinical history, or vitals (e.g. '58yo male with 3-week progressive morning headache, new focal seizure, left arm numbness')..."
+            placeholder="Type or paste any clinical symptoms, patient presentation, duration, history, or physical findings here (e.g. 'Severe morning headache, vomiting, progressive weakness' or 'Painless jaundice, dark urine' or 'Hemoptysis, chronic cough, weight loss' or 'Routine screening')..."
             className="w-full px-3.5 py-2.5 rounded-xl border border-border/70 bg-card hover:bg-card focus:bg-card text-xs font-mono placeholder:text-muted-foreground/60 focus:outline-hidden focus:ring-1 focus:ring-primary/60 transition-all resize-y leading-relaxed"
           />
 
           {hasImage && hasSymptoms && (
-            <div className="flex items-center gap-2 text-[11px] font-mono text-primary pt-1">
+            <div className="flex items-center gap-2 text-[11px] font-mono text-primary pt-0.5">
               <Sparkles className="w-3.5 h-3.5 shrink-0" />
-              <span>Multimodal Mode Active: Visual lesion segmentation + clinical symptom concordance</span>
+              <span>Multimodal Mode Active: Visual lesion illumination + clinical symptoms differential concordance</span>
+            </div>
+          )}
+          {!hasImage && hasSymptoms && (
+            <div className="flex items-center gap-2 text-[11px] font-mono text-foreground/80 pt-0.5">
+              <Stethoscope className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span>Symptoms-Only Mode: Full multi-agent oncologic differential diagnosis &amp; recommended imaging orders</span>
             </div>
           )}
         </div>

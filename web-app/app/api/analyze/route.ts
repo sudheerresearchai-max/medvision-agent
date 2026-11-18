@@ -26,7 +26,18 @@ export const dynamic = 'force-dynamic';
 // Keep long enough for cold HF Space starts; capped by plan limits.
 export const maxDuration = 60;
 
-const ORGANS: ReadonlySet<string> = new Set(['brain', 'lung', 'pancreas']);
+const ORGANS: ReadonlySet<string> = new Set([
+  'brain',
+  'lung',
+  'pancreas',
+  'breast',
+  'liver',
+  'kidney',
+  'skin',
+  'colon',
+  'prostate',
+  'general',
+]);
 
 export async function POST(request: NextRequest) {
   try {

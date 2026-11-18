@@ -109,6 +109,13 @@ const ORGAN_SHAPE: Record<
   brain: { cx: 88, cy: 115, rx: 22, ry: 26, wobble: 2 },
   lung: { cx: 178, cy: 105, rx: 16, ry: 14, wobble: 3 },
   pancreas: { cx: 106, cy: 136, rx: 14, ry: 12, wobble: 2 },
+  breast: { cx: 140, cy: 120, rx: 18, ry: 18, wobble: 2 },
+  liver: { cx: 130, cy: 125, rx: 20, ry: 22, wobble: 3 },
+  kidney: { cx: 95, cy: 140, rx: 16, ry: 18, wobble: 2 },
+  skin: { cx: 128, cy: 128, rx: 15, ry: 15, wobble: 2 },
+  colon: { cx: 120, cy: 130, rx: 16, ry: 16, wobble: 2 },
+  prostate: { cx: 128, cy: 150, rx: 14, ry: 14, wobble: 2 },
+  general: { cx: 128, cy: 128, rx: 20, ry: 20, wobble: 2 },
 };
 
 export interface MockDetectionContext {

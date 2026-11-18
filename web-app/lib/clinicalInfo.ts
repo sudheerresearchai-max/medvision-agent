@@ -20,25 +20,39 @@ import { errorMessage, fetchWithTimeout } from './utils';
 // ---------------------------------------------------------------------------
 
 const ORGAN_RULES: Array<{ organ: Organ; pattern: RegExp }> = [
-  { organ: 'brain', pattern: /\b(brain|cerebr\w*|cranial|intracranial|glioma|meningioma|glioblastoma)\b/i },
-  { organ: 'lung', pattern: /\b(lung|pulmonar\w*|bronch\w*|chest\s+(?:ct|mri|x-?ray)?|thoracic|nodule[s]?\b)/i },
-  { organ: 'pancreas', pattern: /\bpancrea\w*\b/i },
+  { organ: 'brain', pattern: /\b(brain|cerebr\w*|cranial|intracranial|glioma|meningioma|glioblastoma|neuro\w*|temporal\s+lobe|frontal\s+lobe|parietal\s+lobe|occipital\s+lobe|cerebellum)\b/i },
+  { organ: 'lung', pattern: /\b(lung|pulmonar\w*|bronch\w*|chest\s+(?:ct|mri|x-?ray)?|thoracic|pleural|hemoptysis)\b/i },
+  { organ: 'pancreas', pattern: /\b(pancrea\w*|panc\b|ductal\s+adenocarcinoma|whipple)\b/i },
+  { organ: 'breast', pattern: /\b(breast|mammar\w*|mammogram|ductal|lobular|nipple|areola|axillary)\b/i },
+  { organ: 'liver', pattern: /\b(liver|hepat\w*|hcc|hepatic|portal\s+vein|cirrhosis)\b/i },
+  { organ: 'kidney', pattern: /\b(kidney|renal|rcc|nephr\w*|flank)\b/i },
+  { organ: 'skin', pattern: /\b(skin|derma\w*|melanoma|cutaneous|mole|epiderm\w*)\b/i },
+  { organ: 'colon', pattern: /\b(colon|colorectal|rectal|bowel|polyps?)\b/i },
+  { organ: 'prostate', pattern: /\b(prostate|psa|prostatic)\b/i },
 ];
 
 const MODALITY_RULES: Array<{ modality: Modality; pattern: RegExp }> = [
   { modality: 'MRI', pattern: /\b(mri|m\.r\.i|magnetic resonance|flair|t1[- ]?weighted|t2[- ]?weighted|dwi|diffusion[- ]weighted|mr\s+angiography)\b/i },
   { modality: 'CT', pattern: /\b(ct|c\.t|computed tomography|cat\s+scan|helical\s+ct|hounsfield)\b/i },
   { modality: 'PET', pattern: /\b(pet|pet-?ct|fdg)\b/i },
+  { modality: 'XRAY', pattern: /\b(x-?ray|radiograph|radiography|chest\s+x-?ray|plain\s+film|cxr)\b/i },
+  { modality: 'MAMMOGRAM', pattern: /\b(mammogram|mammography|tomosynthesis)\b/i },
+  { modality: 'ULTRASOUND', pattern: /\b(ultrasound|sonogram|sonography|echogram|usg)\b/i },
+  { modality: 'DERMOSCOPY', pattern: /\b(dermoscopy|dermatoscopy)\b/i },
 ];
 
 const SYMPTOMS: string[] = [
   'headache', 'seizure', 'convulsion', 'hemiparesis', 'weakness', 'numbness',
   'aphasia', 'speech difficulty', 'vision loss', 'blurred vision', 'dizziness',
-  'nausea', 'vomiting', 'memory loss', 'confusion',
+  'nausea', 'vomiting', 'memory loss', 'confusion', 'syncope', 'ataxia',
   'cough', 'hemoptysis', 'dyspnea', 'shortness of breath', 'chest pain',
   'wheezing', 'hoarseness', 'weight loss', 'night sweats', 'fatigue',
   'abdominal pain', 'back pain', 'jaundice', 'steatorrhea', 'pale stool',
   'dark urine', 'loss of appetite', 'early satiety', 'indigestion', 'dyspepsia',
+  'palpable mass', 'breast lump', 'nipple discharge', 'skin retraction',
+  'hematuria', 'blood in urine', 'flank pain', 'frequent urination',
+  'rectal bleeding', 'melena', 'change in bowel habits', 'constipation',
+  'pigmented lesion', 'enlarging mole', 'irregular border', 'pruritus',
 ];
 
 export const TARGET_NEOPLASM_FINDINGS: string[] = [

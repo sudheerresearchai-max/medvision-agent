@@ -39,6 +39,7 @@ import { extractTextFromPdf } from './pdfExtract';
 import { encodeRgbaPng } from './mockInference';
 import {
   isInferenceConfigured,
+  predictOrgan,
   runBrainModel,
   runLungModel,
   runPancreasModel,
@@ -265,27 +266,52 @@ export function detectOrganAndModality(
   // Priority 3/4: raw PDF text then filename hints.
   const hay = `${args.pdfText ?? ''} ${args.imageFileName ?? ''}`.toLowerCase();
   if (!organ) {
-    if (/\bbrain|flair|glioma|cranial\b/.test(hay)) { organ = 'brain'; source = 'document/filename hints'; }
-    else if (/\blung|pulmonar|chest ct|nodule|luna\b/.test(hay)) { organ = 'lung'; source = 'document/filename hints'; }
-    else if (/pancrea/.test(hay)) { organ = 'pancreas'; source = 'document/filename hints'; }
+    if (/\b(?:brain|flair|glioma|cranial|cerebr\w*)\b/.test(hay)) { organ = 'brain'; source = 'document/filename hints'; }
+    else if (/\b(?:lung|pulmonar|chest|thoracic|nodule|luna)\b/.test(hay)) { organ = 'lung'; source = 'document/filename hints'; }
+    else if (/\bpancrea\w*\b/.test(hay)) { organ = 'pancreas'; source = 'document/filename hints'; }
+    else if (/\b(?:breast|mammar\w*|mammogram)\b/.test(hay)) { organ = 'breast'; source = 'document/filename hints'; }
+    else if (/\b(?:liver|hepat\w*|hcc)\b/.test(hay)) { organ = 'liver'; source = 'document/filename hints'; }
+    else if (/\b(?:kidney|renal|rcc)\b/.test(hay)) { organ = 'kidney'; source = 'document/filename hints'; }
+    else if (/\b(?:skin|melanoma|derm\w*)\b/.test(hay)) { organ = 'skin'; source = 'document/filename hints'; }
+    else if (/\b(?:colon|colorectal|rectal)\b/.test(hay)) { organ = 'colon'; source = 'document/filename hints'; }
+    else if (/\bprostat\w*\b/.test(hay)) { organ = 'prostate'; source = 'document/filename hints'; }
+    else {
+      organ = 'general';
+      source = 'auto-detect (Gemini Multimodal Vision)';
+      assumptions.push('Organ not explicitly specified — automatically detecting anatomical region and modality via Gemini Vision.');
+    }
   }
 
   // Modality: explicit mentions first, then filename hints, then default.
   const nonPet = args.clinical.modalitiesMentioned.filter((m) => m !== 'PET' && m !== 'unknown');
-  // Explicit annotation is required: filtering out 'PET'/'unknown' narrows the
-  // array element type to 'MRI'|'CT', so the nullish-fallback would infer
-  // 'MRI'|'CT' rather than Modality — breaking the 'unknown' comparisons below.
   let modality: Modality = (nonPet[0] as Modality | undefined) ?? 'unknown';
   if (modality === 'unknown') {
     if (/\bmri|flair|t1|t2|magnetic resonance\b/.test(hay)) modality = 'MRI';
     else if (/\bct|computed tomography|hounsfield\b/.test(hay)) modality = 'CT';
+    else if (/\bx-?ray|cxr|radiograph\b/.test(hay)) modality = 'XRAY';
+    else if (/\bmammogra\w*\b/.test(hay)) modality = 'MAMMOGRAM';
+    else if (/\bultrasound|sonogra\w*\b/.test(hay)) modality = 'ULTRASOUND';
+    else if (/\bdermos\w*\b/.test(hay)) modality = 'DERMOSCOPY';
   }
 
   // Organ-default modality assumptions (flagged, never silent).
-  const DEFAULT_MODALITY: Record<Organ, Modality> = { brain: 'MRI', lung: 'CT', pancreas: 'CT' };
+  const DEFAULT_MODALITY: Record<Organ, Modality> = {
+    brain: 'MRI',
+    lung: 'CT',
+    pancreas: 'CT',
+    breast: 'MAMMOGRAM',
+    liver: 'CT',
+    kidney: 'CT',
+    skin: 'DERMOSCOPY',
+    colon: 'CT',
+    prostate: 'MRI',
+    general: 'unknown',
+  };
   if (organ && modality === 'unknown') {
     modality = DEFAULT_MODALITY[organ];
-    assumptions.push(`Modality not stated — assumed ${modality} for ${organ} routing.`);
+    if (modality !== 'unknown') {
+      assumptions.push(`Modality not stated — assumed ${modality} for ${organ} routing.`);
+    }
   }
 
   // Known mismatches get a loud assumption rather than a refusal.
@@ -314,27 +340,12 @@ export function routeToModel(
 ): RouteDecision {
   trace.start('routeToModel', 'Route to model');
 
-  if (!detection.organ) {
-    const decision: RouteDecision = {
-      modelKey: null,
-      modality: detection.modality,
-      matched: false,
-      reason: 'No organ could be inferred. Manual selection required.',
-      assumptions: detection.assumptions,
-      requiresManualSelection: true,
-    };
-    trace.finish('routeToModel', 'error', decision.reason);
-    throw new AgentFailure(
-      `${decision.reason} Pick Brain, Lung, or Pancreas on the upload form.`,
-      trace.steps,
-    );
-  }
-
+  const organKey = detection.organ ?? 'general';
   const decision: RouteDecision = {
-    modelKey: detection.organ,
+    modelKey: organKey,
     modality: detection.modality,
-    matched: detection.modality !== 'unknown',
-    reason: `${detection.organ} + ${detection.modality} → ${detection.organ}_unet.onnx`,
+    matched: true,
+    reason: `${organKey} + ${detection.modality} → ${organKey === 'general' ? 'gemini_multimodal_vision' : `${organKey}_unet.onnx`}`,
     assumptions: detection.assumptions,
     requiresManualSelection: false,
   };
@@ -360,10 +371,12 @@ async function dispatchModel(
         ? await runBrainModel(args)
         : organ === 'lung'
           ? await runLungModel(args)
-          : await runPancreasModel(args);
+          : organ === 'pancreas'
+            ? await runPancreasModel(args)
+            : await predictOrgan({ organ, ...args });
 
     const extra: string[] = [];
-    if (!isInferenceConfigured()) {
+    if (!isInferenceConfigured() && result.engine !== 'gemini-vision') {
       extra.push('Inference ran in local MOCK mode with zero false positive verification.');
     }
     const isNeg = result.metrics.areaPx === 0;
