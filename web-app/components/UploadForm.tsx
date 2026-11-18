@@ -288,42 +288,45 @@ export function UploadForm() {
 
         {/* Textarea for symptoms, presentation, notes */}
         <textarea
-          rows={3}
+          rows={4}
           value={notes}
           disabled={submitting}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="Describe patient symptoms, clinical history, or drop a medical scan here..."
-          className="w-full bg-transparent text-sm placeholder:text-muted-foreground/70 focus:outline-none resize-none leading-relaxed"
+          placeholder="Describe patient symptoms, clinical history, or drag and drop a medical scan here..."
+          className="w-full bg-transparent text-sm placeholder:text-muted-foreground/60 focus:outline-none min-h-[90px] sm:min-h-[110px] leading-relaxed resize-y"
         />
 
         {/* Bottom Toolbar inside the Composer */}
-        <div className="flex items-center justify-between pt-3 mt-2 border-t border-border/40">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 pt-3 mt-1 border-t border-border/40">
+          <div className="flex flex-wrap items-center gap-2">
             {/* Attach Scan / Document Button */}
             <button
               type="button"
               disabled={submitting}
               onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors border border-border/50 hover:border-border select-none"
               title="Attach scan or PDF"
             >
-              <Paperclip className="w-3.5 h-3.5" />
+              <Paperclip className="w-3.5 h-3.5 text-primary" />
               <span>Attach scan</span>
             </button>
 
             {/* Organ Target Selector */}
-            <select
-              value={organChoice}
-              disabled={submitting}
-              onChange={(e) => setOrganChoice(e.target.value as OrganChoice)}
-              className="bg-secondary/60 hover:bg-secondary text-xs text-muted-foreground hover:text-foreground rounded-lg px-2.5 py-1 border border-border/60 focus:outline-none cursor-pointer transition-colors"
-            >
-              {ORGAN_OPTIONS.map((opt) => (
-                <option key={opt.key} value={opt.key} className="bg-card text-foreground">
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="text-[11px] hidden sm:inline text-muted-foreground/80">Target:</span>
+              <select
+                value={organChoice}
+                disabled={submitting}
+                onChange={(e) => setOrganChoice(e.target.value as OrganChoice)}
+                className="bg-secondary/70 hover:bg-secondary text-xs text-foreground/90 rounded-lg px-2.5 py-1.5 border border-border/60 focus:outline-none cursor-pointer transition-colors font-mono"
+              >
+                {ORGAN_OPTIONS.map((opt) => (
+                  <option key={opt.key} value={opt.key} className="bg-card text-foreground">
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Submit Button (Claude Round Terracotta Arrow) */}
@@ -331,7 +334,7 @@ export function UploadForm() {
             type="submit"
             disabled={!canSubmit || submitting}
             className={cn(
-              'w-8 h-8 rounded-full flex items-center justify-center transition-all duration-150',
+              'w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all duration-150',
               canSubmit && !submitting
                 ? 'bg-primary text-primary-foreground hover:opacity-90 shadow-sm cursor-pointer'
                 : 'bg-secondary text-muted-foreground/40 cursor-not-allowed',
@@ -363,47 +366,45 @@ export function UploadForm() {
 
       {/* Claude Style Sample Suggestions */}
       {!submitting && (
-        <div className="space-y-2 pt-2">
-          <span className="text-[11px] font-mono text-muted-foreground/80 block">
-            Or try an evaluation study:
+        <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+          <span className="text-[11px] font-mono text-muted-foreground/80 mr-1 select-none">
+            Preloaded cases:
           </span>
-          <div className="flex flex-wrap gap-2 text-xs font-mono">
-            <button
-              type="button"
-              onClick={() => loadSampleCase(positiveSample)}
-              className={cn(
-                'claude-pill px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5',
-                activeSampleId === positiveSample.id && 'border-primary text-foreground bg-secondary',
-              )}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-              <span>Glioblastoma MRI (Frontal)</span>
-            </button>
+          <button
+            type="button"
+            onClick={() => loadSampleCase(positiveSample)}
+            className={cn(
+              'claude-pill px-3 py-1 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 font-mono select-none',
+              activeSampleId === positiveSample.id && 'border-primary text-foreground bg-secondary',
+            )}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+            <span>Glioblastoma MRI</span>
+          </button>
 
-            <button
-              type="button"
-              onClick={() => loadSampleCase(lungSample)}
-              className={cn(
-                'claude-pill px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5',
-                activeSampleId === lungSample.id && 'border-primary text-foreground bg-secondary',
-              )}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-              <span>Lung Nodule CT (NSCLC)</span>
-            </button>
+          <button
+            type="button"
+            onClick={() => loadSampleCase(lungSample)}
+            className={cn(
+              'claude-pill px-3 py-1 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 font-mono select-none',
+              activeSampleId === lungSample.id && 'border-primary text-foreground bg-secondary',
+            )}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+            <span>Lung Nodule CT</span>
+          </button>
 
-            <button
-              type="button"
-              onClick={() => loadSampleCase(normalSample)}
-              className={cn(
-                'claude-pill px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5',
-                activeSampleId === normalSample.id && 'border-primary text-foreground bg-secondary',
-              )}
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>Normal Cranial MRI (Control)</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => loadSampleCase(normalSample)}
+            className={cn(
+              'claude-pill px-3 py-1 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 font-mono select-none',
+              activeSampleId === normalSample.id && 'border-primary text-foreground bg-secondary',
+            )}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+            <span>Normal Control</span>
+          </button>
         </div>
       )}
     </div>
