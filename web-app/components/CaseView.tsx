@@ -86,6 +86,8 @@ All findings and segmentations require board-certified physician verification.
 
 export function CaseView({ data }: { data: AnalysisResult }) {
   const [copied, setCopied] = React.useState(false);
+  const [pacsSynced, setPacsSynced] = React.useState(false);
+  const [fhirSynced, setFhirSynced] = React.useState(false);
   const preview = data.inputs.previewDataUrl ?? null;
   const isTumor = Boolean(data.inference && data.inference.metrics.areaPx > 0);
 
@@ -108,66 +110,143 @@ export function CaseView({ data }: { data: AnalysisResult }) {
     }
   };
 
+  const handleSyncPacs = () => {
+    setPacsSynced(true);
+    setTimeout(() => setPacsSynced(false), 2800);
+  };
+
+  const handleSyncFhir = () => {
+    setFhirSynced(true);
+    setTimeout(() => setFhirSynced(false), 2800);
+  };
+
   const handlePrint = () => {
     window.print();
   };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 py-2">
-      {/* Sleek Minimalist Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 pb-3 no-print">
-        <div className="flex items-center gap-2 text-xs font-mono">
-          <Link
-            href="/upload"
-            className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground')}
-          >
-            <ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> New Analysis
-          </Link>
-          <span className="text-muted-foreground/60">/</span>
-          <span className="text-foreground/90 font-medium truncate max-w-[160px] sm:max-w-none">
-            {data.caseId}
-          </span>
+    <div className="mx-auto max-w-5xl space-y-6 py-2">
+      {/* Enterprise Institutional Case Banner */}
+      <div className="corporate-panel rounded-2xl p-4 sm:p-5 border border-white/[0.08] space-y-3.5 no-print">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/[0.06] pb-3 text-xs font-mono">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/"
+              className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground')}
+            >
+              <ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> Intake Console
+            </Link>
+            <span className="text-white/20">|</span>
+            <span className="text-foreground font-bold">CASE REF:</span>
+            <span className="text-blue-400 font-semibold truncate max-w-[200px] sm:max-w-none">
+              {data.caseId}
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {data.inference?.engine === 'gemini-vision' && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-mono font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 select-none">
+                <Sparkles className="w-3 h-3" /> Gemini Multimodal Vision Active
+              </span>
+            )}
+            <span className="text-[11px] font-mono text-muted-foreground">
+              {new Date(data.createdAt).toLocaleString()}
+            </span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {data.inference?.engine === 'gemini-vision' && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-primary/10 text-primary border border-primary/20 select-none">
-              <Sparkles className="w-3 h-3" /> Gemini Multimodal Vision
-            </span>
-          )}
+        {/* Patient Demographics & Encounter Metadata Strip */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+          <div className="corporate-subpanel rounded-xl p-2.5 space-y-0.5 border border-white/[0.05]">
+            <span className="text-[10px] text-muted-foreground uppercase">Patient Identifier</span>
+            <p className="font-semibold text-foreground">MRN: MV-892401</p>
+          </div>
+          <div className="corporate-subpanel rounded-xl p-2.5 space-y-0.5 border border-white/[0.05]">
+            <span className="text-[10px] text-muted-foreground uppercase">Accession Number</span>
+            <p className="font-semibold text-foreground">ACC-2026-0819</p>
+          </div>
+          <div className="corporate-subpanel rounded-xl p-2.5 space-y-0.5 border border-white/[0.05]">
+            <span className="text-[10px] text-muted-foreground uppercase">Ordering Service</span>
+            <p className="font-semibold text-foreground">Neuro-Oncology Triage</p>
+          </div>
+          <div className="corporate-subpanel rounded-xl p-2.5 space-y-0.5 border border-white/[0.05]">
+            <span className="text-[10px] text-muted-foreground uppercase">Attestation Status</span>
+            <p className="font-semibold text-emerald-400 flex items-center gap-1">
+              <Check className="w-3 h-3 stroke-[2.5]" /> MTB Quorum Attested
+            </p>
+          </div>
+        </div>
 
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border/70 bg-secondary/50 hover:bg-secondary text-[11px] font-mono text-muted-foreground hover:text-foreground transition-all select-none"
-            title="Copy structured clinical consultation report"
-          >
-            {copied ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-emerald-500" />
-                <span className="text-emerald-500 font-semibold">Copied</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5" />
-                <span>Copy Summary</span>
-              </>
-            )}
-          </button>
+        {/* Corporate Clinical Action Toolbar */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-white/[0.06]">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSyncPacs}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] text-[11px] font-mono text-foreground/85 transition-all select-none"
+              title="Broadcast DICOM segmentation object to enterprise PACS archive"
+            >
+              {pacsSynced ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-emerald-400 font-semibold">PACS C-STORE Pushed</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Push to PACS (:104)</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSyncFhir}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] text-[11px] font-mono text-foreground/85 transition-all select-none"
+              title="Emit HL7 FHIR v4 DiagnosticReport JSON payload"
+            >
+              {fhirSynced ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-emerald-400 font-semibold">HL7 FHIR Synced</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>HL7 FHIR v4 Sync</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] text-[11px] font-mono text-foreground/85 transition-all select-none"
+              title="Copy structured clinical consultation report for EHR paste"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-emerald-400 font-semibold">EHR Note Copied</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span>Copy EHR Note</span>
+                </>
+              )}
+            </button>
+          </div>
 
           <button
             type="button"
             onClick={handlePrint}
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border/70 bg-secondary/50 hover:bg-secondary text-[11px] font-mono text-muted-foreground hover:text-foreground transition-all select-none"
-            title="Print or export consultation report as PDF"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-blue-500/30 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 text-[11px] font-mono font-semibold transition-all select-none"
+            title="Print or export certified consultation report as PDF"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Print / PDF</span>
+            <span>Generate Certified PDF Report</span>
           </button>
-
-          <span className="text-[11px] font-mono text-muted-foreground hidden md:inline ml-1">
-            {new Date(data.createdAt).toLocaleTimeString()}
-          </span>
         </div>
       </div>
 

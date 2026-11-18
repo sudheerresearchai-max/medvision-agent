@@ -131,6 +131,29 @@
     background-size: 200% 100%;
     animation: anthropicShimmer 2.2s infinite linear;
   }
+  /* Corporate Enterprise Design Utilities */
+  .corporate-panel {
+    background: rgba(14, 17, 23, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+  }
+
+  .corporate-subpanel {
+    background: rgba(20, 24, 33, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .corporate-header {
+    background: linear-gradient(180deg, rgba(20, 24, 33, 0.95) 0%, rgba(14, 17, 23, 0.95) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .corporate-border {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
   /* Blinking stream cursor */
   .stream-cursor::after {
     content: "▋";
