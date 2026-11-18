@@ -166,5 +166,4 @@ export function TumorVerdictCard({ data }: TumorVerdictCardProps) {
       </div>
     </div>
   );
-  );
 }
