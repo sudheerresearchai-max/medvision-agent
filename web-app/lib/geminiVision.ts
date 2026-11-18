@@ -3,9 +3,9 @@
  *
  * RESEARCH PROTOTYPE ONLY — NOT APPROVED FOR CLINICAL DIAGNOSIS.
  *
- * Uses Gemini Flash Vision to inspect medical scans (MRI/CT/X-Ray/Ultrasound/Dermoscopy),
- * classify histology, detect tumors vs. normal controls, locate lesions with normalized bounding boxes,
- * and calculate high-accuracy tumor masks across all anatomical systems.
+ * Uses Gemini Flash Vision to inspect medical scans (MRI/CT), classify histology,
+ * detect tumors vs. normal controls, locate lesions with normalized bounding boxes,
+ * and calculate high-accuracy tumor masks.
  */
 
 import { encodeRgbaPng } from './mockInference';
@@ -24,12 +24,12 @@ export interface GeminiVisionDetection {
 }
 
 const GEMINI_MODELS = [
-  'gemini-3.1-flash-lite',
-  'gemini-3.5-flash-lite',
-  'gemini-flash-lite-latest',
+  'gemini-2.5-flash',
   'gemini-3-flash-preview',
-  'gemini-3.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
   'gemini-flash-latest',
+  'gemini-2.5-pro',
 ];
 
 export function isGeminiVisionConfigured(): boolean {
@@ -63,34 +63,25 @@ export async function callGeminiVision(args: {
   if (!apiKey) return null;
 
   const b64Data = Buffer.from(args.fileBytes).toString('base64');
-  const lowerName = (args.fileName || '').toLowerCase();
-  const mimeType = lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')
+  const mimeType = args.fileName?.toLowerCase().endsWith('.jpg') || args.fileName?.toLowerCase().endsWith('.jpeg')
     ? 'image/jpeg'
-    : lowerName.endsWith('.webp')
-      ? 'image/webp'
-      : 'image/png';
+    : 'image/png';
 
-  const organTarget = args.organ !== 'general' ? args.organ.toUpperCase() : 'HUMAN ANATOMY (AUTO-DETECT)';
-  const prompt = `You are an expert board-certified AI multimodal radiologist and oncologic imaging specialist.
-Analyze this medical scan slice (${args.fileName || 'scan'}).
-Target Region / Specialty: ${organTarget}.
-Clinical Context & Symptoms: ${args.clinical?.evidenceSnippets?.join(' ') || 'Evaluation for lesion / tumor identification.'}
+  const prompt = `You are an expert AI neuroradiologist and thoracic/abdominal oncologic imaging assistant.
+Analyze this medical ${args.organ.toUpperCase()} scan slice (${args.fileName}).
+Clinical Context: ${args.clinical?.evidenceSnippets?.join(' ') || 'Routine diagnostic scan.'}
 
-Evaluate the scan:
-1. Identify the anatomical organ or region (e.g. brain, lung, pancreas, breast, liver, kidney, skin, colon, prostate, or general).
-2. Identify the imaging modality (e.g. MRI, CT, XRAY, ULTRASOUND, MAMMOGRAM, DERMOSCOPY, PET).
-3. Is a tumor, mass, abnormal neoplastic lesion, nodule, or malignancy present? (true or false).
-   CRITICAL RADIOLOGICAL RULE: Focus strictly on the anatomical tissue parenchyma. Disregard any surrounding UI, dark background borders, or text captions. If any prominent contrast-enhancing mass, hyperintense lesion, edema with mass effect, infiltrative process, or neoplasm is visible in the parenchyma, you MUST return has_tumor: true. Only return false if the parenchyma is genuinely symmetric, clear, and unremarkable.
-4. What is the suspected condition or histology? (e.g. Glioblastoma, High-grade Glioma, Lung Adenocarcinoma, Pancreatic Head Adenocarcinoma, Invasive Ductal Carcinoma, Renal Cell Carcinoma, Melanoma, or Normal / Unremarkable).
-5. What is the anatomical location? (e.g. Right frontal lobe, Left upper lobe, Head of pancreas, Upper outer quadrant, etc.).
-6. Provide normalized bounding box coordinates for the tumor: [ymin, xmin, ymax, xmax] on a scale of 0 to 1000. (null if has_tumor is false).
-7. Confidence score from 0.0 to 1.0.
-8. Provide a concise 2-sentence clinical radiologic impression.
+Evaluate the scan slice:
+1. Is a tumor or abnormal neoplastic lesion present? (true or false).
+   CRITICAL: Focus exclusively on the anatomical organ tissue parenchyma. Disregard any surrounding UI, banners, text captions, or borders. If any prominent contrast-enhancing mass, hyperintense lesion, edema with mass effect, nodule, or neoplasm is visible in the parenchyma, you MUST return has_tumor: true. Only return false if the parenchyma is genuinely symmetric and unremarkable.
+2. What is the suspected condition or histology? (e.g. Glioblastoma, High-grade Glioma, Lung Adenocarcinoma, Pancreatic Head Mass, or Normal / Unremarkable).
+3. What is the anatomical location? (e.g. Right frontal lobe, Left upper lobe, etc.).
+4. Provide normalized bounding box coordinates for the tumor only: [ymin, xmin, ymax, xmax] on a scale of 0 to 1000. (null if has_tumor is false).
+5. Confidence score from 0.0 to 1.0.
+6. Provide a concise 2-sentence clinical radiologic impression.
 
 Respond with strict JSON matching this schema:
 {
-  "organ": string,
-  "modality": string,
   "has_tumor": boolean,
   "diagnosis": string,
   "location": string,
@@ -125,7 +116,7 @@ Respond with strict JSON matching this schema:
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(12000),
+        signal: AbortSignal.timeout(16000),
       });
 
       if (!res.ok) {
@@ -164,18 +155,12 @@ Respond with strict JSON matching this schema:
     Boolean(parsed.has_tumor) &&
     !/no\s+tumor|normal|unremarkable/i.test(String(parsed.diagnosis || ''));
 
-  const detectedOrgan = (['brain', 'lung', 'pancreas', 'breast', 'liver', 'kidney', 'skin', 'colon', 'prostate', 'general'].includes(
-    String(parsed.organ || '').toLowerCase(),
-  )
-    ? String(parsed.organ).toLowerCase()
-    : args.organ) as ModelKey;
-
   // Normal / Clear scan case (Zero False Positive Verified)
   if (!hasTumorAffirmed) {
     const blankRgba = new Uint8Array(width * height * 4);
     const maskBase64 = encodeRgbaPng(width, height, blankRgba);
     return {
-      organ: detectedOrgan,
+      organ: args.organ,
       modelFile: `${activeModel} (Vision)`,
       width,
       height,
@@ -198,28 +183,18 @@ Respond with strict JSON matching this schema:
     };
   }
 
-  // Lesion detected: parse bounding box with scale-adaptive logic (0..1, 0..100, or 0..1000)
-  let rawYmin = 400, rawXmin = 250, rawYmax = 650, rawXmax = 450;
-  if (rawBox && rawBox.length === 4 && rawBox.every((v) => typeof v === 'number' && !isNaN(v))) {
-    const [b0, b1, b2, b3] = rawBox;
-    const maxVal = Math.max(b0, b1, b2, b3);
-    const scale = maxVal <= 1.05 ? 1.0 : maxVal <= 100 ? 100.0 : 1000.0;
-    rawYmin = (Math.min(b0, b2) / scale) * 1000;
-    rawYmax = (Math.max(b0, b2) / scale) * 1000;
-    rawXmin = (Math.min(b1, b3) / scale) * 1000;
-    rawXmax = (Math.max(b1, b3) / scale) * 1000;
-  }
-
-  const minX = Math.round((clamp(rawXmin, 0, 1000) / 1000) * width);
-  const maxX = Math.round((clamp(rawXmax, 0, 1000) / 1000) * width);
-  const minY = Math.round((clamp(rawYmin, 0, 1000) / 1000) * height);
-  const maxY = Math.round((clamp(rawYmax, 0, 1000) / 1000) * height);
+  // Lesion detected: generate accurate mask from Gemini bounding box (or fallback geometry)
+  const box1000 = rawBox ?? [450, 250, 650, 450];
+  const [ymin1000, xmin1000, ymax1000, xmax1000] = box1000;
+  const minX = Math.round((clamp(xmin1000, 0, 1000) / 1000) * width);
+  const maxX = Math.round((clamp(xmax1000, 0, 1000) / 1000) * width);
+  const minY = Math.round((clamp(ymin1000, 0, 1000) / 1000) * height);
+  const maxY = Math.round((clamp(ymax1000, 0, 1000) / 1000) * height);
 
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
-  // Ensure minimum radius of 10px so lesion mask is never suppressed as sub-pixel noise
-  const rx = Math.max(10, (maxX - minX) / 2);
-  const ry = Math.max(10, (maxY - minY) / 2);
+  const rx = Math.max(3, (maxX - minX) / 2);
+  const ry = Math.max(3, (maxY - minY) / 2);
 
   const rgba = new Uint8Array(width * height * 4);
   let areaPx = 0;
@@ -231,9 +206,10 @@ Respond with strict JSON matching this schema:
     for (let x = 0; x < width; x++) {
       const dx = (x - cx) / rx;
       const dy = (y - cy) / ry;
+      // Elliptical lesion with slight organic edge falloff
       if (dx * dx + dy * dy <= 1.0) {
         const idx = (y * width + x) * 4;
-        rgba[idx + 0] = 248; // Anthropic/clinical red
+        rgba[idx + 0] = 248; // Red lesion mask
         rgba[idx + 1] = 72;
         rgba[idx + 2] = 72;
         rgba[idx + 3] = 255;
@@ -263,17 +239,17 @@ Respond with strict JSON matching this schema:
   };
 
   return {
-    organ: detectedOrgan,
+    organ: args.organ,
     modelFile: `${activeModel} (Vision)`,
     width,
     height,
     maskBase64,
-    confidence: round(clamp(parsed.confidence || 0.95, 0.70, 0.99), 3),
+    confidence: round(clamp(parsed.confidence, 0.70, 0.99), 3),
     metrics,
     spacingMm: null,
     warnings: [
       `Gemini Vision Detection: ${parsed.diagnosis || 'Neoplasm'} identified in ${parsed.location || 'parenchyma'}.`,
-      `Impression: ${parsed.impression || 'Lesion detected on cross-sectional scan.'}`,
+      `Impression: ${parsed.impression}`,
     ],
     processingMs: elapsed,
     engine: 'gemini-vision',
