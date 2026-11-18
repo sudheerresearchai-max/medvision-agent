@@ -16,46 +16,46 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className="dark" style={{ colorScheme: 'dark' }}>
       <body className="flex min-h-screen flex-col font-sans bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary">
-        {/* Anthropic Minimalist Top Navigation */}
-        <header className="sticky top-0 z-40 border-b border-border/80 bg-background/85 backdrop-blur-md">
+        {/* Apple HIG Frosted Minimalist Navigation Bar */}
+        <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-background/80 backdrop-blur-2xl supports-[backdrop-filter]:bg-background/60">
           <div className="container flex h-14 items-center justify-between px-4 sm:px-6">
-            <Link href="/" className="group flex items-center gap-2.5 transition-opacity hover:opacity-90">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/25 transition-transform group-hover:scale-105">
+            <Link href="/" className="group flex items-center gap-2.5 transition-all duration-200 hover:opacity-90">
+              <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20 shadow-xs transition-transform duration-200 group-hover:scale-105">
                 <Brain className="h-4 w-4" />
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold tracking-tight text-foreground">
-                  MedVision <span className="font-normal text-muted-foreground">AI</span>
+                  MedVision <span className="font-normal text-muted-foreground/80">AI</span>
                 </span>
-                <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-mono font-medium text-primary border border-primary/20">
-                  <span className="w-1 h-1 rounded-full bg-primary" />
+                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] px-2.5 py-0.5 text-[10px] font-mono text-muted-foreground border border-white/[0.08]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   5 Autonomous Agents
                 </span>
               </div>
             </Link>
 
-            <nav className="flex items-center gap-1.5 sm:gap-2 text-xs font-mono">
+            <nav className="flex items-center gap-1 sm:gap-1.5 text-xs font-mono">
               <Link
                 href="/"
-                className="rounded-full px-3 py-1.5 font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-secondary/60"
+                className="rounded-full px-3 py-1.5 font-medium text-muted-foreground transition-all duration-150 hover:text-foreground hover:bg-white/[0.06]"
               >
                 Overview
               </Link>
               <Link
                 href="/upload"
-                className="rounded-full bg-primary px-3.5 py-1.5 font-medium text-primary-foreground transition-all hover:bg-primary/90 shadow-2xs"
+                className="rounded-full bg-primary px-3.5 py-1.5 font-medium text-primary-foreground shadow-sm transition-all duration-150 hover:bg-primary/90 hover:shadow-md"
               >
                 Upload &amp; Analyze
               </Link>
               <Link
                 href="/cases"
-                className="rounded-full px-3 py-1.5 font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-secondary/60 hidden sm:inline-flex"
+                className="rounded-full px-3 py-1.5 font-medium text-muted-foreground transition-all duration-150 hover:text-foreground hover:bg-white/[0.06] hidden sm:inline-flex"
               >
                 Archive
               </Link>
               <Link
                 href="/docs"
-                className="rounded-full px-3 py-1.5 font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-secondary/60 hidden md:inline-flex"
+                className="rounded-full px-3 py-1.5 font-medium text-muted-foreground transition-all duration-150 hover:text-foreground hover:bg-white/[0.06] hidden md:inline-flex"
               >
                 Protocols
               </Link>

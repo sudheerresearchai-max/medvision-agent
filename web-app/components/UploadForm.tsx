@@ -10,9 +10,9 @@ import {
   ArrowRight,
   Sparkles,
   Stethoscope,
-  Eye,
   Sliders,
-  CheckCircle,
+  Clock,
+  CheckCircle2,
 } from 'lucide-react';
 import type { Organ } from '@/lib/types';
 import { IMAGE_MAX_BYTES, PDF_MAX_BYTES, SUPPORTED_IMAGE_EXTENSIONS } from '@/lib/types';
@@ -28,14 +28,20 @@ const ACCEPT_ATTR =
   '.png,.jpg,.jpeg,.webp,.dcm,.nii,.gz,.pdf,image/png,image/jpeg,image/webp,application/dicom,application/pdf';
 
 const ORGAN_OPTIONS: Array<{ key: OrganChoice; label: string; icon: string }> = [
-  { key: 'auto', label: 'Auto-Detect (AI)', icon: '✨' },
+  { key: 'auto', label: 'Auto (AI)', icon: '✨' },
   { key: 'brain', label: 'Brain', icon: '🧠' },
   { key: 'lung', label: 'Lung', icon: '🫁' },
   { key: 'pancreas', label: 'Pancreas', icon: '🩸' },
   { key: 'breast', label: 'Breast', icon: '🎀' },
-  { key: 'kidney', label: 'Kidney / Renal', icon: '🔬' },
-  { key: 'skin', label: 'Skin / Derm', icon: '☀️' },
-  { key: 'general', label: 'General / Other', icon: '🩺' },
+  { key: 'kidney', label: 'Kidney', icon: '🔬' },
+  { key: 'skin', label: 'Skin', icon: '☀️' },
+  { key: 'general', label: 'General', icon: '🩺' },
+];
+
+const ONSET_DURATIONS = [
+  { label: 'Acute (< 24h)', prefix: '[Onset: Acute <24 hours] ' },
+  { label: 'Subacute (1-4 wks)', prefix: '[Onset: Subacute 1-4 weeks] ' },
+  { label: 'Chronic (> 1 mo)', prefix: '[Onset: Chronic >1 month] ' },
 ];
 
 const SYMPTOM_PRESETS = [
@@ -90,7 +96,7 @@ const SYMPTOM_PRESETS = [
   {
     id: 'routine',
     icon: '🟢',
-    label: 'Routine Control',
+    label: 'Routine Baseline',
     summary: 'Mild tension headache',
     text: '42-year-old female with mild intermittent band-like tension headache responsive to acetaminophen. Neurological examination completely unremarkable; routine baseline screening.',
     organ: 'brain' as Organ,
@@ -115,7 +121,7 @@ async function makePreview(file: File): Promise<string | null> {
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
     ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL('image/jpeg', 0.82);
+    return canvas.toDataURL('image/jpeg', 0.85);
   } catch {
     return null;
   }
@@ -128,13 +134,13 @@ async function dataUrlToFile(dataUrl: string, fileName: string): Promise<File> {
 }
 
 const THINKING_STAGES = [
-  'Searching the web...',
-  'Inspecting scan with Gemini Vision...',
-  'Delineating neoplastic boundary contours...',
-  'Searching clinical databases for guidelines & precautions...',
-  'Cross-examining multi-agent clinical consensus...',
-  'Synthesizing diagnostic verdict & side effects...',
-  'Thinking...',
+  'Searching medical literature & NCCN oncology guidelines...',
+  'Inspecting cross-sectional scan slice with Gemini Vision...',
+  'Delineating neoplastic boundary contours & target margins...',
+  'Verifying zero-false-positive parenchymal baseline...',
+  'Computing RECIST 1.1 dimensions & tumor burden volume...',
+  'Synthesizing 5-agent clinical consensus & differential diagnoses...',
+  'Compiling consultation report...',
 ];
 
 export function UploadForm() {
@@ -152,7 +158,7 @@ export function UploadForm() {
   const [stageIndex, setStageIndex] = React.useState(0);
   const [thinkingStartMs, setThinkingStartMs] = React.useState<number | null>(null);
 
-  // Animate thinking stages when submitting
+  // Animate thinking stages during submission
   React.useEffect(() => {
     if (!submitting) return;
     setThinkingStartMs(Date.now());
@@ -215,6 +221,11 @@ export function UploadForm() {
 
   const clearPdf = () => {
     setPdfFile(null);
+  };
+
+  const handleAddOnset = (prefix: string) => {
+    if (notes.includes(prefix)) return;
+    setNotes((prev) => prefix + prev);
   };
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -289,7 +300,7 @@ export function UploadForm() {
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">
-      {/* Quick-Load Minimal Pills (Scan Presets) */}
+      {/* Apple-style preloaded cases pill container */}
       <div className="flex flex-wrap items-center justify-center gap-2 text-xs">
         <span className="text-muted-foreground text-[11px] font-mono mr-1">Preloaded Scans:</span>
         <button
@@ -297,54 +308,58 @@ export function UploadForm() {
           disabled={submitting}
           onClick={() => loadSampleCase(positiveSample)}
           className={cn(
-            'px-3 py-1 rounded-full border text-[11px] font-mono transition-all',
+            'px-3.5 py-1.5 rounded-full text-[11px] font-mono transition-all duration-200 flex items-center gap-1.5',
             activeSampleId === positiveSample.id
-              ? 'border-primary bg-primary/10 text-primary font-semibold'
-              : 'border-border/70 hover:border-border bg-card/60 hover:bg-card text-foreground/80',
+              ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
+              : 'apple-pill text-foreground/80 hover:text-foreground',
           )}
         >
-          🔴 Glioblastoma MRI (Positive)
+          <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+          <span>Glioblastoma MRI</span>
         </button>
         <button
           type="button"
           disabled={submitting}
           onClick={() => loadSampleCase(lungSample)}
           className={cn(
-            'px-3 py-1 rounded-full border text-[11px] font-mono transition-all',
+            'px-3.5 py-1.5 rounded-full text-[11px] font-mono transition-all duration-200 flex items-center gap-1.5',
             activeSampleId === lungSample.id
-              ? 'border-primary bg-primary/10 text-primary font-semibold'
-              : 'border-border/70 hover:border-border bg-card/60 hover:bg-card text-foreground/80',
+              ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
+              : 'apple-pill text-foreground/80 hover:text-foreground',
           )}
         >
-          🟠 Lung Nodule CT (Positive)
+          <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+          <span>Lung Nodule CT</span>
         </button>
         <button
           type="button"
           disabled={submitting}
           onClick={() => loadSampleCase(normalSample)}
           className={cn(
-            'px-3 py-1 rounded-full border text-[11px] font-mono transition-all',
+            'px-3.5 py-1.5 rounded-full text-[11px] font-mono transition-all duration-200 flex items-center gap-1.5',
             activeSampleId === normalSample.id
-              ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold'
-              : 'border-border/70 hover:border-border bg-card/60 hover:bg-card text-foreground/80',
+              ? 'bg-emerald-600 text-white font-semibold shadow-sm'
+              : 'apple-pill text-foreground/80 hover:text-foreground',
           )}
         >
-          🟢 Normal Cranial MRI (Control)
+          <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+          <span>Normal Cranial MRI</span>
         </button>
       </div>
 
       <form onSubmit={onSubmit} className="space-y-4">
-        {/* Organ Selector Bar */}
-        <div className="rounded-xl border border-border/70 bg-card/50 p-2.5 space-y-1.5">
+        {/* Apple Segmented Control for Organ Selection */}
+        <div className="apple-card rounded-2xl p-3 space-y-2">
           <div className="flex items-center justify-between px-1">
             <span className="text-[11px] font-mono font-medium text-muted-foreground flex items-center gap-1.5">
-              <Sliders className="w-3 h-3 text-primary" /> Target Anatomical System:
+              <Sliders className="w-3.5 h-3.5 text-primary" /> Target Anatomical System:
             </span>
             <span className="text-[10px] font-mono text-muted-foreground">
               {organChoice === 'auto' ? 'Auto-detected via AI' : `Pinned to ${organChoice.toUpperCase()}`}
             </span>
           </div>
-          <div className="flex flex-wrap gap-1">
+
+          <div className="grid grid-cols-4 sm:grid-cols-8 gap-1 p-1 rounded-xl bg-black/40 border border-white/[0.06]">
             {ORGAN_OPTIONS.map((opt) => (
               <button
                 key={opt.key}
@@ -352,20 +367,20 @@ export function UploadForm() {
                 disabled={submitting}
                 onClick={() => setOrganChoice(opt.key)}
                 className={cn(
-                  'px-2.5 py-1 rounded-lg text-[11px] font-mono transition-all flex items-center gap-1 border',
+                  'py-1.5 px-2 rounded-lg text-[11px] font-mono transition-all duration-150 flex flex-col items-center justify-center gap-0.5',
                   organChoice === opt.key
-                    ? 'border-primary bg-primary/10 text-primary font-semibold'
-                    : 'border-border/50 bg-secondary/30 hover:bg-secondary text-muted-foreground hover:text-foreground',
+                    ? 'bg-primary text-primary-foreground font-semibold shadow-sm scale-[1.02]'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04]',
                 )}
               >
-                <span>{opt.icon}</span>
-                <span>{opt.label}</span>
+                <span className="text-xs">{opt.icon}</span>
+                <span className="text-[10px] truncate max-w-full">{opt.label}</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* Minimalist Drag-and-Drop Area for Scans & Documents */}
+        {/* Apple Minimalist Drag-and-Drop Area for Scans & Documents */}
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -380,18 +395,18 @@ export function UploadForm() {
             }
           }}
           className={cn(
-            'relative rounded-2xl border-2 border-dashed transition-all p-5 sm:p-6 text-center',
+            'relative rounded-2xl border transition-all duration-200 p-6 sm:p-7 text-center',
             dragOver
-              ? 'border-primary bg-primary/5 scale-[1.005]'
+              ? 'border-primary bg-primary/10 scale-[1.008]'
               : imageFile || pdfFile
-                ? 'border-border/80 bg-card/70'
-                : 'border-border/60 hover:border-border bg-card/30 hover:bg-card/60',
+                ? 'apple-card border-white/[0.12]'
+                : 'apple-card border-white/[0.08] hover:border-white/[0.16]',
           )}
         >
           {imageFile ? (
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               {imagePreview && (
-                <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-border shadow-xs shrink-0 bg-black">
+                <div className="relative w-20 h-20 rounded-2xl overflow-hidden border border-white/[0.15] shadow-md shrink-0 bg-black">
                   <img
                     src={imagePreview}
                     alt="Scan thumbnail"
@@ -407,14 +422,14 @@ export function UploadForm() {
                   </span>
                 </div>
                 <p className="text-[11px] font-mono text-muted-foreground">
-                  {formatBytes(imageFile.size)} · Visual lesion detection active
+                  {formatBytes(imageFile.size)} · Ready for Gemini Vision inspection
                 </p>
               </div>
               <button
                 type="button"
                 disabled={submitting}
                 onClick={clearFile}
-                className="ml-auto p-1.5 rounded-full hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                className="ml-auto p-2 rounded-full hover:bg-white/[0.08] text-muted-foreground hover:text-foreground transition-colors"
                 title="Remove scan"
               >
                 <X className="w-4 h-4" />
@@ -422,7 +437,7 @@ export function UploadForm() {
             </div>
           ) : pdfFile ? (
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <div className="w-16 h-16 rounded-xl bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive shrink-0">
+              <div className="w-16 h-16 rounded-2xl bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive shrink-0">
                 <FileText className="w-8 h-8" />
               </div>
               <div className="text-left space-y-1">
@@ -440,14 +455,14 @@ export function UploadForm() {
                 type="button"
                 disabled={submitting}
                 onClick={clearPdf}
-                className="ml-auto p-1.5 rounded-full hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                className="ml-auto p-2 rounded-full hover:bg-white/[0.08] text-muted-foreground hover:text-foreground transition-colors"
                 title="Remove PDF"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
           ) : (
-            <label className="cursor-pointer flex flex-col items-center justify-center gap-2.5">
+            <label className="cursor-pointer flex flex-col items-center justify-center gap-3">
               <input
                 type="file"
                 accept={ACCEPT_ATTR}
@@ -455,15 +470,15 @@ export function UploadForm() {
                 disabled={submitting}
                 onChange={(e) => handleFile(e.target.files?.[0])}
               />
-              <div className="w-10 h-10 rounded-2xl bg-secondary/80 flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">
-                <UploadCloud className="w-5 h-5" />
+              <div className="w-12 h-12 rounded-2xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-muted-foreground group-hover:text-primary transition-all duration-200">
+                <UploadCloud className="w-6 h-6" />
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium text-foreground">
-                  Upload scan slice or medical document (Optional if entering symptoms)
+                  Drop medical scan or report PDF here
                 </p>
                 <p className="text-[11px] font-mono text-muted-foreground">
-                  Any anatomical scan (MRI, CT, X-Ray, WebP, PNG, JPG, DICOM) or Clinical PDF
+                  Axial MRI, CT, X-Ray, Mammogram, Dermoscopy (PNG, JPG, WebP, DICOM, NIfTI) or Clinical PDF
                 </p>
               </div>
             </label>
@@ -471,12 +486,12 @@ export function UploadForm() {
         </div>
 
         {/* Clinical Symptoms & Patient Presentation Narrative */}
-        <div className="rounded-2xl border border-border/70 bg-card/60 p-4 sm:p-5 space-y-3">
+        <div className="apple-card rounded-2xl p-5 space-y-3.5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Stethoscope className="w-4 h-4 text-primary" />
               <label htmlFor="symptoms-input" className="text-xs font-mono font-semibold text-foreground">
-                Patient Symptoms &amp; Clinical Narrative (Accepts Any Symptoms)
+                Patient Symptoms &amp; Clinical History
               </label>
             </div>
             <div className="flex items-center gap-2">
@@ -491,14 +506,32 @@ export function UploadForm() {
                 </button>
               )}
               <span className="text-[10px] font-mono text-muted-foreground">
-                {notes.length > 0 ? `${notes.length} chars` : 'Multi-specialty symptom triage'}
+                {notes.length > 0 ? `${notes.length} chars` : 'Multi-specialty triage active'}
               </span>
             </div>
           </div>
 
-          {/* Quick Symptom Chips Across Specialties */}
+          {/* Clinical Onset Timeline Selector */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+            <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-1 mr-1">
+              <Clock className="w-3 h-3" /> Timeline:
+            </span>
+            {ONSET_DURATIONS.map((dur) => (
+              <button
+                key={dur.label}
+                type="button"
+                disabled={submitting}
+                onClick={() => handleAddOnset(dur.prefix)}
+                className="apple-pill px-2.5 py-0.5 text-[10px] font-mono text-muted-foreground hover:text-foreground"
+              >
+                + {dur.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Quick Specialty Presets */}
           <div className="flex flex-wrap gap-1.5 pt-0.5">
-            <span className="text-[10px] font-mono text-muted-foreground self-center mr-1">Quick Clinical Profiles:</span>
+            <span className="text-[10px] font-mono text-muted-foreground self-center mr-1">Quick Presets:</span>
             {SYMPTOM_PRESETS.map((preset) => (
               <button
                 key={preset.id}
@@ -508,7 +541,7 @@ export function UploadForm() {
                   setNotes(preset.text);
                   setOrganChoice(preset.organ);
                 }}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-border/60 bg-secondary/50 hover:bg-secondary text-[11px] font-mono text-foreground/80 hover:text-foreground transition-all"
+                className="apple-pill px-2.5 py-1 text-[11px] font-mono text-foreground/80 hover:text-foreground flex items-center gap-1"
                 title={preset.summary}
               >
                 <span>{preset.icon}</span>
@@ -523,20 +556,20 @@ export function UploadForm() {
             value={notes}
             disabled={submitting}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Type or paste any clinical symptoms, patient presentation, duration, history, or physical findings here (e.g. 'Severe morning headache, vomiting, progressive weakness' or 'Painless jaundice, dark urine' or 'Hemoptysis, chronic cough, weight loss' or 'Routine screening')..."
-            className="w-full px-3.5 py-2.5 rounded-xl border border-border/70 bg-card hover:bg-card focus:bg-card text-xs font-mono placeholder:text-muted-foreground/60 focus:outline-hidden focus:ring-1 focus:ring-primary/60 transition-all resize-y leading-relaxed"
+            placeholder="Type or paste any clinical symptoms, presentation timeline, or physical exam findings (e.g. 'Severe morning headache, vomiting, progressive left-sided hemiparesis, seizure' or 'Painless jaundice, dark urine' or 'Hemoptysis, chronic cough, weight loss')..."
+            className="w-full px-4 py-3 rounded-xl border border-white/[0.08] bg-black/40 text-xs font-mono placeholder:text-muted-foreground/60 focus:outline-hidden focus:ring-1 focus:ring-primary/60 transition-all resize-y leading-relaxed"
           />
 
           {hasImage && hasSymptoms && (
             <div className="flex items-center gap-2 text-[11px] font-mono text-primary pt-0.5">
               <Sparkles className="w-3.5 h-3.5 shrink-0" />
-              <span>Multimodal Mode Active: Visual lesion illumination + clinical symptoms differential concordance</span>
+              <span>Multimodal Mode: Visual lesion segmentation + clinical symptom concordance</span>
             </div>
           )}
           {!hasImage && hasSymptoms && (
             <div className="flex items-center gap-2 text-[11px] font-mono text-foreground/80 pt-0.5">
               <Stethoscope className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span>Symptoms-Only Mode: Full multi-agent oncologic differential diagnosis &amp; recommended imaging orders</span>
+              <span>Symptoms-Only Mode: Full multi-agent differential diagnosis &amp; recommended imaging orders</span>
             </div>
           )}
         </div>
@@ -563,7 +596,7 @@ export function UploadForm() {
               type="submit"
               size="lg"
               disabled={!canSubmit}
-              className="w-full sm:w-auto px-8 rounded-full font-mono text-xs tracking-wide bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs gap-2"
+              className="w-full sm:w-auto px-9 py-5 rounded-full font-mono text-xs tracking-wide bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 gap-2 transition-all duration-200 hover:scale-[1.02]"
             >
               {buttonText} <ArrowRight className="w-3.5 h-3.5" />
             </Button>
@@ -571,7 +604,7 @@ export function UploadForm() {
         )}
       </form>
 
-      {/* Understated Safety Note (Collapsed by default) */}
+      {/* Safety Note */}
       <ClinicalSafetyPrecautions className="pt-2" />
     </div>
   );

@@ -1,9 +1,22 @@
 'use client';
 
 import * as React from 'react';
-import { Layers, Sliders, Contrast, Eye, EyeOff, SplitSquareHorizontal, Sparkles, Zap } from 'lucide-react';
+import {
+  Layers,
+  Sliders,
+  Contrast,
+  Eye,
+  EyeOff,
+  SplitSquareHorizontal,
+  Sparkles,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  RefreshCw,
+  SunMedium,
+  Check,
+} from 'lucide-react';
 import type { InferenceResult, Measurement } from '@/lib/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -23,18 +36,18 @@ type WindowPreset = 'default' | 'brain' | 'lung' | 'high_contrast';
 type ColorPalette = 'crimson' | 'emerald' | 'cyan' | 'amber';
 type ViewMode = 'blend' | 'split' | 'mask_only';
 
-const PALETTE_FILTERS: Record<ColorPalette, { name: string; filter: string; color: string }> = {
-  crimson: { name: 'Crimson (Standard)', filter: 'none', color: '#ef4444' },
-  emerald: { name: 'Emerald', filter: 'hue-rotate(240deg) saturate(1.8)', color: '#10b981' },
-  cyan: { name: 'Electric Cyan', filter: 'hue-rotate(180deg) saturate(2.5)', color: '#06b6d4' },
-  amber: { name: 'Thermal Amber', filter: 'hue-rotate(320deg) saturate(3)', color: '#f59e0b' },
+const PALETTE_FILTERS: Record<ColorPalette, { name: string; filter: string; color: string; label: string }> = {
+  crimson: { name: 'Crimson Coral', filter: 'none', color: '#ff453a', label: 'Coral' },
+  cyan: { name: 'Electric Cyan', filter: 'hue-rotate(180deg) saturate(2.5)', color: '#0a84ff', label: 'Cyan' },
+  amber: { name: 'Thermal Amber', filter: 'hue-rotate(320deg) saturate(3)', color: '#ff9f0a', label: 'Amber' },
+  emerald: { name: 'Emerald Green', filter: 'hue-rotate(240deg) saturate(1.8)', color: '#30d158', label: 'Emerald' },
 };
 
 const WINDOW_PRESETS: Record<WindowPreset, { label: string; filter: string }> = {
-  default: { label: 'Standard', filter: 'none' },
-  brain: { label: 'Brain Window (Enhanced Parenchyma)', filter: 'contrast(1.35) brightness(1.08)' },
-  lung: { label: 'Lung Window (Subtle Parenchyma)', filter: 'contrast(1.7) brightness(1.2) grayscale(100%)' },
-  high_contrast: { label: 'High Contrast (Edge Detection)', filter: 'contrast(2.1) brightness(0.9)' },
+  default: { label: 'Standard DICOM', filter: 'none' },
+  brain: { label: 'Brain Window (Soft Tissue)', filter: 'contrast(1.35) brightness(1.08)' },
+  lung: { label: 'Lung Window (Parenchymal)', filter: 'contrast(1.7) brightness(1.2) grayscale(100%)' },
+  high_contrast: { label: 'High Contrast (Cortical Bone)', filter: 'contrast(2.1) brightness(0.9)' },
 };
 
 export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverlayProps) {
@@ -44,60 +57,140 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
   const [splitPos, setSplitPos] = React.useState(50); // percentage
   const [windowPreset, setWindowPreset] = React.useState<WindowPreset>('default');
   const [palette, setPalette] = React.useState<ColorPalette>('crimson');
+  const [zoom, setZoom] = React.useState<number>(1);
+  const [invert, setInvert] = React.useState<boolean>(false);
+
+  // Keyboard shortcuts for PACS navigation
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input or textarea
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        setShowMask((prev) => !prev);
+      } else if (e.key === 's' || e.key === 'S') {
+        setViewMode('split');
+      } else if (e.key === 'o' || e.key === 'O') {
+        setViewMode('blend');
+      } else if (e.key === 'i' || e.key === 'I') {
+        setInvert((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   if (!inference) {
     return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">PACS Segmentation Visualizer</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex h-40 items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground">
-            No segmentation mask available for this case.
-          </div>
-        </CardContent>
-      </Card>
+      <div className="apple-card rounded-2xl p-6 text-center space-y-2">
+        <p className="text-xs font-mono text-muted-foreground">No radiological scan available for this case.</p>
+      </div>
     );
   }
 
   const maskUrl = toDataUrl(inference.maskBase64);
+  const isLesion = inference.metrics.areaPx > 0;
+
+  const handleCycleZoom = () => {
+    setZoom((prev) => (prev === 1 ? 1.5 : prev === 1.5 ? 2.0 : 1.0));
+  };
 
   return (
-    <Card className="overflow-hidden border-border/80">
-      <CardHeader className="pb-3 border-b bg-card">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Layers className="h-5 w-5 text-primary" />
-            <div>
-              <CardTitle className="text-base font-bold">PACS Diagnostic Lesion Visualizer</CardTitle>
-              <CardDescription className="text-xs">
-                Multi-Planar Neural Segmentation Overlay · Interactive Radiographic Controls
-              </CardDescription>
-            </div>
+    <div className="apple-card rounded-2xl overflow-hidden border border-white/[0.08] shadow-2xl">
+      {/* Apple-style Studio Header */}
+      <div className="px-5 py-3.5 border-b border-white/[0.08] bg-black/40 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-xl bg-primary/15 text-primary flex items-center justify-center border border-primary/20">
+            <Layers className="h-4 w-4" />
           </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="font-mono text-xs">
-              {inference.modelFile}
-            </Badge>
-            {inference.metrics.areaPx === 0 ? (
-              <Badge className="bg-emerald-600/15 text-emerald-600 dark:text-emerald-400 border-emerald-600/30 text-xs font-semibold">
-                ✓ Clear Scan · No Lesion
-              </Badge>
-            ) : (
-              <Badge className="bg-destructive/10 text-destructive border-destructive/30 text-xs">
-                Lesion: {(inference.confidence * 100).toFixed(1)}% ({inference.metrics.areaPx} px)
-              </Badge>
-            )}
+          <div>
+            <h3 className="text-sm font-semibold tracking-tight text-foreground flex items-center gap-2">
+              PACS Diagnostic Lesion Visualizer
+            </h3>
+            <p className="text-[11px] font-mono text-muted-foreground">
+              Multi-Planar Neural Segmentation Overlay · Interactive Radiographic Controls
+            </p>
           </div>
         </div>
-      </CardHeader>
 
-      <CardContent className="space-y-4 pt-4">
+        <div className="flex items-center gap-2 font-mono text-xs">
+          <span className="apple-pill px-3 py-1 text-[11px] text-muted-foreground">
+            {inference.modelFile}
+          </span>
+          {isLesion ? (
+            <span className="apple-pill px-3 py-1 text-[11px] text-red-400 bg-red-500/10 border-red-500/25 font-semibold flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+              Lesion: {(inference.confidence * 100).toFixed(1)}% ({inference.metrics.areaPx} px)
+            </span>
+          ) : (
+            <span className="apple-pill px-3 py-1 text-[11px] text-emerald-400 bg-emerald-500/10 border-emerald-500/25 font-semibold flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              Clear Scan · No Lesion (0 px)
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="p-4 sm:p-5 space-y-4">
         {/* Visualizer Canvas Container */}
-        <div className="relative overflow-hidden rounded-lg border bg-black/95 shadow-inner">
+        <div className="relative overflow-hidden rounded-2xl border border-white/[0.1] bg-black/95 shadow-inner">
+          {/* Radiographic Floating HUD */}
+          <div className="absolute top-3 left-3 z-30 pointer-events-none flex flex-col gap-1 text-[10px] font-mono text-white/70 bg-black/60 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-white/10 select-none">
+            <div className="flex items-center gap-1.5 text-white/90 font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+              <span>STUDIO PACS</span>
+              <span className="text-white/40">|</span>
+              <span>{inference.organ.toUpperCase()}</span>
+            </div>
+            <span>MATRIX: 256×256 · RECIST 1.1</span>
+            {zoom > 1 && <span className="text-primary font-bold">ZOOM: {zoom}×</span>}
+            {invert && <span className="text-amber-400 font-bold">INVERTED</span>}
+          </div>
+
+          {/* Quick Floating PACS Utility Toolbar (Top-Right) */}
+          <div className="absolute top-3 right-3 z-30 flex items-center gap-1.5 bg-black/60 backdrop-blur-md p-1 rounded-xl border border-white/10">
+            <button
+              type="button"
+              onClick={handleCycleZoom}
+              className={cn(
+                'p-1.5 rounded-lg text-xs font-mono transition-colors flex items-center gap-1',
+                zoom > 1 ? 'bg-primary text-primary-foreground font-bold' : 'text-white/80 hover:bg-white/10',
+              )}
+              title="Toggle Zoom (1x, 1.5x, 2x)"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+              <span className="text-[10px]">{zoom}×</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setInvert((prev) => !prev)}
+              className={cn(
+                'p-1.5 rounded-lg text-xs font-mono transition-colors flex items-center gap-1',
+                invert ? 'bg-primary text-primary-foreground font-bold' : 'text-white/80 hover:bg-white/10',
+              )}
+              title="Invert Colors (Bone vs Soft Tissue)"
+            >
+              <SunMedium className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowMask((prev) => !prev)}
+              className={cn(
+                'p-1.5 rounded-lg text-xs font-mono transition-colors flex items-center gap-1',
+                showMask ? 'bg-primary/20 text-primary border border-primary/40' : 'text-white/80 hover:bg-white/10',
+              )}
+              title="Toggle Mask Visibility (Space)"
+            >
+              {showMask ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+
           <div
-            className="relative flex min-h-[380px] max-h-[560px] w-full items-center justify-center overflow-hidden"
-            style={{ filter: WINDOW_PRESETS[windowPreset].filter }}
+            className="relative flex min-h-[380px] max-h-[560px] w-full items-center justify-center overflow-hidden transition-transform duration-200"
+            style={{
+              filter: `${WINDOW_PRESETS[windowPreset].filter} ${invert ? 'invert(100%)' : ''}`,
+              transform: `scale(${zoom})`,
+            }}
           >
             {originalSrc ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -110,13 +203,13 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
                 )}
               />
             ) : (
-              <div className="flex h-72 items-center justify-center text-xs text-muted-foreground">
+              <div className="flex h-72 items-center justify-center text-xs font-mono text-muted-foreground">
                 Original scan preview
               </div>
             )}
 
             {/* Mask Layer */}
-            {showMask && inference.metrics.areaPx > 0 && (
+            {showMask && isLesion && (
               <div
                 className="pointer-events-none absolute inset-0 overflow-hidden"
                 style={
@@ -141,7 +234,7 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
             {/* Split Screen Draggable Divider */}
             {viewMode === 'split' && (
               <div
-                className="absolute inset-y-0 z-20 flex w-0.5 items-center justify-center bg-primary shadow-[0_0_10px_rgba(59,130,246,0.8)]"
+                className="absolute inset-y-0 z-20 flex w-0.5 items-center justify-center bg-primary shadow-[0_0_12px_rgba(10,132,255,0.9)]"
                 style={{ left: `${splitPos}%` }}
               >
                 <div className="flex h-7 w-7 items-center justify-center rounded-full border border-primary bg-background shadow-md">
@@ -153,8 +246,8 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
 
           {/* Split Mode Slider Overlay Control */}
           {viewMode === 'split' && (
-            <div className="absolute bottom-3 inset-x-8 z-30 rounded-md bg-background/80 px-4 py-2 backdrop-blur shadow-sm border">
-              <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground mb-1">
+            <div className="absolute bottom-3 inset-x-8 z-30 rounded-xl bg-black/75 px-4 py-2 backdrop-blur-md border border-white/10 shadow-lg">
+              <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground mb-1">
                 <span>AI Mask Overlay ({splitPos}%)</span>
                 <span>Original Scan ({100 - splitPos}%)</span>
               </div>
@@ -170,41 +263,44 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
           )}
         </div>
 
-        {/* Toolbar & Radiographic Controls */}
-        <div className="grid gap-3 rounded-lg border bg-secondary/20 p-3 sm:grid-cols-2 lg:grid-cols-4 text-xs">
-          {/* View Mode */}
+        {/* Apple Segmented Controls & Tooling Grid */}
+        <div className="grid gap-3.5 rounded-2xl border border-white/[0.08] bg-black/30 p-3.5 sm:grid-cols-2 lg:grid-cols-4 text-xs font-mono">
+          {/* View Mode Segmented Control */}
           <div className="space-y-1.5">
             <Label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
               <Eye className="h-3.5 w-3.5 text-primary" /> View Mode
             </Label>
-            <div className="flex gap-1">
-              <Button
+            <div className="grid grid-cols-3 gap-1 p-0.5 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+              <button
                 type="button"
-                variant={viewMode === 'blend' ? 'default' : 'outline'}
-                size="sm"
-                className="h-7 text-xs flex-1"
                 onClick={() => setViewMode('blend')}
+                className={cn(
+                  'h-7 rounded-lg text-xs transition-all duration-150',
+                  viewMode === 'blend' ? 'bg-primary text-primary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground',
+                )}
               >
                 Overlay
-              </Button>
-              <Button
+              </button>
+              <button
                 type="button"
-                variant={viewMode === 'split' ? 'default' : 'outline'}
-                size="sm"
-                className="h-7 text-xs flex-1"
                 onClick={() => setViewMode('split')}
+                className={cn(
+                  'h-7 rounded-lg text-xs transition-all duration-150',
+                  viewMode === 'split' ? 'bg-primary text-primary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground',
+                )}
               >
                 Split
-              </Button>
-              <Button
+              </button>
+              <button
                 type="button"
-                variant={viewMode === 'mask_only' ? 'default' : 'outline'}
-                size="sm"
-                className="h-7 text-xs flex-1"
                 onClick={() => setViewMode('mask_only')}
+                className={cn(
+                  'h-7 rounded-lg text-xs transition-all duration-150',
+                  viewMode === 'mask_only' ? 'bg-primary text-primary-foreground font-semibold shadow-xs' : 'text-muted-foreground hover:text-foreground',
+                )}
               >
                 Mask
-              </Button>
+              </button>
             </div>
           </div>
 
@@ -214,17 +310,15 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
               <Label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
                 <Sliders className="h-3.5 w-3.5 text-primary" /> Mask Alpha
               </Label>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setShowMask(!showMask)}
-                  className="inline-flex items-center gap-1 text-[10px] font-mono text-primary hover:underline cursor-pointer select-none"
-                  title={showMask ? 'Hide lesion highlight' : 'Show lesion highlight'}
+                  className="text-[10px] text-primary hover:underline cursor-pointer select-none"
                 >
-                  {showMask ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                  <span>{showMask ? 'Hide' : 'Show'}</span>
+                  {showMask ? 'Hide' : 'Show'}
                 </button>
-                <span className="font-mono text-muted-foreground text-[10px]">{showMask ? `${opacity}%` : 'Off'}</span>
+                <span className="text-muted-foreground text-[10px]">{showMask ? `${opacity}%` : 'Off'}</span>
               </div>
             </div>
             <input
@@ -249,18 +343,18 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
             <select
               value={windowPreset}
               onChange={(e) => setWindowPreset(e.target.value as WindowPreset)}
-              className="h-7 w-full rounded-md border border-input bg-background px-2 text-xs"
+              className="h-8 w-full rounded-xl border border-white/[0.08] bg-black/40 px-2.5 text-xs font-mono text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary/60"
             >
               {Object.entries(WINDOW_PRESETS).map(([key, p]) => (
-                <option key={key} value={key}>{p.label}</option>
+                <option key={key} value={key} className="bg-card text-foreground">{p.label}</option>
               ))}
             </select>
           </div>
 
-          {/* Palette Picker */}
+          {/* Color Palette Picker */}
           <div className="space-y-1.5">
             <Label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
-              <Sparkles className="h-3.5 w-3.5 text-primary" /> Color Palette
+              <Sparkles className="h-3.5 w-3.5 text-primary" /> Palette
             </Label>
             <div className="flex gap-1.5">
               {Object.entries(PALETTE_FILTERS).map(([key, p]) => (
@@ -270,38 +364,42 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
                   onClick={() => setPalette(key as ColorPalette)}
                   title={p.name}
                   className={cn(
-                    'h-7 flex-1 rounded border transition-all flex items-center justify-center',
+                    'h-8 flex-1 rounded-xl border transition-all duration-150 flex items-center justify-center gap-1',
                     palette === key ? 'ring-2 ring-primary ring-offset-1 font-bold' : 'opacity-70 hover:opacity-100',
                   )}
-                  style={{ backgroundColor: `${p.color}25`, borderColor: p.color }}
+                  style={{ backgroundColor: `${p.color}20`, borderColor: p.color }}
                 >
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: p.color }} />
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: p.color }} />
+                  <span className="text-[10px] hidden sm:inline" style={{ color: p.color }}>{p.label}</span>
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Quantitative Measurements Grid */}
+        {/* Quantitative Morphometric Biomarkers Strip (RECIST 1.1) */}
         {measurements.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Quantitative Morphometric Biomarkers &amp; RECIST 1.1 Criteria
-            </h4>
-            <dl className="grid grid-cols-2 gap-2 rounded-lg border bg-secondary/30 p-3.5 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center justify-between">
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                RECIST 1.1 Quantitative Biomarkers &amp; Morphometry
+              </h4>
+              <span className="text-[10px] text-muted-foreground font-mono">Calibrated Metric Spacing</span>
+            </div>
+            <dl className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 font-mono text-xs">
               {measurements.map((m) => (
-                <div key={m.label} title={m.note} className="rounded border bg-card/60 p-2.5 shadow-2xs">
-                  <dt className="truncate text-[11px] text-muted-foreground font-medium">{m.label}</dt>
-                  <dd className="mt-1 flex items-baseline gap-1 text-sm font-bold tabular-nums">
+                <div key={m.label} title={m.note} className="apple-card rounded-xl p-3 shadow-xs">
+                  <dt className="truncate text-[10px] text-muted-foreground uppercase tracking-wide">{m.label}</dt>
+                  <dd className="mt-1 flex items-baseline gap-1 text-sm font-bold text-foreground tabular-nums">
                     <span>{m.value.toLocaleString()}</span>
-                    <span className="text-[11px] font-normal text-muted-foreground">{m.unit}</span>
+                    <span className="text-[10px] font-normal text-muted-foreground">{m.unit}</span>
                   </dd>
                 </div>
               ))}
             </dl>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
