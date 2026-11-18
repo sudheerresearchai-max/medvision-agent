@@ -76,23 +76,47 @@ export function TumorVerdictCard({ data }: TumorVerdictCardProps) {
 
   const isAlert = isTumor || (isSymptomsOnly && (symptomAcuity === 'emergency' || symptomAcuity === 'urgent'));
 
+  // Tiered severity theme colors (prevents moderate findings from triggering panic red)
+  const severityTheme =
+    dangerLevel === 5
+      ? {
+          cardBorder: 'border-red-500/40 bg-red-500/5',
+          iconBg: 'bg-red-500/15 text-red-400',
+          badge: 'border-red-500/30 bg-red-500/15 text-red-400',
+        }
+      : dangerLevel === 4
+        ? {
+            cardBorder: 'border-orange-500/40 bg-orange-500/5',
+            iconBg: 'bg-orange-500/15 text-orange-400',
+            badge: 'border-orange-500/30 bg-orange-500/15 text-orange-400',
+          }
+        : dangerLevel === 3
+          ? {
+              cardBorder: 'border-amber-500/35 bg-amber-500/5',
+              iconBg: 'bg-amber-500/15 text-amber-400',
+              badge: 'border-amber-500/30 bg-amber-500/15 text-amber-400',
+            }
+          : {
+              cardBorder: 'border-emerald-500/30 bg-emerald-500/5',
+              iconBg: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+              badge: 'border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+            };
+
   return (
     <div
       className={cn(
         'rounded-2xl border p-4 sm:p-5 transition-all text-xs font-mono backdrop-blur-xs',
-        isAlert
-          ? 'border-destructive/40 bg-destructive/5 text-foreground'
-          : 'border-emerald-500/30 bg-emerald-500/5 text-foreground',
+        severityTheme.cardBorder,
       )}
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           {isAlert ? (
-            <div className="w-8 h-8 rounded-full bg-destructive/15 text-destructive flex items-center justify-center shrink-0">
-              <ShieldAlert className="w-4 h-4 animate-pulse" />
+            <div className={cn('w-8 h-8 rounded-full flex items-center justify-center shrink-0', severityTheme.iconBg)}>
+              <ShieldAlert className="w-4 h-4" />
             </div>
           ) : (
-            <div className="w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <div className={cn('w-8 h-8 rounded-full flex items-center justify-center shrink-0', severityTheme.iconBg)}>
               <CheckCircle2 className="w-4 h-4" />
             </div>
           )}
@@ -110,6 +134,11 @@ export function TumorVerdictCard({ data }: TumorVerdictCardProps) {
                 ? impressionWarning.replace(/^Impression:\s*/i, '')
                 : urgency}
             </p>
+            {isTumor && (
+              <p className="text-[10px] text-muted-foreground/75 mt-1">
+                💡 Suspected lesion illuminated in red on the scan. Use PACS controls below to toggle visibility or change color palette (Cyan, Amber, Emerald).
+              </p>
+            )}
           </div>
         </div>
 
@@ -117,9 +146,7 @@ export function TumorVerdictCard({ data }: TumorVerdictCardProps) {
           <span
             className={cn(
               'px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wider select-none border',
-              isAlert
-                ? 'border-destructive/30 bg-destructive/15 text-destructive'
-                : 'border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+              severityTheme.badge,
             )}
           >
             {isSymptomsOnly
@@ -129,7 +156,7 @@ export function TumorVerdictCard({ data }: TumorVerdictCardProps) {
                   ? 'URGENT WORKUP'
                   : 'ROUTINE EVALUATION'
               : isTumor
-                ? 'TUMOR DETECTED'
+                ? dangerLevel === 5 ? 'CRITICAL LESION' : 'TUMOR DETECTED'
                 : 'NORMAL / CLEAR'}
           </span>
           <span className="text-[10px] text-muted-foreground border border-border/70 rounded-full px-2 py-0.5 select-none">
@@ -138,5 +165,6 @@ export function TumorVerdictCard({ data }: TumorVerdictCardProps) {
         </div>
       </div>
     </div>
+  );
   );
 }

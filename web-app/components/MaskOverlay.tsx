@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Layers, Sliders, Contrast, Eye, SplitSquareHorizontal, Sparkles, Zap } from 'lucide-react';
+import { Layers, Sliders, Contrast, Eye, EyeOff, SplitSquareHorizontal, Sparkles, Zap } from 'lucide-react';
 import type { InferenceResult, Measurement } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -208,20 +208,35 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
             </div>
           </div>
 
-          {/* Opacity Slider */}
+          {/* Opacity Slider & Toggle */}
           <div className="space-y-1.5">
-            <div className="flex justify-between">
+            <div className="flex items-center justify-between">
               <Label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
                 <Sliders className="h-3.5 w-3.5 text-primary" /> Mask Alpha
               </Label>
-              <span className="font-mono text-muted-foreground">{opacity}%</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowMask(!showMask)}
+                  className="inline-flex items-center gap-1 text-[10px] font-mono text-primary hover:underline cursor-pointer select-none"
+                  title={showMask ? 'Hide lesion highlight' : 'Show lesion highlight'}
+                >
+                  {showMask ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                  <span>{showMask ? 'Hide' : 'Show'}</span>
+                </button>
+                <span className="font-mono text-muted-foreground text-[10px]">{showMask ? `${opacity}%` : 'Off'}</span>
+              </div>
             </div>
             <input
               type="range"
-              min={10}
+              min={0}
               max={100}
-              value={opacity}
-              onChange={(e) => setOpacity(Number(e.target.value))}
+              disabled={!showMask}
+              value={showMask ? opacity : 0}
+              onChange={(e) => {
+                if (!showMask) setShowMask(true);
+                setOpacity(Number(e.target.value));
+              }}
               className="accent-primary h-2 w-full cursor-pointer mt-1"
             />
           </div>
