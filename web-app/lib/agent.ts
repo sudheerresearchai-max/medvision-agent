@@ -520,17 +520,16 @@ export function calculateMeasurements(
       note: `bounding frame: ${m.bbox.w}×${m.bbox.h} px`,
     });
 
-    // 3-D Volume approximation (Modified Prolate Ellipsoid: V = (π / 6) * a * b^2)
-    const effectiveRadius = (m.equivalentDiameterPx ?? longestAxis) / 2;
-    const estimatedVolumeMm3 = mm 
-      ? round((4 / 3) * Math.PI * Math.pow(effectiveRadius * mm, 3), 1)
-      : round((4 / 3) * Math.PI * Math.pow(effectiveRadius, 3), 0);
+    // 3-D Volume approximation (Modified Prolate Ellipsoid: V = (π / 6) * d1 * d2^2) per Equation (2.4)
+    const d1 = mm ? round(longestAxis * mm, 1) : longestAxis;
+    const d2 = mm ? round(shortAxis * mm, 1) : shortAxis;
+    const estimatedVolumeMm3 = round((Math.PI / 6) * d1 * Math.pow(d2, 2), mm ? 1 : 0);
 
     measurements.push({
       label: 'Estimated Tumor Burden Volume',
       value: estimatedVolumeMm3,
       unit: mm ? 'mm³' : 'px³',
-      note: 'spherical equivalent volumetric approximation',
+      note: 'spheroidal prolate volume approximation per Equation (2.4)',
     });
   }
 

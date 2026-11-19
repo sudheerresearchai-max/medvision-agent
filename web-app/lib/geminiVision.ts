@@ -25,12 +25,13 @@ export interface GeminiVisionDetection {
 
 const GEMINI_MODELS = [
   'gemini-3.1-flash-lite',
+  'gemini-3.5-flash',
   'gemini-3.5-flash-lite',
+  'gemini-flash-latest',
+  'gemini-2.5-flash',
+  'gemini-2.5-pro',
   'gemini-3.8-flash',
   'gemini-3.7-flash',
-  'gemini-3.5-flash',
-  'gemini-flash-latest',
-  'gemini-2.5-pro',
 ];
 
 export function isGeminiVisionConfigured(): boolean {
@@ -263,7 +264,7 @@ Respond with strict JSON matching this schema:
 
   let modelAttempts = 0;
   for (const model of GEMINI_MODELS) {
-    if (modelAttempts >= 2) {
+    if (modelAttempts >= 4) {
       console.warn('[geminiVision] Fallback threshold reached, degrading to local inference pipeline.');
       break;
     }
@@ -414,8 +415,33 @@ Respond with strict JSON matching this schema:
     equivalentDiameterPx,
   };
 
+  // Auto-resolve anatomical organ if routed to general
+  let resolvedOrgan: ModelKey = args.organ;
+  if (resolvedOrgan === 'general') {
+    const textAll = `${parsed.diagnosis} ${parsed.location} ${parsed.impression}`.toLowerCase();
+    if (/\b(?:brain|glioblastoma|glioma|cerebr\w*|cranial|meningioma|astrocytoma)\b/.test(textAll)) {
+      resolvedOrgan = 'brain';
+    } else if (/\b(?:lung|pulmonar\w*|chest|thoracic|pneumo\w*)\b/.test(textAll)) {
+      resolvedOrgan = 'lung';
+    } else if (/\b(?:pancreas|pancreatic)\b/.test(textAll)) {
+      resolvedOrgan = 'pancreas';
+    } else if (/\b(?:breast|mammar\w*)\b/.test(textAll)) {
+      resolvedOrgan = 'breast';
+    } else if (/\b(?:liver|hepat\w*)\b/.test(textAll)) {
+      resolvedOrgan = 'liver';
+    } else if (/\b(?:kidney|renal)\b/.test(textAll)) {
+      resolvedOrgan = 'kidney';
+    } else if (/\b(?:skin|melanoma|derm\w*)\b/.test(textAll)) {
+      resolvedOrgan = 'skin';
+    } else if (/\b(?:colon|colorectal)\b/.test(textAll)) {
+      resolvedOrgan = 'colon';
+    } else if (/\b(?:prostate)\b/.test(textAll)) {
+      resolvedOrgan = 'prostate';
+    }
+  }
+
   return {
-    organ: args.organ,
+    organ: resolvedOrgan,
     modelFile: `${activeModel} (Vision)`,
     width,
     height,

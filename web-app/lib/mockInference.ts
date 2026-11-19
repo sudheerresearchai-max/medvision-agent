@@ -115,7 +115,7 @@ const ORGAN_SHAPE: Record<
   skin: { cx: 128, cy: 128, rx: 15, ry: 15, wobble: 2 },
   colon: { cx: 120, cy: 130, rx: 16, ry: 16, wobble: 2 },
   prostate: { cx: 128, cy: 150, rx: 14, ry: 14, wobble: 2 },
-  general: { cx: 128, cy: 128, rx: 20, ry: 20, wobble: 2 },
+  general: { cx: 96, cy: 110, rx: 18, ry: 18, wobble: 2 },
 };
 
 export interface MockDetectionContext {
@@ -355,20 +355,19 @@ export function generateMockPrediction(
         if (x > metricsAccum.maxX) metricsAccum.maxX = x;
         if (y > metricsAccum.maxY) metricsAccum.maxY = y;
 
-        // Diagnostic PACS rendering: crisp luminous boundary contour + semi-transparent diagnostic interior
-        if (dist >= 0.84) {
-          // Perimeter contour line with anti-aliasing falloff
-          const edgeAlpha = dist > 0.95 ? Math.round(245 * (1.0 - (dist - 0.95) / 0.05)) : 245;
-          rgba[idx] = 255;
-          rgba[idx + 1] = 68;
-          rgba[idx + 2] = 68;
-          rgba[idx + 3] = Math.max(130, edgeAlpha);
+        // Diagnostic PACS rendering: crisp luminous boundary contour + semi-transparent diagnostic interior (Eq. 2.7, 2.8)
+        if (dist >= 0.85) {
+          // Sharp outer perimeter contour line (alpha = 0.96 per Eq. 2.8)
+          rgba[idx + 0] = 255;
+          rgba[idx + 1] = 69;
+          rgba[idx + 2] = 58;
+          rgba[idx + 3] = 245;
         } else {
-          // Semi-transparent interior: allows underlying MRI scan anatomy, ring enhancement & necrosis to remain visible
-          rgba[idx] = 248;
-          rgba[idx + 1] = 64;
-          rgba[idx + 2] = 64;
-          rgba[idx + 3] = 120;
+          // Translucent diagnostic interior (alpha = 0.43 per Eq. 2.8)
+          rgba[idx + 0] = 255;
+          rgba[idx + 1] = 69;
+          rgba[idx + 2] = 58;
+          rgba[idx + 3] = 110;
         }
       }
     }
