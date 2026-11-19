@@ -3,20 +3,14 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  UploadCloud,
   FileImage,
   FileText,
   X,
   ArrowRight,
   Paperclip,
-  Sparkles,
-  Sliders,
-  Clock,
 } from 'lucide-react';
 import type { Organ } from '@/lib/types';
-import { Button } from '@/components/ui/button';
 import { cn, formatBytes } from '@/lib/utils';
-import { SAMPLE_CASES, type SampleCase } from '@/lib/sampleCases';
 import { ClaudeThinkingPill } from '@/components/ClaudeThinkingPill';
 
 type OrganChoice = Organ | 'auto';
@@ -83,7 +77,6 @@ export function UploadForm() {
   const [submitting, setSubmitting] = React.useState(false);
   const [stageIndex, setStageIndex] = React.useState(0);
   const [thinkingStartMs, setThinkingStartMs] = React.useState<number | null>(null);
-  const [activeSampleId, setActiveSampleId] = React.useState<string | null>(null);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -98,7 +91,6 @@ export function UploadForm() {
   const handleFile = async (f?: File | null) => {
     if (!f) return;
     setError(null);
-    setActiveSampleId(null);
     const ext = extOf(f.name);
 
     if (ext === '.pdf' || f.type === 'application/pdf') {
@@ -114,31 +106,11 @@ export function UploadForm() {
   const clearFile = () => {
     setImageFile(null);
     setImagePreview(null);
-    setActiveSampleId(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const clearPdf = () => {
     setPdfFile(null);
-    setActiveSampleId(null);
-  };
-
-  const loadSampleCase = async (sample: SampleCase) => {
-    try {
-      setError(null);
-      setActiveSampleId(sample.id);
-      setOrganChoice(sample.organ);
-      setNotes(sample.clinicalNotes);
-
-      const res = await fetch(sample.imageDataUrl);
-      const blob = await res.blob();
-      const file = new File([blob], sample.fileName, { type: 'image/png' });
-
-      setImageFile(file);
-      setImagePreview(sample.imageDataUrl);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load case');
-    }
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -206,10 +178,6 @@ export function UploadForm() {
       setSubmitting(false);
     }
   };
-
-  const positiveSample = SAMPLE_CASES.find((s) => s.id === 'case01_brain_gbm') || SAMPLE_CASES[0];
-  const lungSample = SAMPLE_CASES.find((s) => s.id === 'case02_lung_nsclc') || SAMPLE_CASES[1];
-  const normalSample = SAMPLE_CASES.find((s) => s.isControl) || SAMPLE_CASES[3];
 
   const hasImage = Boolean(imageFile);
   const hasPdf = Boolean(pdfFile);
@@ -373,50 +341,6 @@ export function UploadForm() {
       {error && (
         <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-2 text-xs text-destructive font-mono">
           {error}
-        </div>
-      )}
-
-      {/* Claude Style Sample Suggestions */}
-      {!submitting && (
-        <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-          <span className="text-[11px] font-mono text-muted-foreground/80 mr-1 select-none">
-            Preloaded cases:
-          </span>
-          <button
-            type="button"
-            onClick={() => loadSampleCase(positiveSample)}
-            className={cn(
-              'claude-pill px-3 py-1 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 font-mono select-none',
-              activeSampleId === positiveSample.id && 'border-primary text-foreground bg-secondary',
-            )}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-            <span>Glioblastoma MRI</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => loadSampleCase(lungSample)}
-            className={cn(
-              'claude-pill px-3 py-1 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 font-mono select-none',
-              activeSampleId === lungSample.id && 'border-primary text-foreground bg-secondary',
-            )}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-            <span>Lung Nodule CT</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => loadSampleCase(normalSample)}
-            className={cn(
-              'claude-pill px-3 py-1 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 font-mono select-none',
-              activeSampleId === normalSample.id && 'border-primary text-foreground bg-secondary',
-            )}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-            <span>Normal Control</span>
-          </button>
         </div>
       )}
     </div>
