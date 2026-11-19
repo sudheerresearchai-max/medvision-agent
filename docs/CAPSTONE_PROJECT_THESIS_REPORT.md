@@ -228,17 +228,8 @@ $$\text{Negated}(c) \iff c \in \mathcal{S}_{\text{clause}} \cap \left( \bigcup_{
 
 where $\mathcal{R}_{\text{pre}}$ and $\mathcal{R}_{\text{post}}$ represent trigger sets for preceding and trailing negation phrases.
 
-```
-+---------------------------------------------------------------------------------+
-| Figure 1: Visual Alignment Dilemma                                              |
-| [Raw 641x473 Brain MRI] ---> [Square 256x256 CSS Letterbox]                    |
-|                              -> 84px Lateral Padding Shift                     |
-|                              -> Mask mistakenly highlights Lateral Ventricle   |
-| [MedVision Zero-Padding]  -> Binary Header Sniffer (bytes 16-24)               |
-|                              -> Exact 1:1 Pixel Registration over Glioblastoma  |
-+---------------------------------------------------------------------------------+
-```
-*Figure 1: Comparison between baseline letterbox canvas distortion and MedVision zero-padding pixel registration.*
+![Figure 1: Visual Alignment Dilemma: Letterbox Shift vs MedVision 1:1 Registration](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_1_visual_alignment_dilemma.png)
+*Figure 1: Visual alignment comparison between baseline letterbox canvas distortion (left, where the mask shifts into normal lateral ventricles) and MedVision zero-padding pixel registration (right, locking directly onto the glioblastoma).*
 
 To handle different coordinate scales returned by multimodal vision models, the raw bounding box $[b_0, b_1, b_2, b_3]$ is mapped to native dimensions $(W, H)$ using scale factor $s = \max(b_0, b_1, b_2, b_3)$:
 
@@ -269,34 +260,7 @@ This chapter explains our multi-agent architecture, the mathematical formulas us
 
 Figure 2 diagrams the communication flow across the five clinical software agents:
 
-```
-+---------------------------------------------------------------------------------------+
-| Figure 2: MedVision Multi-Agent Collaborative System Architecture                     |
-|                                                                                       |
-|  [Clinician Upload]                                                                   |
-|         │                                                                             |
-|         ▼                                                                             |
-|  ┌───────────────┐     Parsed WxH      ┌──────────────────┐                           |
-|  │ Agent 1:      │ ──────────────────► │ Agent 2:         │                           |
-|  │ Dr. A. Vance  │                     │ Dr. S. Chen      │                           |
-|  │ Triage/Header │                     │ Clinical NLP     │                           |
-|  └───────────────┘                     └─────────┬────────┘                           |
-|                                                  │ Acuity & Organ                     |
-|                                                  ▼                                    |
-|  ┌───────────────┐     Target Mask     ┌──────────────────┐                           |
-|  │ Agent 4:      │ ◄────────────────── │ Agent 3:         │                           |
-|  │ Dr. E. Zhang  │   [ymin,xmin,...]   │ Dr. R. Miller    │                           |
-|  │ RECIST 1.1    │                     │ Gemini Vision AI │                           |
-|  └───────┬───────┘                     └──────────────────┘                           |
-|          │ d1, d2, Volume                                                             |
-|          ▼                                                                            |
-|  ┌───────────────┐                                                                    |
-|  │ Agent 5:      │ ──────────────────► [Interactive Studio PACS Visualizer & Report] |
-|  │ Dr. M. Patel  │                                                                    |
-|  │ Scribe/Safety │                                                                    |
-|  └───────────────┘                                                                    |
-+---------------------------------------------------------------------------------------+
-```
+![Figure 2: MedVision Multi-Agent Collaborative System Architecture](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_2_multi_agent_system_architecture.png)
 *Figure 2: System block diagram showing the 5-agent asynchronous clinical pipeline.*
 
 The system splits work into five distinct modules:
@@ -599,26 +563,8 @@ This chapter covers our automated test suite results, a glioblastoma MRI case st
 
 To verify safety, we evaluated the entire platform against `test-negation-and-false-positives.ts`, which runs **143 automated assertions across 10 test suites** (Figure 7, Table 4.1).
 
-```
-+-----------------------------------------------------------------------------------+
-| Figure 7: Empirical Verification Pass Trajectory Across 10 Test Suites            |
-|                                                                                   |
-| 143 ┼───────────────────────────────────────────────────────────────────────────* |
-|     │                                                                 *---------* |
-| 120 ┼                                                     *-----------*           |
-|     │                                         *-----------*                       |
-|  90 ┼                             *-----------*                                   |
-|     │                 *-----------*                                               |
-|  60 ┼     *-----------*                                                           |
-|     │  *--*                                                                       |
-|  30 ┼  *                                                                          |
-|     │  *                                                                          |
-|   0 ┴──┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴  |
-|       S1      S2      S3      S4      S5      S6      S7      S8      S9      S10 |
-|       [14]    [25]    [36]    [46]    [56]    [70]    [84]    [103]   [123]   [143]|
-+-----------------------------------------------------------------------------------+
-```
-*Figure 7: Cumulative verification pass trajectory across all 10 automated test suites (100% pass rate).*
+![Figure 7: Empirical Verification Pass Trajectory Across 10 Test Suites](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_7_verification_pass_trajectory.png)
+*Figure 7: Cumulative verification pass trajectory across all 10 automated test suites (143 assertions passed, 100% pass rate).*
 
 The test suite confirmed four core capabilities:
 1. **Clinical Negation Handling (Suites 1 & 6):** Statements indicating normal scans (*"unremarkable brain MRI"*) or post-negated diagnoses (*"glioma is ruled out"*) yield an exact $0\text{ px}$ segmentation mask.
@@ -699,47 +645,10 @@ The local ONNX MiniUNet is fast ($42\text{ ms}$), but it cannot parse clinical t
 
 MedVision runs as an interactive web platform in Next.js 14. Figure 11 shows the minimalist home workspace and Figure 12 shows the Studio PACS visualizer.
 
-```
-+-----------------------------------------------------------------------------------+
-| Figure 11: MedVision Minimalist Web Workspace                                     |
-|                                                                                   |
-|  ✳ MedVision                          New analysis    Archive    Docs             |
-|                                                                                   |
-|                           Medical vision & tumor analysis                         |
-|                                                                                   |
-|         [ Drag & drop clinical scan (PNG, JPEG, DICOM) or click to browse ]       |
-|                                                                                   |
-|         [ Clinical Notes / Symptoms: "Patient reports worsening morning..." ]     |
-|                                                                                   |
-|         [ Brain MRI ]  [ Chest CT ]  [ Pancreatic Scan ]  [ Contrast Enhanced ]   |
-|                                                                                   |
-|         [ Run Clinical Panel Analysis  -> ]                                       |
-+-----------------------------------------------------------------------------------+
-```
+![Figure 11: MedVision Minimalist Web Workspace](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_2_3_web_application_home.png)
 *Figure 11: Minimalist home workspace featuring unified input composer and clinical chips.*
 
-```
-+-----------------------------------------------------------------------------------+
-| Figure 12: Studio PACS Visualizer with Verified Lesion Delineation                |
-|                                                                                   |
-|  PACS Diagnostic Lesion Visualizer           gemini-3.1-flash-lite (Vision)       |
-|  Multi-Planar Neural Segmentation Overlay    [● Lesion: 98.0% (13,076 px)]        |
-|  ───────────────────────────────────────────────────────────────────────────────  |
-|  ┌── Floating HUD ────────┐                                                       |
-|  │ STUDIO PACS | BRAIN     │                                                       |
-|  │ MATRIX: 641x473        │                                                       |
-|  │ RECIST 1.1: d1=34.2mm  │                                                       |
-|  └────────────────────────┘                                                       |
-|                                                                                   |
-|                 ( ( (  [ Ax T1CE Brain MRI ]  ) ) )                               |
-|                  (  ● 1:1 Registered Lesion Mask  )                               |
-|                   (  alpha_border=0.96 / alpha_fill=0.43 )                        |
-|                                                                                   |
-|  ───────────────────────────────────────────────────────────────────────────────  |
-|  [ Preset: Brain (W:80, L:40) ] [ Palette: Crimson Coral ] [ Zoom: 1x ] [ Split ] |
-|  [ RECIST Metrics: d1=34.2 mm, d2=26.8 mm, Vol=18,420 mm³ ] [ Copy Markdown ]     |
-+-----------------------------------------------------------------------------------+
-```
+![Figure 12: Studio PACS Visualizer with Verified Lesion Delineation](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_2_7_interactive_pacs_lesion_visualizer.png)
 *Figure 12: Studio PACS visualizer displaying real glioblastoma scan with zero padding drift and RECIST telemetry.*
 
 <div align="center">24</div>
