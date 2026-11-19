@@ -20,27 +20,34 @@ function formatConsultationSummary(data: AnalysisResult): string {
     data.symptomAnalysis?.differentials
       ?.map(
         (d, i) =>
-          `  ${i + 1}. ${d.condition} [${d.probability.toUpperCase()}] (${Math.round((d.confidenceScore ?? 0) * 100)}%)\n     Rationale: ${d.rationale}`,
+          `  ${i + 1}. ${d.condition} [${(d.probability ?? '').toUpperCase()}] (${Math.round((d.confidenceScore ?? 0) * 100)}%)\n     Rationale: ${d.rationale ?? 'N/A'}`,
       )
       .join('\n') || 'None recorded.';
   const imaging =
     data.symptomAnalysis?.recommendedImaging
-      ?.map((im) => `  • ${im.modality} (${im.protocol})\n    Indication: ${im.indication} [${im.urgency}]`)
+      ?.map((im) => `  • ${im.modality} (${im.protocol ?? 'standard'})\n    Indication: ${im.indication ?? 'standard'} [${im.urgency ?? 'Routine'}]`)
       .join('\n') || 'None recorded.';
   const labs =
     data.symptomAnalysis?.recommendedLabs
-      ?.map((l) => `  • ${l.testName} [${l.priority}]: ${l.rationale}`)
+      ?.map((l) => `  • ${l.testName} [${l.priority ?? 'Standard'}]: ${l.rationale ?? 'Clinical evaluation'}`)
       .join('\n') || 'None recorded.';
   const redFlags =
     data.symptomAnalysis?.clinicalRedFlags?.map((rf) => `  🚨 ${rf}`).join('\n') || 'None identified.';
   const plan =
     data.symptomAnalysis?.suggestedActionPlan?.map((p, i) => `  ${i + 1}. ${p}`).join('\n') || 'None recorded.';
 
+  let formattedDate = 'N/A';
+  try {
+    formattedDate = data.createdAt ? new Date(data.createdAt).toLocaleString() : 'N/A';
+  } catch {
+    formattedDate = String(data.createdAt || 'N/A');
+  }
+
   return `================================================================================
 MEDVISION AGENTIC AI — MULTIMODAL CLINICAL CONSULTATION REPORT
 ================================================================================
 Case UUID : ${data.caseId}
-Timestamp : ${new Date(data.createdAt).toLocaleString()}
+Timestamp : ${formattedDate}
 Modality  : ${data.routing.modelKey ? data.routing.modelKey.toUpperCase() : 'General Multimodal'}
 Storage   : ${data.storage}
 
@@ -121,7 +128,9 @@ export function CaseView({ data }: { data: AnalysisResult }) {
   };
 
   const handlePrint = () => {
-    window.print();
+    if (typeof window !== 'undefined') {
+      window.print();
+    }
   };
 
   return (

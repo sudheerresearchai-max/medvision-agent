@@ -12,6 +12,8 @@ import { runAnalysis } from '../lib/agent';
 import { SAMPLE_CASES } from '../lib/sampleCases';
 import { normalizeBoundingBox } from '../lib/geminiVision';
 import { analyzeClinicalSymptoms } from '../lib/symptomAnalyzer';
+import { fetchMedicalKnowledge } from '../lib/medicalKnowledge';
+import { extractJsonFromText } from '../lib/utils';
 
 const GREEN = '\x1b[32m';
 const RED = '\x1b[31m';
@@ -471,6 +473,7 @@ async function runAllTests() {
 
   const hyphenRuleOutCase = extractClinicalInfoWithRules('Rule-out brain mass.');
   assert(hyphenRuleOutCase.findings.length === 0, 'Negation: "Rule-out brain mass" (hyphenated) produces 0 confirmed findings');
+  assert(hyphenRuleOutCase.isNormalOrNegative === false, 'Adversarial: "Rule-out brain mass" is an indication, NOT a normal study');
 
   // 8C: Multi-organ Ambiguity Resolution
   const multiOrganCase1 = extractClinicalInfoWithRules(
@@ -514,6 +517,85 @@ async function runAllTests() {
     lungSymptomResult !== null &&
       lungSymptomResult.differentials[0].organSystem.includes('Pulmonary'),
     'Symptom Analyzer: explicit organHint="lung" routes to Pulmonary oncology even with constitutional weakness',
+  );
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // TEST SUITE 9: Deep Codebase Flaw Fixes & Multi-Organ Engine Verification
+  // ──────────────────────────────────────────────────────────────────────────
+  console.log(`\n${CYAN}${BOLD}[Suite 9] Deep Codebase Flaw Fixes & Multi-Organ Engine Verification${RESET}`);
+
+  // 9A: extractJsonFromText Markdown Fence & Commentary Resilience
+  const rawFencedJson = '```json\n{\n  "has_tumor": true,\n  "diagnosis": "Glioma"\n}\n```';
+  const parsedFenced = extractJsonFromText<{ has_tumor: boolean; diagnosis: string }>(rawFencedJson);
+  assert(parsedFenced?.has_tumor === true, 'JSON Extractor: successfully strips markdown code fences');
+  assert(parsedFenced?.diagnosis === 'Glioma', 'JSON Extractor: accurately parses JSON payload within code fences');
+
+  const rawConversationalJson = 'Here is the requested clinical evaluation:\n```json\n{"status": "ok"}\n```\nHope this helps!';
+  const parsedConv = extractJsonFromText<{ status: string }>(rawConversationalJson);
+  assert(parsedConv?.status === 'ok', 'JSON Extractor: successfully extracts JSON enclosed in conversational text');
+
+  const invalidJsonText = 'This is not valid json at all.';
+  const parsedInvalid = extractJsonFromText(invalidJsonText);
+  assert(parsedInvalid === null, 'JSON Extractor: safely returns null for invalid non-JSON strings without throwing');
+
+  // 9B: Extended normalizeBoundingBox schemas and high-res scaling
+  const normMinMaxObj = normalizeBoundingBox({ minX: 450, minY: 250, maxX: 650, maxY: 450 }, 256, 256);
+  assert(normMinMaxObj[0] === 115 && normMinMaxObj[1] === 64 && normMinMaxObj[2] === 166 && normMinMaxObj[3] === 115, 'BBox: object schema {minX, minY, maxX, maxY} parsed correctly');
+
+  const normX1Y1Obj = normalizeBoundingBox({ x1: 450, y1: 250, x2: 650, y2: 450 }, 256, 256);
+  assert(normX1Y1Obj[0] === 115 && normX1Y1Obj[1] === 64 && normX1Y1Obj[2] === 166 && normX1Y1Obj[3] === 115, 'BBox: object schema {x1, y1, x2, y2} parsed correctly');
+
+  const normHighRes = normalizeBoundingBox([1250, 2250, 2250, 3250], 256, 256);
+  assert(normHighRes[0] >= 0 && normHighRes[2] <= 256 && normHighRes[0] < normHighRes[2], 'BBox: high-res pixel coordinates (>1000) scale safely within image bounds');
+
+  // 9C: Comprehensive Multi-Organ Medical Knowledge Routing
+  const breastKnowledge = await fetchMedicalKnowledge({ diagnosis: 'Breast Lump', organ: 'breast', hasTumor: true });
+  assert(breastKnowledge.condition.includes('Ductal Carcinoma'), 'Knowledge Engine: breast organ routes to Invasive Ductal Carcinoma (not GBM)');
+
+  const kidneyKnowledge = await fetchMedicalKnowledge({ diagnosis: 'Renal Mass', organ: 'kidney', hasTumor: true });
+  assert(kidneyKnowledge.condition.includes('Renal Cell Carcinoma'), 'Knowledge Engine: kidney organ routes to Renal Cell Carcinoma (not GBM)');
+
+  const skinKnowledge = await fetchMedicalKnowledge({ diagnosis: 'Irregular Mole', organ: 'skin', hasTumor: true });
+  assert(skinKnowledge.condition.includes('Melanoma'), 'Knowledge Engine: skin organ routes to Cutaneous Malignant Melanoma (not GBM)');
+
+  const liverKnowledge = await fetchMedicalKnowledge({ diagnosis: 'Hepatic Mass', organ: 'liver', hasTumor: true });
+  assert(liverKnowledge.condition.includes('Hepatocellular Carcinoma'), 'Knowledge Engine: liver organ routes to Hepatocellular Carcinoma (not GBM)');
+
+  const colonKnowledge = await fetchMedicalKnowledge({ diagnosis: 'Colon Polyp', organ: 'colon', hasTumor: true });
+  assert(colonKnowledge.condition.includes('Colorectal Adenocarcinoma'), 'Knowledge Engine: colon organ routes to Colorectal Adenocarcinoma (not GBM)');
+
+  const prostateKnowledge = await fetchMedicalKnowledge({ diagnosis: 'Prostate Nodule', organ: 'prostate', hasTumor: true });
+  assert(prostateKnowledge.condition.includes('Prostate Adenocarcinoma'), 'Knowledge Engine: prostate organ routes to Prostate Adenocarcinoma (not GBM)');
+
+  // 9D: Multi-Organ Symptom Analyzer Fallbacks
+  const liverSymptomResult = await analyzeClinicalSymptoms({
+    text: 'Patient presents with worsening jaundice, ascites, and right upper quadrant discomfort.',
+    organHint: 'liver',
+  });
+  assert(
+    liverSymptomResult !== null &&
+      liverSymptomResult.differentials[0].condition.includes('Hepatocellular Carcinoma'),
+    'Symptom Analyzer: explicit organHint="liver" generates Hepatocellular Carcinoma differential',
+  );
+
+  const colonSymptomResult = await analyzeClinicalSymptoms({
+    text: '58yo with 3 months of progressive hematochezia, weight loss, and change in bowel habits.',
+    organHint: 'colon',
+  });
+  assert(
+    colonSymptomResult !== null &&
+      colonSymptomResult.differentials[0].condition.includes('Colorectal Adenocarcinoma'),
+    'Symptom Analyzer: explicit organHint="colon" generates Colorectal Adenocarcinoma differential',
+  );
+
+  const prostateSymptomResult = await analyzeClinicalSymptoms({
+    text: 'Elderly male with nocturia, weak urinary stream, and elevated serum PSA.',
+    organHint: 'prostate',
+  });
+  assert(
+    prostateSymptomResult !== null &&
+      prostateSymptomResult.differentials[0].condition.includes('Prostate'),
+    'Symptom Analyzer: explicit organHint="prostate" generates Prostate differential',
   );
 
   // ──────────────────────────────────────────────────────────────────────────

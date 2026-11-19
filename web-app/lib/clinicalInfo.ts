@@ -13,7 +13,7 @@ import {
   type Modality,
   type Organ,
 } from './types';
-import { errorMessage, fetchWithTimeout } from './utils';
+import { errorMessage, extractJsonFromText, fetchWithTimeout } from './utils';
 
 // ---------------------------------------------------------------------------
 // Rule dictionaries
@@ -97,7 +97,7 @@ function collectMatchesWithNegation(
   // Cues that negate a subsequent finding in the same clause (supports long clauses & multi-term lists)
   // NOTE: "rule out" is an indication, NOT a negation; only "rules out" / "ruled out" are negations.
   const preNegationRe =
-    /\b(?:neither|nor|no|not|without|denies|denied|denying|negative\s+for|rules\s+out|ruled\s+out|rule[d]?\s*[-]\s*out|free\s+of|free\s+from|clear\s+of|clear\s+for|unremarkable\s+for|absence\s+of|no\s+sign[s]?\s+of|no\s+evidence\s+of|without\s+evidence\s+of|with\s+no\s+evidence\s+of|without\s+any|free\s+of\s+any|no\s+focal|no\s+definite|no\s+abnormal|no\s+suspicious|no\s+discrete|no\s+obvious|no\s+gross|no\s+significant|no\s+visible|no\s+apparent|no\s+measurable|no\s+distinct|negative\s+(?:study|scan|imaging|mri|ct|cxr|radiograph|workup)?\s*(?:for|with\s+respect\s+to)|cleared\s+of|resolved|zero|devoid\s+of|fails?\s+to\s+(?:show|reveal|demonstrate)|shows?\s+no|reveals?\s+no|demonstrates?\s+no|unlikely|non-?suspicious|benign|vascular|physiological|physiologic)\b/i;
+    /\b(?:neither|nor|no|not|without|denies|denied|denying|negative\s+for|rules\s+out|ruled\s+out|rules\s*[-]\s*out|ruled\s*[-]\s*out|free\s+of|free\s+from|clear\s+of|clear\s+for|unremarkable\s+for|absence\s+of|no\s+sign[s]?\s+of|no\s+evidence\s+of|without\s+evidence\s+of|with\s+no\s+evidence\s+of|without\s+any|free\s+of\s+any|no\s+focal|no\s+definite|no\s+abnormal|no\s+suspicious|no\s+discrete|no\s+obvious|no\s+gross|no\s+significant|no\s+visible|no\s+apparent|no\s+measurable|no\s+distinct|negative\s+(?:study|scan|imaging|mri|ct|cxr|radiograph|workup)?\s*(?:for|with\s+respect\s+to)|cleared\s+of|resolved|zero|devoid\s+of|fails?\s+to\s+(?:show|reveal|demonstrate)|shows?\s+no|reveals?\s+no|demonstrates?\s+no|unlikely|non-?suspicious|benign|vascular|physiological|physiologic)\b/i;
 
   // Phrases that express active suspicion (e.g., "cannot rule out", "unable to exclude")
   // These indicate a suspicious finding that MUST be treated as affirmed.
@@ -146,7 +146,7 @@ function collectMatchesWithNegation(
         /^\s*(?:identified|detected|demonstrated|seen|revealed)\s*,\s*not\s+(?:seen|identified|detected)\s+(?:previously|on\s+prior)/i.test(immediatePost);
 
       const isActiveSuspicion = activeSuspicionRe.test(immediatePre);
-      const isRuleOutIndication = !isActiveSuspicion && /\b(?:rule\s+out|r\/o)\b/i.test(immediatePre);
+      const isRuleOutIndication = !isActiveSuspicion && /\b(?:rule\s*[-]?\s*out|r\/o)\b/i.test(immediatePre);
 
       if (isRuleOutIndication) {
         // Clinical question/ordering indication: neither confirmed finding nor proven absence
@@ -365,17 +365,38 @@ export async function extractClinicalInfo(
     if (!res.ok) throw new Error(`LLM HTTP ${res.status}`);
     const data = (await res.json()) as ChatCompletionResponse;
     const raw = data.choices?.[0]?.message?.content ?? '';
-    const jsonText = raw.replace(/^```(?:json)?/m, '').replace(/```$/m, '').trim();
-    const parsed = JSON.parse(jsonText) as Record<string, unknown>;
+    const parsed = extractJsonFromText<Record<string, unknown>>(raw);
+    if (!parsed) throw new Error('Failed to parse LLM JSON response');
 
     // Union-merge LLM output over rules (arrays deduped, casing normalized).
     const asOrgan = (v: unknown) =>
-      typeof v === 'string' && ['brain', 'lung', 'pancreas'].includes(v)
-        ? (v as Organ)
+      typeof v === 'string' &&
+      [
+        'brain',
+        'lung',
+        'pancreas',
+        'breast',
+        'liver',
+        'kidney',
+        'skin',
+        'colon',
+        'prostate',
+        'general',
+      ].includes(v.toLowerCase())
+        ? (v.toLowerCase() as Organ)
         : null;
     const asModality = (v: unknown) =>
-      typeof v === 'string' && ['MRI', 'CT', 'PET'].includes(v.toUpperCase())
-        ? ((v.toUpperCase()) as Modality)
+      typeof v === 'string' &&
+      [
+        'MRI',
+        'CT',
+        'PET',
+        'XRAY',
+        'ULTRASOUND',
+        'MAMMOGRAM',
+        'DERMOSCOPY',
+      ].includes(v.toUpperCase())
+        ? (v.toUpperCase() as Modality)
         : null;
 
     const merged: ClinicalInfo = { ...rules, extractionMethod: 'llm+rules' };

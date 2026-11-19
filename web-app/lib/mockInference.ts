@@ -174,7 +174,7 @@ export function detectIsLesionPresent(
   const textPrefix = Buffer.from(imageBytes.slice(0, prefixLen)).toString('utf-8');
   if (textPrefix.includes('<svg')) {
     const hasBrainLesion =
-      /fill="#8888a8"|Perilesional Edema|Frontal\/Temporal Lesion|Enhancing Mass/i.test(textPrefix);
+      /fill="#8888a8"|Perilesional Edema|Frontal\/Temporal Lesion|Enhancing Mass|Glioblastoma|gbmRing/i.test(textPrefix);
     const hasLungLesion =
       /fill="#a4a4b8"|Spiculations|Solitary Pulmonary Nodule|Hyperdense Mass/i.test(textPrefix);
     const hasPancreasLesion =
@@ -335,18 +335,18 @@ export function generateMockPrediction(
       const dx = x - cx;
       const dy = y - cy;
       const theta = Math.atan2(dy, dx);
+      // Subtle, organic biological contour variation instead of exaggerated polygon wobbles
       const wobble =
         1 +
-        0.18 * Math.sin(theta * shape.wobble + phase) +
-        0.08 * Math.sin(theta * (shape.wobble + 2));
+        0.07 * Math.sin(theta * 3 + phase) +
+        0.04 * Math.sin(theta * 5 - phase * 0.7);
       const nx = dx / (rx * wobble);
       const ny = dy / (ry * wobble);
-      if (nx * nx + ny * ny <= 1) {
+      const distSq = nx * nx + ny * ny;
+
+      if (distSq <= 1.0) {
+        const dist = Math.sqrt(distSq);
         const idx = (y * W + x) * 4;
-        rgba[idx] = 248; // R — lesion red (#f84848)
-        rgba[idx + 1] = 72; // G
-        rgba[idx + 2] = 72; // B
-        rgba[idx + 3] = 235; // A
         metricsAccum.area++;
         metricsAccum.sumX += x;
         metricsAccum.sumY += y;
@@ -354,6 +354,22 @@ export function generateMockPrediction(
         if (y < metricsAccum.minY) metricsAccum.minY = y;
         if (x > metricsAccum.maxX) metricsAccum.maxX = x;
         if (y > metricsAccum.maxY) metricsAccum.maxY = y;
+
+        // Diagnostic PACS rendering: crisp luminous boundary contour + semi-transparent diagnostic interior
+        if (dist >= 0.84) {
+          // Perimeter contour line with anti-aliasing falloff
+          const edgeAlpha = dist > 0.95 ? Math.round(245 * (1.0 - (dist - 0.95) / 0.05)) : 245;
+          rgba[idx] = 255;
+          rgba[idx + 1] = 68;
+          rgba[idx + 2] = 68;
+          rgba[idx + 3] = Math.max(130, edgeAlpha);
+        } else {
+          // Semi-transparent interior: allows underlying MRI scan anatomy, ring enhancement & necrosis to remain visible
+          rgba[idx] = 248;
+          rgba[idx + 1] = 64;
+          rgba[idx + 2] = 64;
+          rgba[idx + 3] = 120;
+        }
       }
     }
   }

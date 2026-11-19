@@ -11,7 +11,7 @@ export async function GET(
 ) {
   try {
     const caseId = (params?.id ?? '').trim();
-    if (!caseId || caseId.length > 128) {
+    if (!caseId || caseId.length > 128 || /[^a-zA-Z0-9_-]/.test(caseId)) {
       return NextResponse.json({ ok: false, error: 'Case ID missing or invalid' }, { status: 400 });
     }
 

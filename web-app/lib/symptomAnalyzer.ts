@@ -9,6 +9,7 @@
  */
 
 import { getGeminiApiKey } from './geminiVision';
+import { extractJsonFromText } from './utils';
 import type {
   ClinicalInfo,
   InferenceResult,
@@ -358,7 +359,160 @@ function getCuratedSymptomFallback(text: string, organHint?: Organ): SymptomAnal
     };
   }
 
-  // 7. Default / General Presentation
+  // 7. Hepatobiliary / Liver Presentation
+  if (
+    explicitOrgan === 'liver' ||
+    (!explicitOrgan &&
+      /\b(liver|hepat\w*|hcc|cirrhos\w*|ascites|portal\s+hypertension|afp|jaundice\s+and\s+weight\s+loss)\b/i.test(lower))
+  ) {
+    return {
+      primaryComplaint: text.slice(0, 120) || 'Hepatobiliary dysfunction or hepatic lesion on imaging.',
+      symptomSeverity: 'high',
+      acuityLevel: 'urgent',
+      differentials: [
+        {
+          condition: 'Hepatocellular Carcinoma (HCC)',
+          probability: 'high',
+          confidenceScore: 0.85,
+          organSystem: 'Gastrointestinal & Hepatobiliary Oncology',
+          rationale: 'Arterial phase hyperenhancement with venous washout in a patient with chronic liver risk factors indicates primary hepatic malignancy.',
+          supportingSymptoms: ['Right upper quadrant pain', 'Elevated transaminases', 'Abdominal fullness'],
+          refutingFactors: ['Benign hepatic hemangioma or focal nodular hyperplasia'],
+        },
+        {
+          condition: 'Hepatic Hemangioma (Cavernous)',
+          probability: 'moderate',
+          confidenceScore: 0.65,
+          organSystem: 'Hepatobiliary / Benign',
+          rationale: 'Most common benign liver tumor; exhibits peripheral nodular discontinuous enhancement on multiphase imaging.',
+          supportingSymptoms: ['Right upper quadrant discomfort'],
+          refutingFactors: ['Rapid washout or elevated AFP favors malignancy'],
+        },
+      ],
+      recommendedImaging: [
+        {
+          modality: 'Tri-Phasic Liver CT / Contrast-Enhanced Liver MRI',
+          protocol: 'Pre-contrast, late arterial, portal venous, and delayed equilibrium phase dynamic imaging with Eovist contrast',
+          indication: 'LI-RADS diagnostic categorization for focal solid hepatic mass',
+          urgency: 'Urgent (< 1 week)',
+        },
+      ],
+      recommendedLabs: [
+        { testName: 'Serum Alpha-Fetoprotein (AFP)', rationale: 'Primary oncologic biomarker for hepatocellular carcinoma', priority: 'Urgent' },
+        { testName: 'Hepatic Function Panel (LFTs) & Coagulation (PT/INR)', rationale: 'Child-Pugh functional liver reserve staging', priority: 'Stat' },
+      ],
+      clinicalRedFlags: ['Acute worsening of ascites or variceal bleeding', 'Sudden encephalopathy', 'Rapid rise in serum AFP'],
+      suggestedActionPlan: [
+        'Dynamic multi-phase contrast liver MRI with hepatobiliary agent.',
+        'Hepatology and Liver Surgical Oncology multidisciplinary consultation.',
+        'Viral hepatitis serologies (HBV/HCV) and Child-Pugh / MELD score assessment.',
+      ],
+    };
+  }
+
+  // 8. Colorectal / Lower GI Presentation
+  if (
+    explicitOrgan === 'colon' ||
+    (!explicitOrgan &&
+      /\b(colon|colorectal|rectal|bowel|hematochezia|melena|change\s+in\s+bowel\s+habits|tenesmus|polyps?|cea)\b/i.test(lower))
+  ) {
+    return {
+      primaryComplaint: text.slice(0, 120) || 'Lower gastrointestinal symptoms or colorectal finding.',
+      symptomSeverity: 'high',
+      acuityLevel: 'urgent',
+      differentials: [
+        {
+          condition: 'Colorectal Adenocarcinoma',
+          probability: 'high',
+          confidenceScore: 0.84,
+          organSystem: 'Lower Gastrointestinal Oncology',
+          rationale: 'Persistent alteration in bowel habits, hematochezia, and iron-deficiency anemia in adults warrants colonoscopic evaluation for neoplasm.',
+          supportingSymptoms: ['Rectal bleeding / melena', 'Change in bowel habits', 'Unintentional weight loss'],
+          refutingFactors: ['Inflammatory bowel disease or diverticular disease'],
+        },
+        {
+          condition: 'Diverticular Colitis / Internal Hemorrhoids',
+          probability: 'moderate',
+          confidenceScore: 0.62,
+          organSystem: 'Lower Gastrointestinal / Benign',
+          rationale: 'Bright red painless rectal bleeding commonly attributable to benign anorectal or diverticular pathology.',
+          supportingSymptoms: ['Rectal bleeding'],
+          refutingFactors: ['Absence of systemic weight loss or microcytic anemia'],
+        },
+      ],
+      recommendedImaging: [
+        {
+          modality: 'Colonoscopy with Biopsy & Abdominopelvic CT',
+          protocol: 'Complete optical colonoscopy with targeted mucosal biopsy; contrast CT abdomen/pelvis for TNM staging',
+          indication: 'Direct tissue biopsy of mucosal lesion and baseline locoregional staging',
+          urgency: 'Urgent (< 2 weeks)',
+        },
+      ],
+      recommendedLabs: [
+        { testName: 'Serum Carcinoembryonic Antigen (CEA)', rationale: 'Baseline tumor marker for surveillance and prognostic stratification', priority: 'Standard' },
+        { testName: 'Complete Blood Count (CBC) & Ferritin', rationale: 'Quantify microcytic hypochromic iron-deficiency anemia from occult bleeding', priority: 'Urgent' },
+      ],
+      clinicalRedFlags: ['Gross ongoing rectal hemorrhage', 'Acute mechanical bowel obstruction signs (obstipation, vomiting)', 'Severe progressive cachexia'],
+      suggestedActionPlan: [
+        'Urgent diagnostic optical colonoscopy with tissue biopsy.',
+        'Staging contrast-enhanced CT of chest, abdomen, and pelvis.',
+        'Surgical Oncology and Gastroenterology consultation.',
+      ],
+    };
+  }
+
+  // 9. Prostate / Genitourinary Presentation
+  if (
+    explicitOrgan === 'prostate' ||
+    (!explicitOrgan &&
+      /\b(prostat\w*|psa|nocturia|hesitancy|weak\s+stream|urinary\s+retention)\b/i.test(lower))
+  ) {
+    return {
+      primaryComplaint: text.slice(0, 120) || 'Lower urinary tract symptoms and elevated PSA.',
+      symptomSeverity: 'moderate',
+      acuityLevel: 'urgent',
+      differentials: [
+        {
+          condition: 'Acinar Adenocarcinoma of the Prostate',
+          probability: 'high',
+          confidenceScore: 0.82,
+          organSystem: 'Urologic / Genitourinary Oncology',
+          rationale: 'Sustained elevation of serum PSA accompanied by obstructive urinary symptoms requires multiparametric MRI and targeted biopsy.',
+          supportingSymptoms: ['Elevated PSA', 'Nocturia', 'Decreased urinary stream force'],
+          refutingFactors: ['Benign Prostatic Hyperplasia (BPH) or acute prostatitis'],
+        },
+        {
+          condition: 'Benign Prostatic Hyperplasia (BPH)',
+          probability: 'high',
+          confidenceScore: 0.78,
+          organSystem: 'Urology / Benign Genitourinary',
+          rationale: 'Transition zone adenomatous hyperplasia producing progressive bladder outlet obstruction in aging males.',
+          supportingSymptoms: ['Hesitancy', 'Urinary frequency', 'Nocturia'],
+          refutingFactors: ['Marked PSA velocity or abnormal DRE favors malignancy'],
+        },
+      ],
+      recommendedImaging: [
+        {
+          modality: 'Multiparametric MRI Prostate (mpMRI)',
+          protocol: 'High-resolution T2W, DWI/ADC, and Dynamic Contrast-Enhanced (DCE) MRI conforming to PI-RADS v2.1',
+          indication: 'Targeted detection of clinically significant prostate cancer (PI-RADS 3-5)',
+          urgency: 'Urgent (< 3 weeks)',
+        },
+      ],
+      recommendedLabs: [
+        { testName: 'Total and Free PSA (% free PSA)', rationale: 'Risk stratification; free/total ratio < 10% elevates suspicion of cancer', priority: 'Standard' },
+        { testName: 'Urinalysis & Urine Culture', rationale: 'Rule out bacterial prostatitis or acute urinary tract infection', priority: 'Standard' },
+      ],
+      clinicalRedFlags: ['Acute complete urinary retention', 'New-onset back/bone pain concerning for skeletal metastases', 'Marked PSA velocity (> 0.75 ng/mL/yr)'],
+      suggestedActionPlan: [
+        'Multiparametric MRI of the prostate (PI-RADS protocol).',
+        'Urology referral for digital rectal examination (DRE) and MRI-ultrasound fusion biopsy.',
+        'Baseline bone scintigraphy or PSMA PET-CT if PSA > 20 ng/mL.',
+      ],
+    };
+  }
+
+  // 10. Default / General Presentation
   return {
     primaryComplaint: text.slice(0, 120) || 'General clinical symptom presentation.',
     symptomSeverity: 'moderate',
@@ -493,13 +647,18 @@ Respond with strict JSON matching this schema:
             },
           );
 
-          if (!res.ok) continue;
+          if (!res.ok) {
+            if (res.status === 400 || res.status === 401 || res.status === 403) {
+              break;
+            }
+            continue;
+          }
 
           const data = await res.json();
           const outputText = data.candidates?.[0]?.content?.parts?.[0]?.text;
           if (outputText) {
-            const parsed = JSON.parse(outputText) as SymptomAnalysisResult;
-            if (Array.isArray(parsed.differentials) && parsed.differentials.length > 0) {
+            const parsed = extractJsonFromText<SymptomAnalysisResult>(outputText);
+            if (parsed && Array.isArray(parsed.differentials) && parsed.differentials.length > 0) {
               // Compute multimodal concordance if a scan inference is present
               if (args.inference) {
                 const lesionPx = args.inference.metrics?.areaPx ?? 0;

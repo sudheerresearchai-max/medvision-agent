@@ -97,3 +97,45 @@ export function errorMessage(err: unknown): string {
     return 'Unknown error';
   }
 }
+
+/**
+ * Safely parse JSON from LLM or Gemini text responses that may contain markdown
+ * code fences (e.g. ```json ... ```) or leading/trailing conversational filler.
+ */
+export function extractJsonFromText<T = unknown>(text: string): T | null {
+  if (!text || typeof text !== 'string') return null;
+  const cleaned = text.trim();
+  try {
+    return JSON.parse(cleaned) as T;
+  } catch {
+    // Strip markdown code fences: ```json ... ```
+    const stripped = cleaned
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
+    try {
+      return JSON.parse(stripped) as T;
+    } catch {
+      // Extract outermost JSON object { ... }
+      const objMatch = stripped.match(/\{[\s\S]*\}/);
+      if (objMatch) {
+        try {
+          return JSON.parse(objMatch[0]) as T;
+        } catch {
+          // fall through
+        }
+      }
+      // Extract outermost JSON array [ ... ]
+      const arrMatch = stripped.match(/\[[\s\S]*\]/);
+      if (arrMatch) {
+        try {
+          return JSON.parse(arrMatch[0]) as T;
+        } catch {
+          // fall through
+        }
+      }
+      return null;
+    }
+  }
+}
+

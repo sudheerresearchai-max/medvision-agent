@@ -10,7 +10,7 @@
 
 import { encodeRgbaPng } from './mockInference';
 import type { InferenceResult, MaskMetrics, ModelKey } from './types';
-import { clamp, fnv1aHex, round, errorMessage } from './utils';
+import { clamp, fnv1aHex, round, errorMessage, extractJsonFromText } from './utils';
 
 export interface GeminiVisionDetection {
   organ?: string;
@@ -92,11 +92,21 @@ export function normalizeBoundingBox(
       x0 = getNum('xmin');
       y1 = getNum('ymax');
       x1 = getNum('xmax');
+    } else if (Number.isFinite(getNum('minY')) && Number.isFinite(getNum('minX'))) {
+      y0 = getNum('minY');
+      x0 = getNum('minX');
+      y1 = getNum('maxY');
+      x1 = getNum('maxX');
     } else if (Number.isFinite(getNum('top')) && Number.isFinite(getNum('left'))) {
       y0 = getNum('top');
       x0 = getNum('left');
       y1 = getNum('bottom');
       x1 = getNum('right');
+    } else if (Number.isFinite(getNum('y1')) && Number.isFinite(getNum('x1'))) {
+      y0 = getNum('y1');
+      x0 = getNum('x1');
+      y1 = getNum('y2');
+      x1 = getNum('x2');
     } else if (Number.isFinite(getNum('y')) && Number.isFinite(getNum('x'))) {
       y0 = getNum('y');
       x0 = getNum('x');
@@ -112,15 +122,23 @@ export function normalizeBoundingBox(
   // Detect scale
   const maxVal = Math.max(Math.abs(y0), Math.abs(x0), Math.abs(y1), Math.abs(x1));
   let scaleFactor = 1.0;
+  let baseScale = 1000.0;
   if (maxVal <= 1.05 && maxVal > 0) {
     // 0..1 scale
     scaleFactor = 1000.0;
+    baseScale = 1000.0;
   } else if (maxVal <= 100.05 && maxVal > 1.05) {
     // 0..100 percentage scale
     scaleFactor = 10.0;
-  } else {
-    // 0..1000 or native scale
+    baseScale = 1000.0;
+  } else if (maxVal <= 1000.05) {
+    // 0..1000 or standard scale
     scaleFactor = 1.0;
+    baseScale = 1000.0;
+  } else {
+    // High-resolution raw pixel coordinates (> 1000)
+    scaleFactor = 1.0;
+    baseScale = maxVal;
   }
 
   const scaledY0 = y0 * scaleFactor;
@@ -134,16 +152,16 @@ export function normalizeBoundingBox(
   const normXmin = Math.min(scaledX0, scaledX1);
   const normXmax = Math.max(scaledX0, scaledX1);
 
-  const minX = Math.round((clamp(normXmin, 0, 1000) / 1000) * width);
-  const maxX = Math.round((clamp(normXmax, 0, 1000) / 1000) * width);
-  const minY = Math.round((clamp(normYmin, 0, 1000) / 1000) * height);
-  const maxY = Math.round((clamp(normYmax, 0, 1000) / 1000) * height);
+  const minX = Math.round((clamp(normXmin, 0, baseScale) / baseScale) * width);
+  const maxX = Math.round((clamp(normXmax, 0, baseScale) / baseScale) * width);
+  const minY = Math.round((clamp(normYmin, 0, baseScale) / baseScale) * height);
+  const maxY = Math.round((clamp(normYmax, 0, baseScale) / baseScale) * height);
 
-  // Guarantee minimum lesion dimension (6px) so lesion is not an empty speck
-  const finalMinX = Math.min(minX, width - 6);
-  const finalMaxX = Math.max(maxX, finalMinX + 6);
-  const finalMinY = Math.min(minY, height - 6);
-  const finalMaxY = Math.max(maxY, finalMinY + 6);
+  // Guarantee minimum lesion dimension (6px) and protect image boundaries
+  const finalMinX = Math.max(0, Math.min(minX, Math.max(0, width - 6)));
+  const finalMaxX = Math.min(width, Math.max(maxX, finalMinX + Math.min(6, width)));
+  const finalMinY = Math.max(0, Math.min(minY, Math.max(0, height - 6)));
+  const finalMaxY = Math.min(height, Math.max(maxY, finalMinY + Math.min(6, height)));
 
   return [finalMinX, finalMinY, finalMaxX, finalMaxY];
 }
@@ -241,9 +259,12 @@ Respond with strict JSON matching this schema:
       const data = await res.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (text) {
-        parsed = JSON.parse(text) as GeminiVisionDetection;
-        activeModel = model;
-        break;
+        const extracted = extractJsonFromText<GeminiVisionDetection>(text);
+        if (extracted && typeof extracted.has_tumor === 'boolean') {
+          parsed = extracted;
+          activeModel = model;
+          break;
+        }
       }
     } catch (modelErr) {
       console.warn(`[geminiVision] Model ${model} request error (${errorMessage(modelErr)}), trying next fallback...`);
@@ -352,7 +373,16 @@ Respond with strict JSON matching this schema:
     width,
     height,
     maskBase64,
-    confidence: round(clamp(parsed.confidence, 0.70, 0.99), 3),
+    confidence: round(
+      clamp(
+        typeof parsed.confidence === 'number' && Number.isFinite(parsed.confidence)
+          ? parsed.confidence
+          : 0.85,
+        0.70,
+        0.99,
+      ),
+      3,
+    ),
     metrics,
     spacingMm: null,
     warnings: [

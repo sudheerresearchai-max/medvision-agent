@@ -30,8 +30,11 @@ const ORGAN_OPTIONS: Array<{ key: OrganChoice; label: string }> = [
   { key: 'lung', label: 'Lung' },
   { key: 'pancreas', label: 'Pancreas' },
   { key: 'breast', label: 'Breast' },
+  { key: 'liver', label: 'Liver' },
   { key: 'kidney', label: 'Kidney' },
   { key: 'skin', label: 'Skin' },
+  { key: 'colon', label: 'Colon' },
+  { key: 'prostate', label: 'Prostate' },
   { key: 'general', label: 'General' },
 ];
 

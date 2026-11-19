@@ -492,7 +492,7 @@ export function calculateMeasurements(
     },
   ];
 
-  if (m.bbox) {
+  if (m.bbox && Number.isFinite(m.bbox.w) && Number.isFinite(m.bbox.h) && m.bbox.w > 0 && m.bbox.h > 0) {
     const longestAxis = Math.max(m.bbox.w, m.bbox.h);
     const shortAxis = Math.min(m.bbox.w, m.bbox.h);
     const aspectRatio = round(m.bbox.w / Math.max(1, m.bbox.h), 2);
@@ -886,6 +886,18 @@ export async function runAnalysis(input: AnalysisInput): Promise<AnalysisResult>
     diagnosisHint = 'Non-Small Cell Lung Carcinoma';
   } else if (routing.modelKey === 'pancreas') {
     diagnosisHint = 'Pancreatic Ductal Adenocarcinoma';
+  } else if (routing.modelKey === 'breast') {
+    diagnosisHint = 'Invasive Ductal Carcinoma';
+  } else if (routing.modelKey === 'kidney') {
+    diagnosisHint = 'Renal Cell Carcinoma';
+  } else if (routing.modelKey === 'skin') {
+    diagnosisHint = 'Cutaneous Malignant Melanoma';
+  } else if (routing.modelKey === 'liver') {
+    diagnosisHint = 'Hepatocellular Carcinoma';
+  } else if (routing.modelKey === 'colon') {
+    diagnosisHint = 'Colorectal Adenocarcinoma';
+  } else if (routing.modelKey === 'prostate') {
+    diagnosisHint = 'Prostate Adenocarcinoma';
   }
 
   const clinicalKnowledge = await fetchMedicalKnowledge({

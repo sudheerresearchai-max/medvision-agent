@@ -9,6 +9,7 @@
  */
 
 import { getGeminiApiKey } from './geminiVision';
+import { extractJsonFromText } from './utils';
 import type { ClinicalKnowledgeBrief, MedicalSourceRef, Organ } from './types';
 
 // Curated evidence-based clinical knowledge bases for fallback / offline / instant delivery
@@ -234,6 +235,352 @@ const CURATED_KNOWLEDGE: Record<string, Omit<ClinicalKnowledgeBrief, 'retrievedA
     ],
   },
 
+  breast: {
+    condition: 'Invasive Ductal Carcinoma (Infiltrating Ductal Carcinoma, IDC)',
+    category: 'Breast Malignancy (Mammary Oncology)',
+    whoClassification: 'WHO Classification of Breast Tumours: Invasive Breast Carcinoma of No Special Type (NST)',
+    summary:
+      'Invasive ductal carcinoma is the most common histological subtype of breast cancer, originating in the mammary epithelial lining and infiltrating surrounding stroma. Characterized by dense fibrotic architectural distortion, microcalcifications, and potential axillary lymphatic dissemination.',
+    pathologyDetails:
+      'Histopathologic features demonstrate cohesive infiltration of malignant ductal epithelial cells into fibrous stroma. Mandatory biomarker profiling includes Estrogen Receptor (ER), Progesterone Receptor (PR), HER2/neu amplification (IHC/FISH), and Ki-67 proliferation index.',
+    commonSymptoms: [
+      'Painless, firm, fixed breast lump with irregular contours.',
+      'Skin retraction, puckering, or nipple inversion.',
+      'Spontaneous serosanguinous or bloody nipple discharge.',
+      'Unilateral axillary lymph node enlargement.',
+      'Cutaneous changes: Peau d orange texture secondary to dermal lymphatic obstruction.',
+    ],
+    clinicalSideEffects: {
+      diseaseRelated: [
+        'Local invasion of chest wall musculature (pectoralis major).',
+        'Axillary and internal mammary lymph node metastasis.',
+        'Distant metastasis to bone, liver, lungs, and central nervous system.',
+        'Secondary breast pain or inflammatory skin changes.',
+      ],
+      treatmentRelated: [
+        'Endocrine Therapy (Tamoxifen/Aromatase Inhibitors): Hot flashes, arthralgias, osteopenia/osteoporosis, thromboembolism.',
+        'HER2-Targeted Therapy (Trastuzumab): Reversible cardiomyopathy / reduced left ventricular ejection fraction (LVEF).',
+        'Chemotherapy (AC-T): Myelosuppression, alopecia, peripheral sensory neuropathy (taxanes).',
+        'Radiation Therapy: Local erythema, breast fibrosis, hyperpigmentation.',
+      ],
+    },
+    treatmentModalities: [
+      'Surgical Intervention: Breast-Conserving Surgery (Lumpectomy) with negative margins or Total Mastectomy, combined with Sentinel Lymph Node Biopsy (SLNB).',
+      'Adjuvant / Neoadjuvant Chemotherapy: Dose-dense Doxorubicin + Cyclophosphamide followed by Paclitaxel (AC-T).',
+      'Targeted Anti-HER2 Therapy: Trastuzumab + Pertuzumab for HER2-positive phenotypes.',
+      'Endocrine Therapy: Tamoxifen (premenopausal) or Aromatase Inhibitors (postmenopausal) for hormone-receptor-positive disease.',
+      'Adjuvant Radiotherapy: Whole-breast radiotherapy post-lumpectomy or post-mastectomy radiation for high-risk nodal involvement.',
+    ],
+    mandatoryPrecautions: [
+      'Lymphedema Prevention: Avoid blood pressure cuffs, venipuncture, and heavy carrying on the ipsilateral arm following axillary dissection.',
+      'Cardiac Monitoring: Baseline and serial Echocardiograms or MUGA scans every 3 months during Trastuzumab therapy.',
+      'Bone Health Maintenance: Baseline DEXA scan; calcium, vitamin D supplementation, and bisphosphonate evaluation for patients on aromatase inhibitors.',
+      'Fertility Preservation Consultation: Discuss embryo/oocyte cryopreservation prior to gonadotoxic chemotherapy in premenopausal women.',
+    ],
+    emergencyRedFlags: [
+      'Sudden onset of severe focal back pain or paraparesis concerning for malignant spinal cord compression.',
+      'Acute severe dyspnea or pleuritic chest pain concerning for pulmonary embolism or massive malignant pleural effusion.',
+      'Signs of acute cardiac decompensation (peripheral edema, orthopnea, paroxysmal nocturnal dyspnea).',
+    ],
+    sources: [
+      {
+        name: 'NCCN Clinical Practice Guidelines in Oncology: Breast Cancer',
+        sourceType: 'guideline',
+        url: 'https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1419',
+        citation: 'NCCN Guidelines Version 2.2024 — Breast Cancer Protocol.',
+      },
+      {
+        name: 'WHO Classification of Breast Tumours (5th Edition)',
+        sourceType: 'registry',
+        url: 'https://tumourclassification.iarc.who.int/',
+        citation: 'WHO Classification of Tumours Editorial Board. Breast Tumours. Lyon: IARC; 2019.',
+      },
+    ],
+  },
+
+  kidney: {
+    condition: 'Renal Cell Carcinoma (Clear Cell RCC, ccRCC)',
+    category: 'Urologic Oncology (Renal Cortical Malignancy)',
+    whoClassification: 'WHO Classification of Urinary and Male Genital Tumours: Clear Cell Renal Cell Carcinoma',
+    summary:
+      'Clear cell renal cell carcinoma arises from the proximal convoluted tubule epithelium, representing the predominant subtype of adult primary renal cancer. Highly vascular with characteristic loss of the VHL tumor suppressor gene on chromosome 3p, promoting robust VEGF-driven neoangiogenesis.',
+    pathologyDetails:
+      'Microscopic features reveal sheets of round to polygonal cells with clear, lipid- and glycogen-rich cytoplasm bounded by distinct cell membranes and surrounded by an intricate, delicate capillary network. Frequent mutations in VHL, PBRM1, BAP1, and SETD2.',
+    commonSymptoms: [
+      'Gross or microscopic hematuria (classic urologic sign).',
+      'Dull, aching flank or lateral abdominal pain.',
+      'Palpable flank or abdominal mass.',
+      'Unexplained constitutional symptoms: Persistent fever, night sweats, anorexia, weight loss.',
+      'New-onset left-sided varicocele in adult men (renal vein tumor thrombus).',
+    ],
+    clinicalSideEffects: {
+      diseaseRelated: [
+        'Renal vein and inferior vena cava (IVC) tumor thrombus extension.',
+        'Secondary hypertension from renin hypersecretion.',
+        'Paraneoplastic syndromes: Hypercalcemia (PTHrP), erythrocytosis (erythropoietin), Stauffer syndrome (reversible hepatic dysfunction).',
+        'Metastatic seeding to lungs, bones, liver, and brain.',
+      ],
+      treatmentRelated: [
+        'VEGF Tyrosine Kinase Inhibitors (Cabozantinib, Sunitinib): Hypertension, hand-foot skin reaction, diarrhea, fatigue, proteinuria.',
+        'Immune Checkpoint Inhibitors (Nivolumab, Ipilimumab): Immune-related adverse events (hypophysitis, colitis, hepatitis, pneumonitis).',
+        'Partial / Radical Nephrectomy: Chronic kidney disease (CKD), post-operative hemorrhage, urine leak.',
+      ],
+    },
+    treatmentModalities: [
+      'Surgical Resection: Partial Nephrectomy (nephron-sparing for T1a/T1b tumors) or Radical Nephrectomy with regional lymphadenectomy.',
+      'Ablative Therapies: Cryoablation or Radiofrequency Ablation (RFA) for small cortical tumors (< 3 cm) in comorbid patients.',
+      'First-Line Systemic Dual Immunotherapy: Nivolumab + Ipilimumab for intermediate/poor-risk metastatic disease.',
+      'IO-TKI Combination: Pembrolizumab + Axitinib or Lenvatinib + Pembrolizumab across all IMDC risk groups.',
+      'Active Surveillance: Structured protocol for small incidental renal masses (< 2 cm) in elderly candidates.',
+    ],
+    mandatoryPrecautions: [
+      'Renal Function Preservation: Serial eGFR and serum creatinine monitoring; strict avoidance of nephrotoxic medications (NSAIDs, aminoglycosides).',
+      'Blood Pressure Surveillance: Daily home blood pressure log; aggressive management of VEGF-induced hypertension.',
+      'Contrast Precaution: Hydration protocols and contrast minimization for residual solitary kidney.',
+    ],
+    emergencyRedFlags: [
+      'Severe intractable gross hematuria with clot retention risking acute bladder outlet obstruction.',
+      'Acute severe bilateral lower extremity edema or collateral abdominal wall venous engorgement (IVC occlusion).',
+      'Hypercalcemic crisis (confusion, lethargy, cardiac arrhythmias, severe dehydration).',
+    ],
+    sources: [
+      {
+        name: 'NCCN Clinical Practice Guidelines in Oncology: Kidney Cancer',
+        sourceType: 'guideline',
+        url: 'https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1440',
+        citation: 'NCCN Guidelines Version 1.2024 — Kidney Cancer.',
+      },
+      {
+        name: 'European Association of Urology (EAU) Guidelines on Renal Cell Carcinoma',
+        sourceType: 'guideline',
+        url: 'https://uroweb.org/guidelines/renal-cell-carcinoma',
+        citation: 'Ljungberg B, et al. EAU Guidelines on Renal Cell Carcinoma. Eur Urol. 2022;82(4):399-410.',
+      },
+    ],
+  },
+
+  skin: {
+    condition: 'Cutaneous Malignant Melanoma',
+    category: 'Dermatologic Oncology (Cutaneous Malignancy)',
+    whoClassification: 'WHO Classification of Skin Tumours: Superficial Spreading / Nodular Melanoma',
+    summary:
+      'Cutaneous melanoma is a highly aggressive skin malignancy arising from epidermal melanocytes. Displays early propensity for vertical dermal invasion, regional lymph node spread, and distant visceral metastasis. Staged primarily by Breslow tumor depth and ulceration status.',
+    pathologyDetails:
+      'Histopathologic evaluation demonstrates atypical melanocytes proliferating in nests along the dermo-epidermal junction and invading vertically into the dermis. Molecular profiling is mandatory for BRAF V600 (V600E/K), NRAS, and c-KIT mutations in advanced stages.',
+    commonSymptoms: [
+      'Asymmetry: Two halves of the lesion do not match.',
+      'Border: Scalloped, notched, or poorly defined margins.',
+      'Color: Variegation with shades of brown, black, blue, white, or red.',
+      'Diameter: Exceeding 6 mm (pencil eraser size), though can present smaller.',
+      'Evolving: Change in size, shape, surface bleeding, or elevation over time.',
+    ],
+    clinicalSideEffects: {
+      diseaseRelated: [
+        'Satellite and in-transit dermal or subcutaneous metastases.',
+        'Regional sentinel lymph node micrometastasis.',
+        'Distant visceral metastases to brain, lungs, liver, and gastrointestinal tract.',
+      ],
+      treatmentRelated: [
+        'BRAF/MEK Inhibitors (Dabrafenib + Trametinib): Pyrexia, cutaneous squamous cell carcinomas, fatigue, diarrhea.',
+        'Anti-PD-1 / Anti-CTLA-4 Immunotherapy (Nivolumab + Ipilimumab): Immune-related colitis, endocrinopathies, vitiligo.',
+        'Wide Local Excision: Surgical scarring, wound dehiscence, secondary lymphedema following lymphadenectomy.',
+      ],
+    },
+    treatmentModalities: [
+      'Wide Local Excision (WLE): Definitive surgical excision with 1 cm margins for Breslow depth ≤ 1 mm; 2 cm margins for Breslow depth > 2 mm.',
+      'Sentinel Lymph Node Biopsy (SLNB): Mandatory staging procedure for melanomas with Breslow depth ≥ 0.8 mm or with ulceration.',
+      'Targeted Therapy: Dual BRAF/MEK inhibition (Dabrafenib/Trametinib or Encorafenib/Binimetinib) for BRAF V600-mutant disease.',
+      'Immune Checkpoint Blockade: Adjuvant or first-line metastatic Pembrolizumab, Nivolumab, or Nivolumab + Relatlimab.',
+    ],
+    mandatoryPrecautions: [
+      'Total Cutaneous Surveillance: Complete full-body skin examination every 3-6 months; patient self-examination using ABCDE criteria.',
+      'Sun Protection Measures: Strict UV avoidance, broad-spectrum SPF 50+ sunscreen, protective clothing.',
+      'Family Screening: First-degree relatives should undergo baseline dermatologic evaluation.',
+    ],
+    emergencyRedFlags: [
+      'Acute neurological symptoms (new seizure, headache, focal deficit) indicating brain metastasis.',
+      'Rapidly enlarging subcutaneous or lymph node mass.',
+      'Severe immune-mediated diarrhea / abdominal pain concerning for immune colitis.',
+    ],
+    sources: [
+      {
+        name: 'NCCN Clinical Practice Guidelines in Oncology: Melanoma: Cutaneous',
+        sourceType: 'guideline',
+        url: 'https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1443',
+        citation: 'NCCN Guidelines Version 1.2024 — Melanoma: Cutaneous.',
+      },
+    ],
+  },
+
+  liver: {
+    condition: 'Hepatocellular Carcinoma (HCC)',
+    category: 'Gastrointestinal & Hepatobiliary Oncology',
+    whoClassification: 'WHO Classification of Digestive System Tumours: Hepatocellular Carcinoma',
+    summary:
+      'Hepatocellular carcinoma is the primary malignant neoplasm of hepatocytes, developing almost exclusively in the background of chronic cirrhosis, hepatitis B/C viral infection, or metabolic dysfunction-associated steatohepatitis (MASH). Features unique diagnostic arterial phase hyperenhancement and venous washout.',
+    pathologyDetails:
+      'Histopathologic architecture shows trabecular, pseudoglandular, and solid growth patterns of pleomorphic hepatocytes with bile production. Molecular alterations commonly involve TERT promoter mutations, CTNNB1, and TP53. Serum alpha-fetoprotein (AFP) serves as the primary tumor biomarker.',
+    commonSymptoms: [
+      'Right upper quadrant (RUQ) dull aching abdominal pain.',
+      'Worsening jaundice, scleral icterus, and pruritus.',
+      'Rapidly accumulating ascites refractory to diuretic therapy.',
+      'Profound anorexia, early satiety, and cachexia.',
+      'Hepatosplenomegaly and prominent collateral abdominal wall veins.',
+    ],
+    clinicalSideEffects: {
+      diseaseRelated: [
+        'Portal vein tumor thrombosis (PVTT) with acute portal hypertension.',
+        'Spontaneous tumor rupture causing life-threatening intraperitoneal hemorrhage.',
+        'Hepatic encephalopathy secondary to acute-on-chronic liver failure.',
+        'Bleeding esophageal varices.',
+      ],
+      treatmentRelated: [
+        'Transarterial Chemoembolization (TACE): Post-embolization syndrome (fever, RUQ pain, nausea), transient hepatic decompensation.',
+        'Systemic Immunotherapy (Atezolizumab + Bevacizumab): Upper GI bleeding from varices, hypertension, proteinuria, autoimmune hepatitis.',
+        'Tyrosine Kinase Inhibitors (Sorafenib/Lenvatinib): Diarrhea, hand-foot syndrome, fatigue, weight loss.',
+      ],
+    },
+    treatmentModalities: [
+      'Curative Surgical Resection: For solitary tumors in non-cirrhotic liver or compensated Child-Pugh A cirrhosis without portal hypertension.',
+      'Orthotopic Liver Transplantation (OLT): Curative modality for patients meeting Milan Criteria (solitary tumor ≤ 5 cm, or up to 3 lesions ≤ 3 cm).',
+      'Locoregional Therapy: Radiofrequency Ablation (RFA) or Microwave Ablation (MWA) for small lesions (< 3 cm); TACE for intermediate stage (BCLC B).',
+      'Systemic First-Line Therapy: Atezolizumab + Bevacizumab or Durvalumab + Tremelimumab for advanced unresectable disease.',
+    ],
+    mandatoryPrecautions: [
+      'Upper Endoscopy Clearance: Esophagogastroduodenoscopy (EGD) to evaluate and band high-risk esophageal varices prior to initiating VEGF inhibitor therapy.',
+      'Liver Functional Monitoring: Regular Child-Pugh and MELD score recalculations to titrate interventions.',
+      'Viral Suppression: Antiviral therapy (e.g. Entecavir/Tenofovir for HBV) to suppress ongoing viral replication and prevent decompensation.',
+    ],
+    emergencyRedFlags: [
+      'Sudden severe abdominal pain with hemodynamic shock and drop in hemoglobin (acute HCC rupture into peritoneum).',
+      'Massive hematemesis or melena from bleeding gastroesophageal varices.',
+      'Acute confusion, asterixis, or lethargy (hepatic encephalopathy).',
+    ],
+    sources: [
+      {
+        name: 'AASLD Practice Guidance: Diagnosis, Staging, and Management of Hepatocellular Carcinoma',
+        sourceType: 'guideline',
+        url: 'https://www.aasld.org/practice-guidelines',
+        citation: 'Singal AG, et al. AASLD Practice Guidance on Prevention, Diagnosis, and Treatment of HCC. Hepatology. 2023;78(6):1922-1965.',
+      },
+      {
+        name: 'NCCN Clinical Practice Guidelines in Oncology: Hepatobiliary Cancers',
+        sourceType: 'guideline',
+        url: 'https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1438',
+        citation: 'NCCN Guidelines Version 1.2024 — Hepatobiliary Cancers.',
+      },
+    ],
+  },
+
+  colon: {
+    condition: 'Colorectal Adenocarcinoma',
+    category: 'Gastrointestinal Oncology (Lower GI Malignancy)',
+    whoClassification: 'WHO Classification of Digestive System Tumours: Colorectal Adenocarcinoma',
+    summary:
+      'Colorectal adenocarcinoma arises from the glandular epithelial lining of the large intestine, typically progressing through the adenoma-carcinoma sequence via chromosomal instability (APC, KRAS, TP53) or DNA mismatch repair deficiency (dMMR / MSI-High).',
+    pathologyDetails:
+      'Histopathologic features display gland-forming columnar epithelial cells with nuclear stratification, luminal necrosis (dirty necrosis), and desmoplasia. Molecular reflex testing includes MMR/MSI, KRAS/NRAS, BRAF V600E, and HER2 amplification.',
+    commonSymptoms: [
+      'Persistent change in bowel habits (alternating diarrhea and constipation).',
+      'Hematochezia (bright red rectal bleeding) or dark melenic stools.',
+      'Unexplained iron deficiency anemia (fatigue, pallor) especially in right-sided lesions.',
+      'Persistent abdominal discomfort, cramping, or feeling of incomplete evacuation (tenesmus).',
+      'Unintentional weight loss and progressive malaise.',
+    ],
+    clinicalSideEffects: {
+      diseaseRelated: [
+        'Complete mechanical large bowel obstruction.',
+        'Tumor perforation causing fecal peritonitis and sepsis.',
+        'Metastatic dissemination primarily to the liver (via portal venous circulation), peritoneum, and lungs.',
+      ],
+      treatmentRelated: [
+        'Oxaliplatin (FOLFOX): Acute cold dysesthesia and cumulative peripheral sensory neuropathy.',
+        'Irinotecan (FOLFIRI): Acute cholinergic syndrome and severe delayed diarrhea.',
+        'Anti-EGFR Antibodies (Cetuximab): Acneiform rash, hypomagnesemia, paronychia.',
+      ],
+    },
+    treatmentModalities: [
+      'Curative Surgical Resection: Partial colectomy or proctectomy with en bloc regional lymphadenectomy (minimum 12 lymph nodes evaluated).',
+      'Adjuvant Chemotherapy: Modified FOLFOX6 or CAPOX for high-risk stage II and all stage III resected colon cancers.',
+      'Neoadjuvant Total Neoadjuvant Therapy (TNT): For locally advanced rectal cancer (chemotherapy + chemoradiation prior to surgery).',
+      'Targeted Biologic Therapy: Bevacizumab (anti-VEGF) or Cetuximab/Panitumumab (anti-EGFR for KRAS/NRAS/BRAF wild-type tumors).',
+      'Immunotherapy: Pembrolizumab or Nivolumab + Ipilimumab for dMMR / MSI-H metastatic colorectal cancer.',
+    ],
+    mandatoryPrecautions: [
+      'Cold Sensitivity Precaution: Avoid cold beverages, ice, and cold ambient temperatures during and 5 days after Oxaliplatin infusions.',
+      'Electrolyte & Magnesium Surveillance: Frequent serum magnesium monitoring in patients receiving Cetuximab.',
+      'Stoma Care Nursing: Pre-operative stoma site marking and education for patients undergoing colostomy or ileostomy.',
+    ],
+    emergencyRedFlags: [
+      'Acute mechanical bowel obstruction: Inability to pass stool or flatus, progressive severe abdominal distension, and feculent vomiting.',
+      'Acute peritonitis: Sudden severe diffuse abdominal pain with rebound tenderness and rigidity (viscus perforation).',
+      'Massive lower gastrointestinal bleeding causing hemodynamic instability.',
+    ],
+    sources: [
+      {
+        name: 'NCCN Clinical Practice Guidelines in Oncology: Colon Cancer',
+        sourceType: 'guideline',
+        url: 'https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1428',
+        citation: 'NCCN Guidelines Version 1.2024 — Colon Cancer.',
+      },
+    ],
+  },
+
+  prostate: {
+    condition: 'Prostate Adenocarcinoma (Acinar)',
+    category: 'Genitourinary / Urologic Oncology',
+    whoClassification: 'WHO Classification of Tumours: Acinar Adenocarcinoma of the Prostate',
+    summary:
+      'Acinar adenocarcinoma of the prostate is the most prevalent solid non-cutaneous cancer in men, arising predominantly in the peripheral zone of the prostate gland. Driven primarily by androgen receptor (AR) signaling, tumors are graded according to the ISUP / Gleason Grade Group system.',
+    pathologyDetails:
+      'Histopathologic architecture shows small, crowded malignant glands lacking the outer basal cell layer, with prominent nucleoli. Graded into Gleason Grade Groups 1 (3+3) through 5 (4+5, 5+5). Biomarkers include serum PSA, PSA velocity, and genomic classifiers (Decipher, Oncotype DX).',
+    commonSymptoms: [
+      'Increased urinary frequency, especially nocturia.',
+      'Weak or interrupted urinary stream; difficulty initiating urination (hesitancy).',
+      'Hematuria or hematospermia.',
+      'Erectile dysfunction.',
+      'Dull aching bone pain in lower back, hips, or pelvis in advanced metastatic disease.',
+    ],
+    clinicalSideEffects: {
+      diseaseRelated: [
+        'Acute bladder outlet obstruction / acute urinary retention.',
+        'Osteoblastic bone metastases causing pathological fractures and bone pain.',
+        'Malignant spinal cord compression from vertebral metastases.',
+        'Secondary hydronephrosis from ureteral meatus compression.',
+      ],
+      treatmentRelated: [
+        'Androgen Deprivation Therapy (ADT - Leuprolide, Degarelix): Hot flashes, loss of libido, sarcopenia, gynecomastia, osteoporosis, cardiovascular risk.',
+        'Radical Prostatectomy: Stress urinary incontinence and erectile dysfunction.',
+        'External Beam Radiotherapy: Radiation cystitis, proctitis (tenesmus, rectal bleeding), erectile dysfunction.',
+      ],
+    },
+    treatmentModalities: [
+      'Active Surveillance: Preferred strategy for low-risk disease (Grade Group 1, PSA < 10 ng/mL) with serial PSA and mpMRI.',
+      'Radical Prostatectomy: Open or robotic-assisted laparoscopic prostatectomy with nerve-sparing technique when oncologically safe.',
+      'Definitive Radiotherapy: External Beam Radiotherapy (EBRT) or Brachytherapy with or without concurrent and adjuvant ADT.',
+      'Novel Androgen Receptor Pathway Inhibitors (ARPI): Enzalutamide, Apalutamide, or Darolutamide for castrate-resistant or high-risk metastatic disease.',
+      'PARP Inhibitors: Olaparib or Rucaparib for BRCA1/BRCA2-mutated metastatic castration-resistant prostate cancer.',
+    ],
+    mandatoryPrecautions: [
+      'Bone Mineral Density Preservation: Baseline DEXA scan; calcium, vitamin D, and bisphosphonates (Zoledronic acid) or Denosumab during long-term ADT.',
+      'Cardiovascular Risk Management: Optimize lipid profile and blood pressure; regular cardiovascular monitoring during hormonal blockade.',
+      'PSA Doubling Time Monitoring: Serial PSA every 3 months for biochemical recurrence surveillance post-curative therapy.',
+    ],
+    emergencyRedFlags: [
+      'Signs of acute spinal cord compression: Progressive lower extremity weakness, sensory level deficit, or loss of bowel/bladder control.',
+      'Acute complete urinary retention requiring urgent bladder decompression.',
+      'Intractable severe bone pain or sudden inability to bear weight.',
+    ],
+    sources: [
+      {
+        name: 'NCCN Clinical Practice Guidelines in Oncology: Prostate Cancer',
+        sourceType: 'guideline',
+        url: 'https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1459',
+        citation: 'NCCN Guidelines Version 2.2024 — Prostate Cancer.',
+      },
+    ],
+  },
+
   normal: {
     condition: 'Normal Baseline / Negative Study',
     category: 'Diagnostic Health Screening & Normal Anatomy',
@@ -376,17 +723,22 @@ Respond with strict JSON matching this schema:
             },
           );
 
-          if (res.ok) {
-            const data = await res.json();
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (text) {
-              const parsed = JSON.parse(text) as Omit<ClinicalKnowledgeBrief, 'retrievedAt'>;
-              if (parsed.condition && parsed.commonSymptoms && parsed.clinicalSideEffects) {
-                return {
-                  ...parsed,
-                  retrievedAt: now,
-                };
-              }
+          if (!res.ok) {
+            if (res.status === 400 || res.status === 401 || res.status === 403) {
+              break;
+            }
+            continue;
+          }
+
+          const data = await res.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) {
+            const parsed = extractJsonFromText<Omit<ClinicalKnowledgeBrief, 'retrievedAt'>>(text);
+            if (parsed && parsed.condition && parsed.commonSymptoms && parsed.clinicalSideEffects) {
+              return {
+                ...parsed,
+                retrievedAt: now,
+              };
             }
           }
         } catch {
@@ -406,6 +758,18 @@ Respond with strict JSON matching this schema:
     return { ...CURATED_KNOWLEDGE.nsclc, retrievedAt: now };
   } else if (diagLower.includes('pancrea') || args.organ === 'pancreas') {
     return { ...CURATED_KNOWLEDGE.pancreas, retrievedAt: now };
+  } else if (diagLower.includes('breast') || diagLower.includes('ductal') || diagLower.includes('mammar') || args.organ === 'breast') {
+    return { ...CURATED_KNOWLEDGE.breast, retrievedAt: now };
+  } else if (diagLower.includes('kidney') || diagLower.includes('renal') || diagLower.includes('rcc') || args.organ === 'kidney') {
+    return { ...CURATED_KNOWLEDGE.kidney, retrievedAt: now };
+  } else if (diagLower.includes('melanoma') || diagLower.includes('skin') || args.organ === 'skin') {
+    return { ...CURATED_KNOWLEDGE.skin, retrievedAt: now };
+  } else if (diagLower.includes('liver') || diagLower.includes('hcc') || diagLower.includes('hepat') || args.organ === 'liver') {
+    return { ...CURATED_KNOWLEDGE.liver, retrievedAt: now };
+  } else if (diagLower.includes('colon') || diagLower.includes('colorectal') || diagLower.includes('bowel') || args.organ === 'colon') {
+    return { ...CURATED_KNOWLEDGE.colon, retrievedAt: now };
+  } else if (diagLower.includes('prostate') || diagLower.includes('psa') || args.organ === 'prostate') {
+    return { ...CURATED_KNOWLEDGE.prostate, retrievedAt: now };
   }
 
   return { ...CURATED_KNOWLEDGE.gbm, retrievedAt: now };

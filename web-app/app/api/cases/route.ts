@@ -19,10 +19,14 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const rawLimit = Number(searchParams.get('limit'));
-    const limit = Number.isFinite(rawLimit)
-      ? Math.min(100, Math.max(1, Math.floor(rawLimit)))
-      : 20;
+    const limitParam = searchParams.get('limit');
+    let limit = 20;
+    if (limitParam !== null && limitParam.trim() !== '') {
+      const parsed = Number(limitParam);
+      if (Number.isFinite(parsed)) {
+        limit = Math.min(100, Math.max(1, Math.floor(parsed)));
+      }
+    }
 
     const { cases, error } = await listCases(limit);
 

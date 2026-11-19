@@ -63,7 +63,15 @@ export function TumorVerdictCard({ data }: TumorVerdictCardProps) {
       dangerLevel = 5;
       dangerTitle = 'Critical (Level 5/5)';
       urgency = 'Immediate neurosurgical oncology evaluation for surgical resection and edema control.';
-    } else if (diagLower.includes('adenocarcinoma') || diagLower.includes('carcinoma') || data.routing.modelKey === 'pancreas') {
+    } else if (
+      diagLower.includes('adenocarcinoma') ||
+      diagLower.includes('carcinoma') ||
+      diagLower.includes('melanoma') ||
+      diagLower.includes('hcc') ||
+      data.routing.modelKey === 'pancreas' ||
+      data.routing.modelKey === 'liver' ||
+      data.routing.modelKey === 'colon'
+    ) {
       dangerLevel = 4;
       dangerTitle = 'High (Level 4/5)';
       urgency = 'Urgent oncologic staging (PET-CT, contrast MRI) and multidisciplinary tumor board review.';
