@@ -176,18 +176,15 @@ We verified the complete pipeline across **143 automated assertions in 10 test s
 
 | Figure No. | Title | Page No. |
 | :---: | :--- | :---: |
-| **1** | Visual Alignment Dilemma: Letterbox Shift vs MedVision 1:1 Registration | 9 |
-| **2** | System Block Diagram & Asynchronous Multi-Agent Architecture | 11 |
-| **3** | Five-Stage Binary Header Dimension Extraction Pipeline | 13 |
-| **4** | Dual-Track Architecture: ONNX UNet Checkpoints and Gemini Vision API | 15 |
-| **5** | 11-Step Asynchronous Agent Orchestrator Pipeline (`lib/agent.ts`) | 16 |
-| **6** | Memory and Latency Profiling across Client and Backend Microservices | 18 |
-| **7** | Empirical Verification Pass Trajectory across 10 Automated Test Suites | 20 |
-| **8** | Empirical Validation on User Clinical Brain MRI Scans (Healthy vs Glioblastoma) | 21 |
-| **9** | Display Drift Comparison: Baseline Letterbox Shift vs Zero-Padding PACS | 22 |
-| **10** | Multi-Metric Performance Comparison across Inference Engines | 23 |
-| **11** | MedVision Minimalist Home Workspace & Omni-Search Input Composer | 23 |
-| **12** | Studio PACS Visualizer: Real-Time Lesion Illumination & RECIST Telemetry | 24 |
+| **1** | System Block Diagram & Asynchronous Multi-Agent Architecture | 11 |
+| **2** | Five-Stage Binary Header Dimension Extraction Pipeline | 13 |
+| **3** | Dual-Track Architecture: ONNX UNet Checkpoints and Gemini Vision API | 15 |
+| **4** | 11-Step Asynchronous Agent Orchestrator Pipeline (`lib/agent.ts`) | 16 |
+| **5** | Memory and Latency Profiling across Client and Backend Microservices | 18 |
+| **6** | Empirical Verification Pass Trajectory across 10 Automated Test Suites | 20 |
+| **7** | Empirical Validation on User Clinical Brain MRI Scans (Healthy vs Glioblastoma) | 21 |
+| **8** | MedVision Minimalist Home Workspace & Omni-Search Input Composer | 23 |
+| **9** | Studio PACS Visualizer: Real-Time Lesion Illumination & RECIST Telemetry | 24 |
 
 <div align="center">7</div>
 
@@ -229,9 +226,6 @@ $$\text{Negated}(c) \iff c \in \mathcal{S}_{\text{clause}} \cap \left( \bigcup_{
 
 where $\mathcal{R}_{\text{pre}}$ and $\mathcal{R}_{\text{post}}$ represent trigger sets for preceding and trailing negation phrases.
 
-![Figure 1: Visual Alignment Dilemma: Letterbox Shift vs MedVision 1:1 Registration](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_1_visual_alignment_dilemma.png)
-*Figure 1: Visual alignment comparison between baseline letterbox canvas distortion (left, where the mask shifts into normal lateral ventricles) and MedVision zero-padding pixel registration (right, locking directly onto the glioblastoma).*
-
 To handle different coordinate scales returned by multimodal vision models, the raw bounding box $[b_0, b_1, b_2, b_3]$ is mapped to native dimensions $(W, H)$ using scale factor $s = \max(b_0, b_1, b_2, b_3)$:
 
 $$y_{\min}^{\text{px}} = \left\lfloor \frac{\min(b_0, b_2)}{s} \cdot H \right\rfloor, \quad x_{\min}^{\text{px}} = \left\lfloor \frac{\min(b_1, b_3)}{s} \cdot W \right\rfloor \tag{1.3}$$
@@ -259,10 +253,10 @@ This chapter explains our multi-agent architecture, the mathematical formulas us
 
 ### 2.1 Proposed System
 
-Figure 2 diagrams the communication flow across the five clinical software agents:
+Figure 1 diagrams the communication flow across the five clinical software agents:
 
-![Figure 2: MedVision Multi-Agent Collaborative System Architecture](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_2_multi_agent_system_architecture.png)
-*Figure 2: System block diagram showing the 5-agent asynchronous clinical pipeline.*
+![Figure 1: MedVision Multi-Agent Collaborative System Architecture](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_2_multi_agent_system_architecture.png)
+*Figure 1: System block diagram showing the 5-agent asynchronous clinical pipeline.*
 
 The system splits work into five distinct modules:
 1. **Intake Triage & Header Sniffer:** Checks file magic bytes, reads native image dimensions directly, and validates PDF attachments.
@@ -318,7 +312,7 @@ A typical uncompressed axial MRI slice has $641\times 473\times 3$ channels ($90
 
 ```
 +---------------------------------------------------------------------------------+
-| Figure 3: Five-Stage Visual Preprocessing & Dimension Sniffing Pipeline        |
+| Figure 2: Five-Stage Visual Preprocessing & Dimension Sniffing Pipeline        |
 |                                                                                 |
 | [1. Magic Byte Check]  PNG: 0x89 0x50 0x4E 0x47 │ JPEG: 0xFF 0xD8              |
 |          │                                                                      |
@@ -337,7 +331,7 @@ A typical uncompressed axial MRI slice has $641\times 473\times 3$ channels ($90
 | [5. Dual-Layer Mask]  Alpha Border (0.96) + Translucent Fill (0.43)            |
 +---------------------------------------------------------------------------------+
 ```
-*Figure 3: Five-stage binary header dimension extraction and dual-layer contour generation.*
+*Figure 2: Five-stage binary header dimension extraction and dual-layer contour generation.*
 
 The native width $W$ and height $H$ are unpacked via big-endian bit shifts:
 
@@ -395,11 +389,11 @@ Our implementation follows several medical, clinical, and software specification
 
 ##### ii) Model Architecture & Feature Extraction
 
-MedVision supports a dual-track architecture: lightweight local ONNX MiniUNet checkpoints and cloud foundational Gemini Multimodal Vision (Figure 4, Table 2.3).
+MedVision supports a dual-track architecture: lightweight local ONNX MiniUNet checkpoints and cloud foundational Gemini Multimodal Vision (Figure 3, Table 2.3).
 
 ```
 +-----------------------------------------------------------------------------------+
-| Figure 4: Dual-Track Vision Architecture                                          |
+| Figure 3: Dual-Track Vision Architecture                                          |
 |                                                                                   |
 |                    ┌──────────────────────────────────────────┐                   |
 |                    │ Input Scan Image (Axial Cross-Section)   │                   |
@@ -420,7 +414,7 @@ MedVision supports a dual-track architecture: lightweight local ONNX MiniUNet ch
 |                    └──────────────────────────────────────────┘                   |
 +-----------------------------------------------------------------------------------+
 ```
-*Figure 4: Dual-track vision architecture combining local ONNX U-Net baselines and Gemini Vision.*
+*Figure 3: Dual-track vision architecture combining local ONNX U-Net baselines and Gemini Vision.*
 
 Table 2.3 Layer-by-Layer Dimensions of the ONNX MiniUNet Backbone
 | Layer Identifier | Layer Type | Filters / Kernel | Output Tensor Shape | Parameters |
@@ -444,7 +438,7 @@ Table 2.3 Layer-by-Layer Dimensions of the ONNX MiniUNet Backbone
 
 ##### iii) 11-Step Asynchronous Agent Orchestrator Pipeline
 
-The core execution loop in `lib/agent.ts` executes an explicit 11-step pipeline (Figure 5), logging telemetry and clinical reasoning at every stage:
+The core execution loop in `lib/agent.ts` executes an explicit 11-step pipeline (Figure 4), logging telemetry and clinical reasoning at every stage:
 
 ```
 +-----------------------------------------------------------------------------------+
@@ -473,7 +467,7 @@ The core execution loop in `lib/agent.ts` executes an explicit 11-step pipeline 
 |  [Step 11: addSafetyWarnings]   Attach WHO CNS5 disclaimers & investigational note|
 +-----------------------------------------------------------------------------------+
 ```
-*Figure 5: Sequential 11-stage pipeline executed by the agent orchestrator.*
+*Figure 4: Sequential 11-stage pipeline executed by the agent orchestrator.*
 
 ##### iv) Studio PACS Diagnostic Workspace
 
@@ -562,10 +556,10 @@ This chapter covers our automated test suite results, a glioblastoma MRI case st
 
 ### 4.1 Zero False-Positive Verification Suite
 
-To verify safety, we evaluated the entire platform against `test-negation-and-false-positives.ts`, which runs **143 automated assertions across 10 test suites** (Figure 7, Table 4.1).
+To verify safety, we evaluated the entire platform against `test-negation-and-false-positives.ts`, which runs **143 automated assertions across 10 test suites** (Figure 6, Table 4.1).
 
-![Figure 7: Empirical Verification Pass Trajectory Across 10 Test Suites](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_7_verification_pass_trajectory.png)
-*Figure 7: Cumulative verification pass trajectory across all 10 automated test suites (143 assertions passed, 100% pass rate).*
+![Figure 6: Empirical Verification Pass Trajectory Across 10 Test Suites](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_7_verification_pass_trajectory.png)
+*Figure 6: Cumulative verification pass trajectory across all 10 automated test suites (143 assertions passed, 100% pass rate).*
 
 The test suite confirmed four core capabilities:
 1. **Clinical Negation Handling (Suites 1 & 6):** Statements indicating normal scans (*"unremarkable brain MRI"*) or post-negated diagnoses (*"glioma is ruled out"*) yield an exact $0\text{ px}$ segmentation mask.
@@ -598,10 +592,10 @@ We evaluated MedVision directly against two clinical patient brain MRI scans pro
 1. **Scan 1 (Healthy Normal Control):** An axial T2-weighted brain MRI slice ($442\times 442\text{ px}$, JPEG), depicting normal bilateral cerebral hemispheres, patent lateral ventricles, and zero intracranial masses.
 2. **Scan 2 (Pathological Neoplasm):** An axial contrast-enhanced T1-weighted brain MRI slice ($389\times 439\text{ px}$, JPEG), exhibiting a large, hyperintense, heterogeneously enhancing high-grade glial neoplasm in the right frontoparietal lobe with surrounding edema and mass effect on adjacent ventricular structures.
 
-Figure 8 presents the side-by-side diagnostic output generated by the five-agent clinical panel for both scans.
+Figure 7 presents the side-by-side diagnostic output generated by the five-agent clinical panel for both scans.
 
-![Figure 8: Empirical Validation on User Clinical Brain MRI Scans](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_8_real_scan_comparative_evaluation.png)
-*Figure 8: Empirical multi-agent evaluation on user clinical brain MRI scans. Left: Healthy control slice (T2 axial, 442x442 px) exhibiting zero false-positive segmentation (0 px detected, 100% specificity). Right: Pathological glioblastoma slice (T1CE axial, 389x439 px) exhibiting precise lesion localization (74, 188, 77, 86), RECIST 1.1 caliper extraction (d1=86 px, d2=77 px), and spheroidal tumor volume calculation (266,980 px³).*
+![Figure 7: Empirical Validation on User Clinical Brain MRI Scans](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_8_real_scan_comparative_evaluation.png)
+*Figure 7: Empirical multi-agent evaluation on user clinical brain MRI scans. Left: Healthy control slice (T2 axial, 442x442 px) exhibiting zero false-positive segmentation (0 px detected, 100% specificity). Right: Pathological glioblastoma slice (T1CE axial, 389x439 px) exhibiting precise lesion localization (74, 188, 77, 86), RECIST 1.1 caliper extraction (d1=86 px, d2=77 px), and spheroidal tumor volume calculation (266,980 px³).*
 
 Table 4.2 summarizes the quantitative telemetry extracted by MedVision across both scans.
 
@@ -668,13 +662,13 @@ The local ONNX MiniUNet is fast ($42\text{ ms}$), but it cannot parse clinical t
 
 ### 4.4 Live Diagnostic Studio PACS & Telemetry
 
-MedVision runs as an interactive web platform in Next.js 14. Figure 11 shows the minimalist home workspace and Figure 12 shows the Studio PACS visualizer.
+MedVision runs as an interactive web platform in Next.js 14. Figure 8 shows the minimalist home workspace and Figure 9 shows the Studio PACS visualizer.
 
-![Figure 11: MedVision Minimalist Web Workspace](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_2_3_web_application_home.png)
-*Figure 11: Minimalist home workspace featuring unified input composer and clinical chips.*
+![Figure 8: MedVision Minimalist Web Workspace](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_2_3_web_application_home.png)
+*Figure 8: Minimalist home workspace featuring unified input composer and clinical chips.*
 
-![Figure 12: Studio PACS Visualizer with Verified Lesion Delineation](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_2_7_interactive_pacs_lesion_visualizer.png)
-*Figure 12: Studio PACS visualizer displaying real glioblastoma scan with zero padding drift and RECIST telemetry.*
+![Figure 9: Studio PACS Visualizer with Verified Lesion Delineation](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_2_7_interactive_pacs_lesion_visualizer.png)
+*Figure 9: Studio PACS visualizer displaying real glioblastoma scan with zero padding drift and RECIST telemetry.*
 
 <div align="center">24</div>
 
