@@ -847,9 +847,7 @@ This appendix includes the primary implementation modules of our project.
 <table width="100%" style="border-collapse: collapse; margin-bottom: 24px;">
 <tr>
 <td width="25%" align="center" style="border: 1px solid #ccc; padding: 12px; vertical-align: top;">
-<div style="width: 120px; height: 150px; border: 1px dashed #888; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #666; margin: auto;">
-[Photo]
-</div>
+<img src="file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/author_ajay.jpg" width="120" style="border-radius: 4px; border: 1px solid #ccc; box-shadow: 0 1px 3px rgba(0,0,0,0.1);" alt="Kanchetti Ajay" />
 </td>
 <td width="75%" style="border: 1px solid #ccc; padding: 12px; vertical-align: top;">
 <strong>Name :</strong> BANDILA SUDHEER KUMAR<br/>
@@ -865,9 +863,7 @@ This appendix includes the primary implementation modules of our project.
 <table width="100%" style="border-collapse: collapse; margin-bottom: 24px;">
 <tr>
 <td width="25%" align="center" style="border: 1px solid #ccc; padding: 12px; vertical-align: top;">
-<div style="width: 120px; height: 150px; border: 1px dashed #888; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #666; margin: auto;">
-[Photo]
-</div>
+<img src="file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/author_ajay.jpg" width="120" style="border-radius: 4px; border: 1px solid #ccc; box-shadow: 0 1px 3px rgba(0,0,0,0.1);" alt="Kanchetti Ajay" />
 </td>
 <td width="75%" style="border: 1px solid #ccc; padding: 12px; vertical-align: top;">
 <strong>Name :</strong> VOVUGANTI NANDIVARDHAN REDDY<br/>
@@ -883,9 +879,7 @@ This appendix includes the primary implementation modules of our project.
 <table width="100%" style="border-collapse: collapse; margin-bottom: 24px;">
 <tr>
 <td width="25%" align="center" style="border: 1px solid #ccc; padding: 12px; vertical-align: top;">
-<div style="width: 120px; height: 150px; border: 1px dashed #888; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #666; margin: auto;">
-[Photo]
-</div>
+<img src="file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/author_ajay.jpg" width="120" style="border-radius: 4px; border: 1px solid #ccc; box-shadow: 0 1px 3px rgba(0,0,0,0.1);" alt="Kanchetti Ajay" />
 </td>
 <td width="75%" style="border: 1px solid #ccc; padding: 12px; vertical-align: top;">
 <strong>Name :</strong> KANCHETTI AJAY<br/>
