@@ -148,7 +148,7 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
               <span className="text-white/40">|</span>
               <span>{inference.organ.toUpperCase()}</span>
             </div>
-            <span>MATRIX: 256×256 · RECIST 1.1</span>
+            <span>MATRIX: {inference.width}×{inference.height} · RECIST 1.1</span>
             {zoom > 1 && <span className="text-primary font-bold">ZOOM: {zoom}×</span>}
             {invert && <span className="text-amber-400 font-bold">INVERTED</span>}
           </div>
@@ -192,7 +192,7 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
           </div>
 
           <div
-            className="relative flex min-h-[380px] max-h-[560px] w-full items-center justify-center overflow-hidden transition-transform duration-200"
+            className="relative flex min-h-[380px] max-h-[580px] w-full items-center justify-center overflow-hidden transition-transform duration-200"
             style={{
               filter: (() => {
                 const rawFilter = WINDOW_PRESETS[windowPreset].filter;
@@ -204,53 +204,58 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
             }}
           >
             {originalSrc ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={originalSrc}
-                alt="Medical scan"
-                className={cn(
-                  'block max-h-[560px] w-full object-contain transition-all duration-150',
-                  viewMode === 'mask_only' && 'opacity-10',
-                )}
-              />
+              <div className="relative inline-flex items-center justify-center max-w-full max-h-[580px]">
+                {/* Image and Mask tightly bound wrapper - ZERO PADDING MISALIGNMENT */}
+                <div className="relative inline-block overflow-hidden max-w-full max-h-[580px] rounded-lg">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={originalSrc}
+                    alt="Medical scan"
+                    className={cn(
+                      'block max-h-[580px] max-w-full w-auto h-auto object-contain mx-auto select-none pointer-events-none',
+                      viewMode === 'mask_only' && 'opacity-10',
+                    )}
+                  />
+
+                  {/* Mask Layer - Exactly hugs the rendered image */}
+                  {showMask && isLesion && (
+                    <div
+                      className="pointer-events-none absolute inset-0 overflow-hidden"
+                      style={
+                        viewMode === 'split'
+                          ? { clipPath: `polygon(0 0, ${splitPos}% 0, ${splitPos}% 100%, 0 100%)` }
+                          : undefined
+                      }
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={maskUrl}
+                        alt="Lesion Segmentation Mask"
+                        className="w-full h-full object-fill select-none pointer-events-none"
+                        style={{
+                          opacity: opacity / 100,
+                          filter: PALETTE_FILTERS[palette].filter,
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Split Screen Draggable Divider */}
+                  {viewMode === 'split' && (
+                    <div
+                      className="absolute inset-y-0 z-20 flex w-0.5 items-center justify-center bg-primary shadow-[0_0_12px_rgba(10,132,255,0.9)]"
+                      style={{ left: `${splitPos}%` }}
+                    >
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full border border-primary bg-background shadow-md">
+                        <SplitSquareHorizontal className="h-3.5 w-3.5 text-primary" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             ) : (
               <div className="flex h-72 items-center justify-center text-xs font-mono text-muted-foreground">
                 Original scan preview
-              </div>
-            )}
-
-            {/* Mask Layer */}
-            {showMask && isLesion && (
-              <div
-                className="pointer-events-none absolute inset-0 overflow-hidden"
-                style={
-                  viewMode === 'split'
-                    ? { clipPath: `polygon(0 0, ${splitPos}% 0, ${splitPos}% 100%, 0 100%)` }
-                    : undefined
-                }
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={maskUrl}
-                  alt="Lesion Segmentation Mask"
-                  className="h-full w-full object-contain transition-all duration-150"
-                  style={{
-                    opacity: opacity / 100,
-                    filter: PALETTE_FILTERS[palette].filter,
-                  }}
-                />
-              </div>
-            )}
-
-            {/* Split Screen Draggable Divider */}
-            {viewMode === 'split' && (
-              <div
-                className="absolute inset-y-0 z-20 flex w-0.5 items-center justify-center bg-primary shadow-[0_0_12px_rgba(10,132,255,0.9)]"
-                style={{ left: `${splitPos}%` }}
-              >
-                <div className="flex h-7 w-7 items-center justify-center rounded-full border border-primary bg-background shadow-md">
-                  <SplitSquareHorizontal className="h-3.5 w-3.5 text-primary" />
-                </div>
               </div>
             )}
           </div>

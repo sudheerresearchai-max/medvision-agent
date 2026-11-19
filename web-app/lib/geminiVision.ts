@@ -24,31 +24,67 @@ export interface GeminiVisionDetection {
 }
 
 const GEMINI_MODELS = [
-  'gemini-2.0-flash',
-  'gemini-1.5-flash',
-  'gemini-1.5-flash-8b',
-  'gemini-2.0-flash-lite',
-  'gemini-1.5-pro',
-  'gemini-2.5-flash',
+  'gemini-3.1-flash-lite',
+  'gemini-3.5-flash-lite',
+  'gemini-3.8-flash',
+  'gemini-3.7-flash',
+  'gemini-3.5-flash',
   'gemini-flash-latest',
+  'gemini-2.5-pro',
 ];
 
 export function isGeminiVisionConfigured(): boolean {
   const key = getGeminiApiKey();
   if (!key) return false;
-  // generativelanguage.googleapis.com expects a valid Google AI Studio key (starts with 'AIzaSy').
-  // Internal tokens starting with 'AQ.' are not accepted by the public REST endpoint.
-  if (key.startsWith('AQ.')) return false;
   return Boolean(key.trim());
 }
 
 export function getGeminiApiKey(): string | null {
   const key =
     process.env.GEMINI_API_KEY?.trim() ||
-    (process.env.LLM_API_KEY?.trim()?.startsWith('AIzaSy')
-      ? process.env.LLM_API_KEY.trim()
-      : null);
+    process.env.LLM_API_KEY?.trim();
   return key || null;
+}
+
+/**
+ * Extract physical dimensions (width, height) from image bytes (PNG, JPEG, SVG).
+ */
+export function getImageDimensions(bytes: Uint8Array): { width: number; height: number } {
+  if (!bytes || bytes.length < 10) return { width: 256, height: 256 };
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) {
+    const width = (bytes[16] << 24) | (bytes[17] << 16) | (bytes[18] << 8) | bytes[19];
+    const height = (bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23];
+    if (width > 0 && height > 0) return { width, height };
+  }
+  // JPEG: FF D8
+  if (bytes[0] === 0xFF && bytes[1] === 0xD8) {
+    let offset = 2;
+    while (offset < bytes.length - 8) {
+      if (bytes[offset] !== 0xFF) { offset++; continue; }
+      const marker = bytes[offset + 1];
+      if (marker === 0xC0 || marker === 0xC1 || marker === 0xC2 || marker === 0xC3) {
+        const height = (bytes[offset + 5] << 8) | bytes[offset + 6];
+        const width = (bytes[offset + 7] << 8) | bytes[offset + 8];
+        if (width > 0 && height > 0) return { width, height };
+      }
+      if (marker === 0xDA || marker === 0xD9) break;
+      const len = (bytes[offset + 2] << 8) | bytes[offset + 3];
+      offset += 2 + len;
+    }
+  }
+  // SVG detection
+  const text = Buffer.from(bytes.slice(0, Math.min(2048, bytes.length))).toString('utf-8');
+  const vbMatch = /viewBox=["']\s*[\d.-]+\s+[\d.-]+\s+([\d.]+)\s+([\d.]+)/i.exec(text);
+  if (vbMatch) {
+    const w = parseFloat(vbMatch[1]), h = parseFloat(vbMatch[2]);
+    if (w > 0 && h > 0) return { width: Math.round(w), height: Math.round(h) };
+  }
+  const dimMatch = /width=["'](\d+)["']\s+height=["'](\d+)["']/i.exec(text);
+  if (dimMatch) {
+    return { width: parseInt(dimMatch[1], 10), height: parseInt(dimMatch[2], 10) };
+  }
+  return { width: 256, height: 256 };
 }
 
 /**
@@ -239,7 +275,7 @@ Respond with strict JSON matching this schema:
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(4000),
+        signal: AbortSignal.timeout(10000),
       });
 
       if (!res.ok) {
@@ -275,8 +311,7 @@ Respond with strict JSON matching this schema:
     return null;
   }
 
-  const width = 256;
-  const height = 256;
+  const { width, height } = getImageDimensions(args.fileBytes);
   const elapsed = Date.now() - startedAt;
 
   // Robust key resolution for bounding box
@@ -335,13 +370,10 @@ Respond with strict JSON matching this schema:
     for (let x = 0; x < width; x++) {
       const dx = (x - cx) / rx;
       const dy = (y - cy) / ry;
-      // Elliptical lesion with slight organic edge falloff
-      if (dx * dx + dy * dy <= 1.0) {
+      const distSq = dx * dx + dy * dy;
+      if (distSq <= 1.0) {
+        const dist = Math.sqrt(distSq);
         const idx = (y * width + x) * 4;
-        rgba[idx + 0] = 248; // Red lesion mask
-        rgba[idx + 1] = 72;
-        rgba[idx + 2] = 72;
-        rgba[idx + 3] = 255;
         areaPx++;
         sumX += x;
         sumY += y;
@@ -349,6 +381,21 @@ Respond with strict JSON matching this schema:
         if (x > bbMaxX) bbMaxX = x;
         if (y < bbMinY) bbMinY = y;
         if (y > bbMaxY) bbMaxY = y;
+
+        // Diagnostic PACS rendering: crisp luminous boundary contour + translucent diagnostic interior
+        if (dist >= 0.85) {
+          // Sharp outer perimeter contour line
+          rgba[idx + 0] = 255;
+          rgba[idx + 1] = 69;
+          rgba[idx + 2] = 58;
+          rgba[idx + 3] = 245;
+        } else {
+          // Translucent diagnostic interior - allows underlying tumor tissue & ring enhancement to remain clearly visible!
+          rgba[idx + 0] = 255;
+          rgba[idx + 1] = 69;
+          rgba[idx + 2] = 58;
+          rgba[idx + 3] = 110;
+        }
       }
     }
   }

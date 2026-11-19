@@ -10,7 +10,7 @@ import { extractClinicalInfoWithRules } from '../lib/clinicalInfo';
 import { generateMockPrediction } from '../lib/mockInference';
 import { runAnalysis } from '../lib/agent';
 import { SAMPLE_CASES } from '../lib/sampleCases';
-import { normalizeBoundingBox } from '../lib/geminiVision';
+import { normalizeBoundingBox, getImageDimensions, isGeminiVisionConfigured } from '../lib/geminiVision';
 import { analyzeClinicalSymptoms } from '../lib/symptomAnalyzer';
 import { fetchMedicalKnowledge } from '../lib/medicalKnowledge';
 import { extractJsonFromText } from '../lib/utils';
@@ -596,6 +596,71 @@ async function runAllTests() {
     prostateSymptomResult !== null &&
       prostateSymptomResult.differentials[0].condition.includes('Prostate'),
     'Symptom Analyzer: explicit organHint="prostate" generates Prostate differential',
+  );
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // TEST SUITE 10: Gemini Vision End-to-End & Aspect Ratio Localization
+  // ──────────────────────────────────────────────────────────────────────────
+  console.log(`\n${CYAN}${BOLD}[Suite 10] Gemini Vision Localization, Aspect Ratio & Dimension Fidelity${RESET}`);
+
+  // 1. Synthetic PNG byte header dimension parser (641x473)
+  const pngHeader = new Uint8Array(24);
+  pngHeader.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+  // width: 641 (0x00000281) at byte 16
+  pngHeader[16] = 0x00; pngHeader[17] = 0x00; pngHeader[18] = 0x02; pngHeader[19] = 0x81;
+  // height: 473 (0x000001D9) at byte 20
+  pngHeader[20] = 0x00; pngHeader[21] = 0x00; pngHeader[22] = 0x01; pngHeader[23] = 0xd9;
+
+  const dims = getImageDimensions(pngHeader);
+  assert(dims.width === 641 && dims.height === 473, 'Dimension Parser: Accurately extracts non-square PNG dimensions (641x473)');
+
+  // 2. Synthetic JPEG byte header dimension parser (512x384)
+  const jpegHeader = new Uint8Array([
+    0xff, 0xd8, // SOI
+    0xff, 0xc0, // SOF0
+    0x00, 0x11, // length 17
+    0x08,       // precision 8
+    0x01, 0x80, // height 384
+    0x02, 0x00, // width 512
+    0x03,       // components
+  ]);
+  const jpegDims = getImageDimensions(jpegHeader);
+  assert(jpegDims.width === 512 && jpegDims.height === 384, 'Dimension Parser: Accurately extracts JPEG dimensions (512x384)');
+
+  // 3. Fallback dimension parser for empty/corrupted buffer
+  const fallbackDims = getImageDimensions(new Uint8Array(8));
+  assert(fallbackDims.width === 256 && fallbackDims.height === 256, 'Dimension Parser: Gracefully defaults to standard 256x256 on partial/empty buffer');
+
+  // 4. Normalized Bounding Box with non-square aspect ratio (641x473)
+  // Gemini returns [444, 258, 640, 476] (ymin, xmin, ymax, xmax on 0..1000 scale)
+  const [nbXmin, nbYmin, nbXmax, nbYmax] = normalizeBoundingBox([444, 258, 640, 476], 641, 473);
+  const expectedXmin = Math.round((258 / 1000) * 641); // 165
+  const expectedXmax = Math.round((476 / 1000) * 641); // 305
+  const expectedYmin = Math.round((444 / 1000) * 473); // 210
+  const expectedYmax = Math.round((640 / 1000) * 473); // 303
+
+  assert(
+    Math.abs(nbXmin - expectedXmin) <= 1 && Math.abs(nbXmax - expectedXmax) <= 1,
+    `BBox Normalizer: Correctly scales horizontal tumor bounds onto 641px width (${nbXmin}..${nbXmax})`,
+  );
+  assert(
+    Math.abs(nbYmin - expectedYmin) <= 1 && Math.abs(nbYmax - expectedYmax) <= 1,
+    `BBox Normalizer: Correctly scales vertical tumor bounds onto 473px height (${nbYmin}..${nbYmax})`,
+  );
+
+  // 5. Center of lesion is isolated to the anatomical hemisphere, never forced to center ventricles
+  const lesionCenterX = (nbXmin + nbXmax) / 2;
+  const lesionFractionX = lesionCenterX / 641;
+  assert(
+    lesionFractionX < 0.45 && lesionFractionX > 0.30,
+    `BBox Normalizer: Lesion center correctly positioned at hemisphere (${(lesionFractionX * 100).toFixed(1)}% of scan width), preventing central ventricle misplacement`,
+  );
+
+  // 6. Gemini Vision Configuration status check
+  const isConfigured = isGeminiVisionConfigured();
+  assert(
+    typeof isConfigured === 'boolean',
+    `Gemini Vision Config: isGeminiVisionConfigured() correctly evaluates without throwing (active=${isConfigured})`,
   );
 
   // ──────────────────────────────────────────────────────────────────────────
