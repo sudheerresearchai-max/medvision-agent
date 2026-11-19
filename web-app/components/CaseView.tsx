@@ -15,12 +15,12 @@ import { SymptomAnalysisCard } from '@/components/SymptomAnalysisCard';
 import { cn } from '@/lib/utils';
 
 function formatConsultationSummary(data: AnalysisResult): string {
-  const isTumor = Boolean(data.inference && data.inference.metrics.areaPx > 0);
+  const isTumor = Boolean(data.inference && (data.inference.metrics?.areaPx ?? 0) > 0);
   const diffs =
     data.symptomAnalysis?.differentials
       ?.map(
         (d, i) =>
-          `  ${i + 1}. ${d.condition} [${d.probability.toUpperCase()}] (${Math.round(d.confidenceScore * 100)}%)\n     Rationale: ${d.rationale}`,
+          `  ${i + 1}. ${d.condition} [${d.probability.toUpperCase()}] (${Math.round((d.confidenceScore ?? 0) * 100)}%)\n     Rationale: ${d.rationale}`,
       )
       .join('\n') || 'None recorded.';
   const imaging =
@@ -46,8 +46,8 @@ Storage   : ${data.storage}
 
 1. EXECUTIVE DIAGNOSTIC FINDINGS
 --------------------------------------------------------------------------------
-Visual Lesion : ${isTumor ? `POSITIVE (${data.inference?.metrics.areaPx} px detected)` : 'NEGATIVE (0 px above threshold)'}
-Primary Verdict: ${data.clinical.suspectedConditions[0] || (isTumor ? 'Suspected Neoplasm' : 'Normal / Unremarkable')}
+Visual Lesion : ${isTumor ? `POSITIVE (${data.inference?.metrics?.areaPx ?? 0} px detected)` : 'NEGATIVE (0 px above threshold)'}
+Primary Verdict: ${data.clinical?.suspectedConditions?.[0] || (isTumor ? 'Suspected Neoplasm' : 'Normal / Unremarkable')}
 Acuity Level  : ${data.symptomAnalysis?.acuityLevel ? data.symptomAnalysis.acuityLevel.toUpperCase() : 'ROUTINE'}
 
 2. PATIENT SYMPTOMS & CLINICAL PRESENTATION
@@ -87,7 +87,7 @@ All findings and segmentations require board-certified physician verification.
 export function CaseView({ data }: { data: AnalysisResult }) {
   const [copied, setCopied] = React.useState(false);
   const preview = data.inputs.previewDataUrl ?? null;
-  const isTumor = Boolean(data.inference && data.inference.metrics.areaPx > 0);
+  const isTumor = Boolean(data.inference && (data.inference.metrics?.areaPx ?? 0) > 0);
 
   // Compute total processing time from steps or inference
   const totalMs = data.trace.reduce((acc, s) => acc + (s.durationMs || 0), 0) || (data.inference?.processingMs ?? 2400);
@@ -100,7 +100,19 @@ export function CaseView({ data }: { data: AnalysisResult }) {
   const handleCopy = async () => {
     try {
       const text = formatConsultationSummary(data);
-      await navigator.clipboard.writeText(text);
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else if (typeof document !== 'undefined') {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 2200);
     } catch {

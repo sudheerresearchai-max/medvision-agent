@@ -210,6 +210,13 @@ export function detectIsLesionPresent(
   }
 
   // 4. Raster scans: check byte variance / uniform image rejection
+  if (imageBytes.length === 0) {
+    return {
+      hasLesion: false,
+      reason: 'Empty image buffer; no parenchymal anomaly detected.',
+    };
+  }
+
   let sum = 0;
   let sumSq = 0;
   const sampleCount = Math.min(500, imageBytes.length);

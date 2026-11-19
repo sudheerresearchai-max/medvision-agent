@@ -10,6 +10,8 @@ import { extractClinicalInfoWithRules } from '../lib/clinicalInfo';
 import { generateMockPrediction } from '../lib/mockInference';
 import { runAnalysis } from '../lib/agent';
 import { SAMPLE_CASES } from '../lib/sampleCases';
+import { normalizeBoundingBox } from '../lib/geminiVision';
+import { analyzeClinicalSymptoms } from '../lib/symptomAnalyzer';
 
 const GREEN = '\x1b[32m';
 const RED = '\x1b[31m';
@@ -401,9 +403,118 @@ async function runAllTests() {
     clinicalText: '45yo male presenting with new-onset seizures and severe progressive headache. CT brain ordered.',
     manualOrgan: 'brain',
   });
-  assert(tumorWithSymptomsOnly.clinical.isNormalOrNegative === false, 'Adversarial E2E: Clinical text with symptoms only is not marked normal');
+  assert(tumorWithSymptomsOnly.clinical.isNormalOrNegative === false, 'Adversarial E2E: Real tumor on symptom-only order is NOT marked normal');
   assert(tumorWithSymptomsOnly.inference!.metrics.areaPx > 500, 'Adversarial E2E: Real tumor on symptom-only order is NOT suppressed');
   assert(tumorWithSymptomsOnly.inference!.confidence > 0.5, 'Adversarial E2E: Real tumor on symptom-only order maintains confidence');
+
+  // 7G: Negated "normal" phrases must NOT be treated as a normal study
+  const notNormalInfo = extractClinicalInfoWithRules('Brain scan is not normal. Follow-up consultation advised.');
+  assert(notNormalInfo.isNormalOrNegative === false, 'Adversarial: "Brain scan is not normal" is NOT marked normal/negative');
+
+  // 7H: "Outside normal limits" must NOT be treated as a normal study
+  const outsideLimitsInfo = extractClinicalInfoWithRules('Appearance is outside normal limits.');
+  assert(outsideLimitsInfo.isNormalOrNegative === false, 'Adversarial: "Outside normal limits" is NOT marked normal/negative');
+
+  // 7I: "Not unremarkable" must NOT be treated as a normal study
+  const notUnremarkableInfo = extractClinicalInfoWithRules('Axial T2 imaging is not unremarkable.');
+  assert(notUnremarkableInfo.isNormalOrNegative === false, 'Adversarial: "Not unremarkable" is NOT marked normal/negative');
+
+  // 7J: Symptoms-only analysis (no scan attached) runs cleanly through the agent pipeline
+  const symptomsOnlyAnalysis = await runAnalysis({
+    clinicalText: '54-year-old female presenting with severe progressive morning headaches, left hemiparesis, blurred vision, and morning nausea.',
+    manualOrgan: 'brain',
+  });
+  assert(symptomsOnlyAnalysis.clinical.symptoms.length >= 3, 'Symptoms-only E2E: Extracts multiple clinical symptoms');
+  assert(Boolean(symptomsOnlyAnalysis.symptomAnalysis), 'Symptoms-only E2E: Synthesizes rich symptom analysis');
+  assert(symptomsOnlyAnalysis.symptomAnalysis!.differentials.length > 0, 'Symptoms-only E2E: Evaluates differential diagnoses');
+  assert(symptomsOnlyAnalysis.inference === null, 'Symptoms-only E2E: Image inference is safely null without throwing error');
+  assert(symptomsOnlyAnalysis.report.sections.length >= 5, 'Symptoms-only E2E: Generates full structured consultation report');
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // TEST SUITE 8: Edge Cases & Resilient Engine Verification
+  // ──────────────────────────────────────────────────────────────────────────
+  console.log(`\n${CYAN}${BOLD}[Suite 8] Edge Cases & Resilient Engine Verification${RESET}`);
+
+  // 8A: Contrasting Conjunctions (yet, though, despite, other than, aside from)
+  const yetCase = extractClinicalInfoWithRules('No intracranial mass, yet headache reported.');
+  assert(yetCase.symptoms.includes('headache'), 'Contrasting: "yet" preserves affirmed headache despite preceding "no mass"');
+  assert(yetCase.negatedFindings.includes('mass'), 'Contrasting: "no mass" correctly negated before "yet"');
+
+  const thoughCase = extractClinicalInfoWithRules('No tumor identified, though persistent cough present.');
+  assert(thoughCase.symptoms.includes('cough'), 'Contrasting: "though" preserves affirmed cough');
+  assert(thoughCase.negatedFindings.includes('tumor'), 'Contrasting: "no tumor" correctly negated before "though"');
+
+  const despiteCase = extractClinicalInfoWithRules('No lesion detected, despite severe seizure episodes.');
+  assert(despiteCase.symptoms.includes('seizure'), 'Contrasting: "despite" preserves affirmed seizure');
+  assert(despiteCase.negatedFindings.includes('lesion'), 'Contrasting: "no lesion" correctly negated before "despite"');
+
+  const otherThanCase = extractClinicalInfoWithRules('Unremarkable cranial examination, other than solitary nodule.');
+  assert(otherThanCase.findings.includes('nodule'), 'Contrasting: "other than" retains affirmed nodule');
+
+  const asideFromCase = extractClinicalInfoWithRules('Negative chest CT, aside from breast lump.');
+  assert(asideFromCase.symptoms.includes('breast lump'), 'Contrasting: "aside from" retains affirmed breast lump');
+
+  // 8B: Advanced Negations (denying, visible/significant, colon/dash delimiters)
+  const denyingCase = extractClinicalInfoWithRules('Patient is denying headache and denying chest pain.');
+  assert(!denyingCase.symptoms.includes('headache'), 'Negation: "denying headache" excluded from symptoms');
+  assert(!denyingCase.symptoms.includes('chest pain'), 'Negation: "denying chest pain" excluded from symptoms');
+
+  const visibleMassCase = extractClinicalInfoWithRules('No visible mass and no significant edema on MRI brain.');
+  assert(visibleMassCase.negatedFindings.includes('mass'), 'Negation: "no visible mass" correctly negated');
+  assert(visibleMassCase.negatedFindings.includes('edema'), 'Negation: "no significant edema" correctly negated');
+
+  const colonDelimCase = extractClinicalInfoWithRules('Findings:\nMass: Not detected\nEdema: None seen\nMidline shift: Absent');
+  assert(colonDelimCase.negatedFindings.includes('mass'), 'Negation: "Mass: Not detected" correctly negated');
+  assert(colonDelimCase.negatedFindings.includes('edema'), 'Negation: "Edema: None seen" correctly negated');
+  assert(colonDelimCase.negatedFindings.includes('midline shift'), 'Negation: "Midline shift: Absent" correctly negated');
+  assert(colonDelimCase.isNormalOrNegative === true, 'Negation: colon-delimited negative study flagged normal');
+
+  const hyphenRuleOutCase = extractClinicalInfoWithRules('Rule-out brain mass.');
+  assert(hyphenRuleOutCase.findings.length === 0, 'Negation: "Rule-out brain mass" (hyphenated) produces 0 confirmed findings');
+
+  // 8C: Multi-organ Ambiguity Resolution
+  const multiOrganCase1 = extractClinicalInfoWithRules(
+    'Chest CT ordered: pulmonary nodule noted in patient with prior remote history of skin mole.',
+  );
+  assert(multiOrganCase1.organsMentioned[0] === 'lung', 'Multi-organ: chronological priority places primary target "lung" first');
+  assert(multiOrganCase1.organsMentioned.includes('skin'), 'Multi-organ: secondary mention of "skin" is retained');
+
+  const multiOrganCase2 = extractClinicalInfoWithRules(
+    'Brain MRI for headache in patient with remote history of lung infection.',
+  );
+  assert(multiOrganCase2.organsMentioned[0] === 'brain', 'Multi-organ: chronological priority places primary target "brain" first');
+
+  // 8D: Gemini Vision Bounding Box Normalization (0..1, 0..100, 0..1000, inverted coords, object schemas)
+  const norm1000 = normalizeBoundingBox([250, 450, 450, 650], 256, 256);
+  assert(norm1000[0] === 115 && norm1000[1] === 64 && norm1000[2] === 166 && norm1000[3] === 115, 'BBox: 0..1000 scale normalizes to [115, 64, 166, 115]');
+
+  const norm100 = normalizeBoundingBox([25, 45, 45, 65], 256, 256);
+  assert(norm100[0] === 115 && norm100[1] === 64 && norm100[2] === 166 && norm100[3] === 115, 'BBox: 0..100 percentage scale normalizes to [115, 64, 166, 115]');
+
+  const norm1 = normalizeBoundingBox([0.25, 0.45, 0.45, 0.65], 256, 256);
+  assert(norm1[0] === 115 && norm1[1] === 64 && norm1[2] === 166 && norm1[3] === 115, 'BBox: 0..1 float scale normalizes to [115, 64, 166, 115]');
+
+  const normInverted = normalizeBoundingBox([450, 650, 250, 450], 256, 256);
+  assert(normInverted[0] === 115 && normInverted[1] === 64 && normInverted[2] === 166 && normInverted[3] === 115, 'BBox: inverted coordinates correctly sorted (minX <= maxX, minY <= maxY)');
+
+  const normObject = normalizeBoundingBox({ ymin: 250, xmin: 450, ymax: 450, xmax: 650 }, 256, 256);
+  assert(normObject[0] === 115 && normObject[1] === 64 && normObject[2] === 166 && normObject[3] === 115, 'BBox: object schema {ymin, xmin, ymax, xmax} parsed correctly');
+
+  // 8E: Empty / 0-byte Buffer Handling in Mock Inference
+  const emptyBytesPred = generateMockPrediction('brain', new Uint8Array(0));
+  assert(emptyBytesPred.metrics.areaPx === 0, 'Mock Inference: 0-byte image buffer produces 0 px lesion (no divide-by-zero or NaN)');
+  assert(emptyBytesPred.confidence === 0.0, 'Mock Inference: 0-byte image buffer confidence is 0.0');
+
+  // 8F: Symptom Fallback with Explicit organHint Priority
+  const lungSymptomResult = await analyzeClinicalSymptoms({
+    text: 'Patient reports progressive fatigue, weakness, and mild dyspnea.',
+    organHint: 'lung',
+  });
+  assert(
+    lungSymptomResult !== null &&
+      lungSymptomResult.differentials[0].organSystem.includes('Pulmonary'),
+    'Symptom Analyzer: explicit organHint="lung" routes to Pulmonary oncology even with constitutional weakness',
+  );
 
   // ──────────────────────────────────────────────────────────────────────────
   // SUMMARY

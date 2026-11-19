@@ -49,7 +49,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const form = await request.formData();
+    let form: FormData;
+    try {
+      form = await request.formData();
+    } catch (formErr) {
+      return NextResponse.json(
+        { ok: false, detail: `Malformed multipart form payload: ${errorMessage(formErr)}` },
+        { status: 400 },
+      );
+    }
+
     const organRaw = String(form.get('organ') ?? 'auto');
     const manualOrgan: Organ | 'auto' =
       organRaw === 'auto' || !ORGANS.has(organRaw) ? 'auto' : (organRaw as Organ);
@@ -62,8 +71,11 @@ export async function POST(request: NextRequest) {
     if (imageEntry && typeof imageEntry !== 'string') {
       const file = imageEntry as File;
       const ext = fileExtension(file.name || 'scan.png');
-      if (!file.name) {
+      if (!file.name || !file.name.trim()) {
         return NextResponse.json({ ok: false, detail: 'Image filename missing.' }, { status: 400 });
+      }
+      if (file.size === 0) {
+        return NextResponse.json({ ok: false, detail: 'Image file is empty (0 bytes).' }, { status: 400 });
       }
       if (file.size > IMAGE_MAX_BYTES) {
         return NextResponse.json(
@@ -85,6 +97,9 @@ export async function POST(request: NextRequest) {
     const pdfEntry = form.get('pdf');
     if (pdfEntry && typeof pdfEntry !== 'string') {
       const file = pdfEntry as File;
+      if (file.size === 0) {
+        return NextResponse.json({ ok: false, detail: 'PDF file is empty (0 bytes).' }, { status: 400 });
+      }
       if (file.size > PDF_MAX_BYTES) {
         return NextResponse.json(
           { ok: false, detail: `PDF exceeds ${PDF_MAX_BYTES / 1024 / 1024} MB limit.` },

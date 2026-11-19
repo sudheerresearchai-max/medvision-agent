@@ -5,6 +5,7 @@ import { checkInferenceService, isInferenceConfigured } from '@/lib/inferenceCli
 import { isGeminiVisionConfigured } from '@/lib/geminiVision';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { storageMode } from '@/lib/caseStore';
+import { errorMessage } from '@/lib/utils';
 
 /**
  * GET /api/health — configuration introspection for operators/demos.
@@ -18,25 +19,37 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const inferenceConfigured = isInferenceConfigured();
-  const inferenceService = inferenceConfigured ? await checkInferenceService() : undefined;
+  try {
+    const inferenceConfigured = isInferenceConfigured();
+    const inferenceService = inferenceConfigured ? await checkInferenceService() : undefined;
 
-  const payload: HealthResponse = {
-    status: !inferenceConfigured || inferenceService?.reachable ? 'ok' : 'degraded',
-    version: '0.1.0',
-    disclaimer: DISCLAIMER,
-    config: {
-      inferenceConfigured,
-      geminiConfigured: isGeminiVisionConfigured(),
-      llmConfigured: Boolean(process.env.LLM_API_KEY?.trim() && process.env.LLM_BASE_URL?.trim()),
-      supabaseConfigured: isSupabaseConfigured(),
-      ocrEnabled: process.env.OCR_ENABLED === '1',
-    },
-    ...(inferenceService ? { inferenceService } : {}),
-  };
+    const payload: HealthResponse = {
+      status: !inferenceConfigured || inferenceService?.reachable ? 'ok' : 'degraded',
+      version: '0.1.0',
+      disclaimer: DISCLAIMER,
+      config: {
+        inferenceConfigured,
+        geminiConfigured: isGeminiVisionConfigured(),
+        llmConfigured: Boolean(process.env.LLM_API_KEY?.trim() && process.env.LLM_BASE_URL?.trim()),
+        supabaseConfigured: isSupabaseConfigured(),
+        ocrEnabled: process.env.OCR_ENABLED === '1',
+      },
+      ...(inferenceService ? { inferenceService } : {}),
+    };
 
-  return NextResponse.json({
-    ...payload,
-    storageMode: storageMode(),
-  });
+    return NextResponse.json({
+      ...payload,
+      storageMode: storageMode(),
+    });
+  } catch (err) {
+    console.error('[api/health] health check failure:', errorMessage(err));
+    return NextResponse.json(
+      {
+        status: 'degraded',
+        error: errorMessage(err),
+        storageMode: storageMode(),
+      },
+      { status: 503 },
+    );
+  }
 }

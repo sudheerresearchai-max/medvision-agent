@@ -11,13 +11,13 @@ interface TumorVerdictCardProps {
 
 export function TumorVerdictCard({ data }: TumorVerdictCardProps) {
   const inference = data.inference;
-  const isTumor = Boolean(inference && inference.metrics.areaPx > 0);
+  const isTumor = Boolean(inference && (inference.metrics?.areaPx ?? 0) > 0);
 
   // Extract diagnosis & location hints from Gemini warnings, clinical info, or organ default
   const geminiWarning = inference?.warnings.find((w) => w.startsWith('Gemini Vision Detection:'));
   const impressionWarning = inference?.warnings.find((w) => w.startsWith('Impression:'));
 
-  const organName = data.routing.modelKey ? data.routing.modelKey.toUpperCase() : 'ORGAN';
+  const organName = data.routing?.modelKey ? data.routing.modelKey.toUpperCase() : 'ORGAN';
   let diagnosis = isTumor ? 'Suspected Neoplasm' : 'Normal / Unremarkable';
   let location = `${organName} Parenchyma`;
 
@@ -34,7 +34,7 @@ export function TumorVerdictCard({ data }: TumorVerdictCardProps) {
   } else if (isSymptomsOnly && symptomTop) {
     diagnosis = symptomTop.condition;
     location = symptomTop.organSystem;
-  } else if (data.clinical.suspectedConditions.length > 0) {
+  } else if (data.clinical?.suspectedConditions && data.clinical.suspectedConditions.length > 0) {
     diagnosis = data.clinical.suspectedConditions[0];
   }
 

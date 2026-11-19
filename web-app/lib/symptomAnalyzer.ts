@@ -19,13 +19,15 @@ import type {
 // Curated evidence-based fallback profiles when offline / rate-limited
 function getCuratedSymptomFallback(text: string, organHint?: Organ): SymptomAnalysisResult {
   const lower = text.toLowerCase();
+  const explicitOrgan = organHint && organHint !== 'general' ? organHint : null;
 
   // 1. Neuro-Oncology / Brain / Neurological Presentation
   if (
-    organHint === 'brain' ||
-    /\b(headache|seizure|weakness|arm|leg|hemiparesis|vision|speech|aphasia|confusion|cranial|glioma|gbm|brain)\b/i.test(
-      lower,
-    )
+    explicitOrgan === 'brain' ||
+    (!explicitOrgan &&
+      /\b(headache|seizure|hemiparesis|aphasia|cranial|glioma|gbm|brain|cerebell\w*|intra-?axial|papilledema|ataxia)\b/i.test(
+        lower,
+      ))
   ) {
     const isSevere = /\b(seizure|weakness|vomiting|confusion|unilateral|hemiparesis)\b/i.test(lower);
     return {
@@ -97,8 +99,11 @@ function getCuratedSymptomFallback(text: string, organHint?: Organ): SymptomAnal
 
   // 2. Thoracic / Pulmonary Presentation
   if (
-    organHint === 'lung' ||
-    /\b(cough|hemoptysis|smok|dyspnea|breath|chest|sputum|lung|nodule|pleur)\b/i.test(lower)
+    explicitOrgan === 'lung' ||
+    (!explicitOrgan &&
+      /\b(cough|hemoptysis|smok\w*|dyspnea|breath|chest\s+pain|sputum|lung|nodule|pleur\w*|bronch\w*)\b/i.test(
+        lower,
+      ))
   ) {
     const isHemoptysis = /\b(hemoptysis|blood|weight loss)\b/i.test(lower);
     return {
@@ -148,8 +153,11 @@ function getCuratedSymptomFallback(text: string, organHint?: Organ): SymptomAnal
 
   // 3. Abdominal / Pancreatic Presentation
   if (
-    organHint === 'pancreas' ||
-    /\b(jaundice|pancrea|icterus|epigastric|stool|urine|bilirubin|back pain|weight loss|anorexia)\b/i.test(lower)
+    explicitOrgan === 'pancreas' ||
+    (!explicitOrgan &&
+      /\b(jaundice|pancrea\w*|icterus|epigastric|stool|urine|bilirubin|back pain|weight loss|anorexia|ca\s*19-9)\b/i.test(
+        lower,
+      ))
   ) {
     return {
       primaryComplaint: text.slice(0, 120) || 'Gastrointestinal symptoms with suspected hepatobiliary/pancreatic involvement.',
@@ -199,8 +207,9 @@ function getCuratedSymptomFallback(text: string, organHint?: Organ): SymptomAnal
 
   // 4. Breast Presentation
   if (
-    organHint === 'breast' ||
-    /\b(breast|mammar|lump|nipple|areola|axilla|mass in breast|skin retraction|peau d'orange)\b/i.test(lower)
+    explicitOrgan === 'breast' ||
+    (!explicitOrgan &&
+      /\b(breast|mammar\w*|lump|nipple|areola|axilla|mass in breast|skin retraction|peau d'orange)\b/i.test(lower))
   ) {
     return {
       primaryComplaint: text.slice(0, 120) || 'Palpable breast finding or diagnostic mammographic abnormality.',
@@ -249,8 +258,9 @@ function getCuratedSymptomFallback(text: string, organHint?: Organ): SymptomAnal
 
   // 5. Renal / Urologic Presentation
   if (
-    organHint === 'kidney' ||
-    /\b(kidney|renal|flank|hematuria|blood in urine|nephro)\b/i.test(lower)
+    explicitOrgan === 'kidney' ||
+    (!explicitOrgan &&
+      /\b(kidney|renal|flank|hematuria|blood in urine|nephro\w*)\b/i.test(lower))
   ) {
     return {
       primaryComplaint: text.slice(0, 120) || 'Flank discomfort and urologic symptoms.',
@@ -299,8 +309,9 @@ function getCuratedSymptomFallback(text: string, organHint?: Organ): SymptomAnal
 
   // 6. Dermatologic / Cutaneous Presentation
   if (
-    organHint === 'skin' ||
-    /\b(skin|mole|melanoma|pigment|nevus|lesion on skin|asymmetric|irregular border)\b/i.test(lower)
+    explicitOrgan === 'skin' ||
+    (!explicitOrgan &&
+      /\b(skin|mole|melanoma|pigment|nevus|lesion on skin|asymmetric|irregular border)\b/i.test(lower))
   ) {
     return {
       primaryComplaint: text.slice(0, 120) || 'Cutaneous pigmented lesion evaluation.',
@@ -456,11 +467,11 @@ Respond with strict JSON matching this schema:
 }`;
 
       const models = [
-        'gemini-3.1-flash-lite',
-        'gemini-3.5-flash-lite',
-        'gemini-flash-lite-latest',
-        'gemini-3-flash-preview',
-        'gemini-3.5-flash',
+        'gemini-2.0-flash',
+        'gemini-1.5-flash',
+        'gemini-1.5-flash-8b',
+        'gemini-2.0-flash-lite',
+        'gemini-1.5-pro',
         'gemini-flash-latest',
       ];
 
@@ -488,19 +499,20 @@ Respond with strict JSON matching this schema:
           const outputText = data.candidates?.[0]?.content?.parts?.[0]?.text;
           if (outputText) {
             const parsed = JSON.parse(outputText) as SymptomAnalysisResult;
-            if (parsed.differentials && parsed.differentials.length > 0) {
+            if (Array.isArray(parsed.differentials) && parsed.differentials.length > 0) {
               // Compute multimodal concordance if a scan inference is present
               if (args.inference) {
-                const hasLesion = args.inference.metrics.areaPx > 0;
+                const lesionPx = args.inference.metrics?.areaPx ?? 0;
+                const hasLesion = lesionPx > 0;
                 const topDiff = parsed.differentials[0];
                 const isConcordant = hasLesion
-                  ? topDiff.probability === 'high' || topDiff.probability === 'moderate'
+                  ? topDiff?.probability === 'high' || topDiff?.probability === 'moderate'
                   : parsed.symptomSeverity === 'mild' || parsed.acuityLevel === 'routine';
 
                 parsed.multimodalConcordance = {
                   isConcordant,
                   summary: hasLesion
-                    ? `Visual neural segmentation identified a ${args.inference.metrics.areaPx} px focal lesion, which clinically corroborates the reported symptoms and top differential (${topDiff.condition}).`
+                    ? `Visual neural segmentation identified a ${lesionPx} px focal lesion, which clinically corroborates the reported symptoms and top differential (${topDiff?.condition ?? 'neoplasm'}).`
                     : 'Automated scan inspection verified 0 lesion pixels (clear baseline); clinical symptoms should be evaluated for non-structural or functional etiologies.',
                 };
               }
@@ -519,11 +531,12 @@ Respond with strict JSON matching this schema:
   // Fallback to rich curated engine
   const fallback = getCuratedSymptomFallback(text, args.organHint);
   if (args.inference) {
-    const hasLesion = args.inference.metrics.areaPx > 0;
+    const lesionPx = args.inference.metrics?.areaPx ?? 0;
+    const hasLesion = lesionPx > 0;
     fallback.multimodalConcordance = {
       isConcordant: true,
       summary: hasLesion
-        ? `Visual imaging findings (${args.inference.metrics.areaPx} px candidate lesion) correlate with the clinical symptom presentation.`
+        ? `Visual imaging findings (${lesionPx} px candidate lesion) correlate with the clinical symptom presentation.`
         : 'Scan parenchyma appears within normal morphological limits for this cross-sectional slice.',
     };
   }

@@ -349,33 +349,48 @@ Respond with strict JSON matching this schema:
   ]
 }`;
 
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-              response_mime_type: 'application/json',
-              temperature: 0.1,
-            },
-          }),
-          signal: AbortSignal.timeout(12000),
-        },
-      );
+      const models = [
+        'gemini-2.0-flash',
+        'gemini-1.5-flash',
+        'gemini-1.5-flash-8b',
+        'gemini-2.0-flash-lite',
+        'gemini-1.5-pro',
+        'gemini-flash-latest',
+      ];
 
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) {
-          const parsed = JSON.parse(text) as Omit<ClinicalKnowledgeBrief, 'retrievedAt'>;
-          if (parsed.condition && parsed.commonSymptoms && parsed.clinicalSideEffects) {
-            return {
-              ...parsed,
-              retrievedAt: now,
-            };
+      for (const m of models) {
+        try {
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                  response_mime_type: 'application/json',
+                  temperature: 0.1,
+                },
+              }),
+              signal: AbortSignal.timeout(10000),
+            },
+          );
+
+          if (res.ok) {
+            const data = await res.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text) {
+              const parsed = JSON.parse(text) as Omit<ClinicalKnowledgeBrief, 'retrievedAt'>;
+              if (parsed.condition && parsed.commonSymptoms && parsed.clinicalSideEffects) {
+                return {
+                  ...parsed,
+                  retrievedAt: now,
+                };
+              }
+            }
           }
+        } catch {
+          // Try next model
         }
       }
     } catch {

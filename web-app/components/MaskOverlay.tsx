@@ -63,8 +63,14 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
   // Keyboard shortcuts for PACS navigation
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if typing in an input or textarea
-      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+      // Ignore if typing in an input, select, textarea, or contentEditable element
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable)
+      ) {
+        return;
+      }
       if (e.code === 'Space') {
         e.preventDefault();
         setShowMask((prev) => !prev);
@@ -82,7 +88,7 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
 
   if (!inference) {
     return (
-      <div className="apple-card rounded-2xl p-6 text-center space-y-2">
+      <div className="claude-card rounded-2xl p-6 text-center space-y-2">
         <p className="text-xs font-mono text-muted-foreground">No radiological scan available for this case.</p>
       </div>
     );
@@ -96,8 +102,8 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
   };
 
   return (
-    <div className="apple-card rounded-2xl overflow-hidden border border-white/[0.08] shadow-2xl">
-      {/* Apple-style Studio Header */}
+    <div className="claude-card rounded-2xl overflow-hidden border border-white/[0.08] shadow-2xl">
+      {/* Studio Header */}
       <div className="px-5 py-3.5 border-b border-white/[0.08] bg-black/40 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-xl bg-primary/15 text-primary flex items-center justify-center border border-primary/20">
@@ -114,16 +120,16 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
         </div>
 
         <div className="flex items-center gap-2 font-mono text-xs">
-          <span className="apple-pill px-3 py-1 text-[11px] text-muted-foreground">
+          <span className="claude-pill px-3 py-1 text-[11px] text-muted-foreground">
             {inference.modelFile}
           </span>
           {isLesion ? (
-            <span className="apple-pill px-3 py-1 text-[11px] text-red-400 bg-red-500/10 border-red-500/25 font-semibold flex items-center gap-1.5">
+            <span className="claude-pill px-3 py-1 text-[11px] text-red-400 bg-red-500/10 border-red-500/25 font-semibold flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
               Lesion: {(inference.confidence * 100).toFixed(1)}% ({inference.metrics.areaPx} px)
             </span>
           ) : (
-            <span className="apple-pill px-3 py-1 text-[11px] text-emerald-400 bg-emerald-500/10 border-emerald-500/25 font-semibold flex items-center gap-1.5">
+            <span className="claude-pill px-3 py-1 text-[11px] text-emerald-400 bg-emerald-500/10 border-emerald-500/25 font-semibold flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               Clear Scan · No Lesion (0 px)
             </span>
@@ -188,7 +194,12 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
           <div
             className="relative flex min-h-[380px] max-h-[560px] w-full items-center justify-center overflow-hidden transition-transform duration-200"
             style={{
-              filter: `${WINDOW_PRESETS[windowPreset].filter} ${invert ? 'invert(100%)' : ''}`,
+              filter: (() => {
+                const rawFilter = WINDOW_PRESETS[windowPreset].filter;
+                const baseFilter = rawFilter === 'none' ? '' : rawFilter;
+                const invertFilter = invert ? 'invert(100%)' : '';
+                return [baseFilter, invertFilter].filter(Boolean).join(' ') || 'none';
+              })(),
               transform: `scale(${zoom})`,
             }}
           >
@@ -343,7 +354,7 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
             <select
               value={windowPreset}
               onChange={(e) => setWindowPreset(e.target.value as WindowPreset)}
-              className="h-8 w-full rounded-xl border border-white/[0.08] bg-black/40 px-2.5 text-xs font-mono text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary/60"
+              className="h-8 w-full rounded-xl border border-white/[0.08] bg-black/40 px-2.5 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary/60"
             >
               {Object.entries(WINDOW_PRESETS).map(([key, p]) => (
                 <option key={key} value={key} className="bg-card text-foreground">{p.label}</option>
@@ -388,7 +399,7 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
             </div>
             <dl className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 font-mono text-xs">
               {measurements.map((m) => (
-                <div key={m.label} title={m.note} className="apple-card rounded-xl p-3 shadow-xs">
+                <div key={m.label} title={m.note} className="claude-card rounded-xl p-3 shadow-xs">
                   <dt className="truncate text-[10px] text-muted-foreground uppercase tracking-wide">{m.label}</dt>
                   <dd className="mt-1 flex items-baseline gap-1 text-sm font-bold text-foreground tabular-nums">
                     <span>{m.value.toLocaleString()}</span>

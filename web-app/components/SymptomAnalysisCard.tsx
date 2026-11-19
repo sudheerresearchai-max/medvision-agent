@@ -106,7 +106,7 @@ export function SymptomAnalysisCard({ symptoms }: SymptomAnalysisCardProps) {
             </h4>
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {symptoms.differentials.map((diff, idx) => {
+              {(symptoms.differentials ?? []).map((diff, idx) => {
                 const isHigh = diff.probability === 'high';
                 const isMod = diff.probability === 'moderate';
                 const probBadge = isHigh
@@ -114,6 +114,11 @@ export function SymptomAnalysisCard({ symptoms }: SymptomAnalysisCardProps) {
                   : isMod
                     ? 'border-amber-500/30 bg-amber-500/15 text-amber-500'
                     : 'border-border bg-secondary text-muted-foreground';
+
+                const confText =
+                  typeof diff.confidenceScore === 'number'
+                    ? `${(diff.confidenceScore * 100).toFixed(0)}%`
+                    : '—';
 
                 return (
                   <div
@@ -131,7 +136,7 @@ export function SymptomAnalysisCard({ symptoms }: SymptomAnalysisCardProps) {
                             probBadge,
                           )}
                         >
-                          {diff.probability} ({(diff.confidenceScore * 100).toFixed(0)}%)
+                          {diff.probability} ({confText})
                         </span>
                       </div>
 
@@ -148,7 +153,7 @@ export function SymptomAnalysisCard({ symptoms }: SymptomAnalysisCardProps) {
                       </p>
                     </div>
 
-                    {diff.supportingSymptoms.length > 0 && (
+                    {(diff.supportingSymptoms ?? []).length > 0 && (
                       <div className="pt-2 border-t border-border/40 text-[10px] text-muted-foreground space-y-1">
                         <span className="font-semibold text-foreground/80 block">Key Support:</span>
                         <div className="flex flex-wrap gap-1">
@@ -176,7 +181,7 @@ export function SymptomAnalysisCard({ symptoms }: SymptomAnalysisCardProps) {
               </h4>
 
               <div className="space-y-2.5">
-                {symptoms.recommendedImaging.map((img, idx) => (
+                {(symptoms.recommendedImaging ?? []).map((img, idx) => (
                   <div
                     key={idx}
                     className="p-3 rounded-xl border border-border/70 bg-secondary/20 space-y-1.5 text-[11px]"
@@ -206,7 +211,7 @@ export function SymptomAnalysisCard({ symptoms }: SymptomAnalysisCardProps) {
               </h4>
 
               <div className="space-y-2.5">
-                {symptoms.recommendedLabs.map((lab, idx) => (
+                {(symptoms.recommendedLabs ?? []).map((lab, idx) => (
                   <div
                     key={idx}
                     className="p-3 rounded-xl border border-border/70 bg-secondary/20 space-y-1 text-[11px]"
@@ -235,7 +240,7 @@ export function SymptomAnalysisCard({ symptoms }: SymptomAnalysisCardProps) {
                 Identified Symptom Red Flags
               </h4>
               <ul className="space-y-1.5 pl-4 list-disc text-[11px] text-destructive/90 leading-relaxed">
-                {symptoms.clinicalRedFlags.map((flag, idx) => (
+                {(symptoms.clinicalRedFlags ?? []).map((flag, idx) => (
                   <li key={idx}>{flag}</li>
                 ))}
               </ul>
@@ -248,7 +253,7 @@ export function SymptomAnalysisCard({ symptoms }: SymptomAnalysisCardProps) {
                 Suggested Clinical Action Plan
               </h4>
               <ul className="space-y-1.5 pl-4 list-decimal text-[11px] text-foreground/85 leading-relaxed">
-                {symptoms.suggestedActionPlan.map((action, idx) => (
+                {(symptoms.suggestedActionPlan ?? []).map((action, idx) => (
                   <li key={idx}>{action}</li>
                 ))}
               </ul>

@@ -263,6 +263,13 @@ export function detectOrganAndModality(
     source = 'clinical text keywords';
   }
 
+  // Multi-organ ambiguity notification
+  if (args.clinical.organsMentioned.length > 1 && organ) {
+    assumptions.push(
+      `Multi-organ context detected ([${args.clinical.organsMentioned.join(', ')}]); routed primary model to ${organ}. Validate manual organ selection if targeting a secondary organ.`,
+    );
+  }
+
   // Priority 3/4: raw PDF text then filename hints.
   const hay = `${args.pdfText ?? ''} ${args.imageFileName ?? ''}`.toLowerCase();
   if (!organ) {
@@ -751,19 +758,20 @@ export async function runAnalysis(input: AnalysisInput): Promise<AnalysisResult>
   // If clinical notes report a normal/negative study, but visual AI inference detected a substantial lesion:
   // Visual evidence MUST take precedence over referral text to avoid dangerous false negatives (clinical-radiological discordance).
   // Only suppress if it is sub-threshold noise on a local mock/ONNX model (< 50 px, low confidence).
-  if (inference && clinical.isNormalOrNegative && inference.metrics.areaPx > 0) {
+  const lesionArea = inference?.metrics?.areaPx ?? 0;
+  if (inference && clinical.isNormalOrNegative && lesionArea > 0) {
     const isHighConfidenceVisualLesion =
       inference.engine === 'gemini-vision' ||
-      inference.metrics.areaPx >= 50 ||
+      lesionArea >= 50 ||
       inference.confidence >= 0.70;
 
     if (isHighConfidenceVisualLesion) {
       inference.warnings.push(
-        `🚨 CRITICAL CLINICAL-RADIOLOGICAL DISCORDANCE: Clinical referral narrative indicated a normal study, but multimodal visual inspection identified an unequivocal focal lesion (${inference.metrics.areaPx} px). Direct imaging findings take precedence over negative clinical indications to prevent missed malignancy.`
+        `🚨 CRITICAL CLINICAL-RADIOLOGICAL DISCORDANCE: Clinical referral narrative indicated a normal study, but multimodal visual inspection identified an unequivocal focal lesion (${lesionArea} px). Direct imaging findings take precedence over negative clinical indications to prevent missed malignancy.`
       );
     } else {
       inference.warnings.push(
-        `Negative clinical study gating: ${inference.metrics.areaPx} px candidate region suppressed in concordance with normal/negative clinical report.`
+        `Negative clinical study gating: ${lesionArea} px candidate region suppressed in concordance with normal/negative clinical report.`
       );
       inference.metrics = {
         areaPx: 0,

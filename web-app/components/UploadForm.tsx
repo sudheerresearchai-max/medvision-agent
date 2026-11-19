@@ -151,6 +151,15 @@ export function UploadForm() {
       return;
     }
 
+    if (imageFile && imageFile.size > 4 * 1024 * 1024) {
+      setError(`Image exceeds 4 MB limit (${(imageFile.size / 1024 / 1024).toFixed(2)} MB). Please downscale or choose another scan.`);
+      return;
+    }
+    if (pdfFile && pdfFile.size > 4 * 1024 * 1024) {
+      setError(`PDF exceeds 4 MB limit (${(pdfFile.size / 1024 / 1024).toFixed(2)} MB).`);
+      return;
+    }
+
     setSubmitting(true);
     setThinkingStartMs(Date.now());
     setStageIndex(0);

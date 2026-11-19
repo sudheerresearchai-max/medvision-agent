@@ -97,7 +97,7 @@ function collectMatchesWithNegation(
   // Cues that negate a subsequent finding in the same clause (supports long clauses & multi-term lists)
   // NOTE: "rule out" is an indication, NOT a negation; only "rules out" / "ruled out" are negations.
   const preNegationRe =
-    /\b(?:neither|nor|no|not|without|denies|denied|negative\s+for|rules\s+out|ruled\s+out|free\s+of|free\s+from|clear\s+of|unremarkable\s+for|absence\s+of|no\s+sign[s]?\s+of|no\s+evidence\s+of|without\s+evidence\s+of|with\s+no\s+evidence\s+of|no\s+focal|no\s+definite|no\s+abnormal|no\s+suspicious|no\s+discrete|no\s+obvious|no\s+gross|cleared\s+of|resolved|zero|devoid\s+of|fails?\s+to\s+(?:show|reveal|demonstrate)|shows?\s+no|reveals?\s+no|demonstrates?\s+no|unlikely|non-?suspicious|benign|vascular|physiological|physiologic)\b/i;
+    /\b(?:neither|nor|no|not|without|denies|denied|denying|negative\s+for|rules\s+out|ruled\s+out|rule[d]?\s*[-]\s*out|free\s+of|free\s+from|clear\s+of|clear\s+for|unremarkable\s+for|absence\s+of|no\s+sign[s]?\s+of|no\s+evidence\s+of|without\s+evidence\s+of|with\s+no\s+evidence\s+of|without\s+any|free\s+of\s+any|no\s+focal|no\s+definite|no\s+abnormal|no\s+suspicious|no\s+discrete|no\s+obvious|no\s+gross|no\s+significant|no\s+visible|no\s+apparent|no\s+measurable|no\s+distinct|negative\s+(?:study|scan|imaging|mri|ct|cxr|radiograph|workup)?\s*(?:for|with\s+respect\s+to)|cleared\s+of|resolved|zero|devoid\s+of|fails?\s+to\s+(?:show|reveal|demonstrate)|shows?\s+no|reveals?\s+no|demonstrates?\s+no|unlikely|non-?suspicious|benign|vascular|physiological|physiologic)\b/i;
 
   // Phrases that express active suspicion (e.g., "cannot rule out", "unable to exclude")
   // These indicate a suspicious finding that MUST be treated as affirmed.
@@ -106,10 +106,11 @@ function collectMatchesWithNegation(
 
   // Cues that negate an antecedent finding in the same clause (excludes temporal "not seen on prior" phrases)
   const postNegationRe =
-    /(?:\b(?:is\s+ruled\s+out|was\s+ruled\s+out|not\s+seen(?!\s+(?:previously|on\s+prior|on\s+previous|on\s+earlier|before))|not\s+identified(?!\s+(?:previously|on\s+prior|on\s+previous|on\s+earlier|before))|not\s+detected(?!\s+(?:previously|on\s+prior|on\s+previous|on\s+earlier|before))|not\s+visualized(?!\s+(?:previously|on\s+prior|on\s+previous|on\s+earlier|before))|not\s+found|not\s+noted|not\s+observed|not\s+demonstrated|(?:is|was|are|were)?\s+not\s+present|is\s+absent|was\s+absent|are\s+absent|were\s+absent|is\s+negative|was\s+negative|are\s+negative|were\s+negative|within\s+normal\s+limits|wnl|unremarkable|is\s+excluded|was\s+excluded|are\s+excluded|were\s+excluded|\bnone\b|\bzero\b|(?:has|is|was|completely)?\s*resolved\b|as\s+expected\b|expected\s+signal\b)|:\s*none\b|:\s*zero\b|[-:]\s*negative\b|[-:]\s*absent\b)/i;
+    /(?:\b(?:is\s+ruled\s+out|was\s+ruled\s+out|not\s+seen(?!\s+(?:previously|on\s+prior|on\s+previous|on\s+earlier|before))|not\s+identified(?!\s+(?:previously|on\s+prior|on\s+previous|on\s+earlier|before))|not\s+detected(?!\s+(?:previously|on\s+prior|on\s+previous|on\s+earlier|before))|not\s+visualized(?!\s+(?:previously|on\s+prior|on\s+previous|on\s+earlier|before))|not\s+found|not\s+noted|not\s+observed|not\s+demonstrated|(?:is|was|are|were)?\s+not\s+present|is\s+absent|was\s+absent|are\s+absent|were\s+absent|is\s+negative|was\s+negative|are\s+negative|were\s+negative|within\s+normal\s+limits|wnl|unremarkable|is\s+excluded|was\s+excluded|are\s+excluded|were\s+excluded|is\s+disproved|was\s+disproved|\bnone\b|\bzero\b|(?:has|is|was|completely)?\s*resolved\b|as\s+expected\b|expected\s+signal\b)|[-:]\s*(?:none(?:\s+seen|\s+detected)?|zero|negative|absent|unremarkable|normal|wnl|not\s+(?:seen|detected|identified|found|noted|observed))\b)/i;
 
   // Clauses split by major sentence delimiters or contrasting conjunctions
-  const clauseDelimRe = /[.;!?\n]|\b(?:but|however|although|except|apart\s+from)\b/i;
+  const clauseDelimRe =
+    /[.;!?\n]|\b(?:but|however|although|though|yet|despite|nevertheless|nonetheless|whereas|while|except(?:\s+for)?|apart\s+from|aside\s+from|save\s+for|other\s+than)\b/i;
 
   // Sort terms by length descending so longer composite terms (e.g. 'enhancing lesion') are tested first
   const sortedTerms = [...terms].sort((a, b) => b.length - a.length);
@@ -189,6 +190,39 @@ function firstSentenceContaining(text: string, re: RegExp): string | undefined {
 // Rule-based extractor
 // ---------------------------------------------------------------------------
 
+function hasAffirmedNormalStudyCue(text: string): boolean {
+  if (
+    /\b(?:not\s+normal|not\s+unremarkable|not\s+within\s+normal\s+limits|outside\s+normal\s+limits|abnormal\s+findings?|grossly\s+abnormal|pathologic\s+enhancement)\b/i.test(
+      text,
+    )
+  ) {
+    return false;
+  }
+
+  const normalStudyRe =
+    /\b(?:normal\s+study|normal\s+scan|healthy\s+control|control\s+scan|control\s+study|clear\s+study|clear\s+scan|unremarkable\s+study|routine\s+screening|negative\s+for\s+(?:malignancy|neoplasm|tumor|mass)|study\s+is\s+negative|negative\s+study|no\s+acute\s+(?:intracranial\s+)?abnormality|clear\s+lung\s+fields|clear\s+lungs|no\s+focal\s+mass|no\s+mass\s+identified|no\s+nodule\s+identified|no\s+suspicious\s+lesion|within\s+normal\s+limits|\bwnl\b|unremarkable|normal)\b/gi;
+
+  let match: RegExpExecArray | null;
+  while ((match = normalStudyRe.exec(text)) !== null) {
+    const startIdx = match.index;
+    const windowStart = Math.max(0, startIdx - 80);
+    const preSlice = text.slice(windowStart, startIdx);
+    const preClauses = preSlice.split(
+      /[.;!?\n]|\b(?:but|however|although|though|yet|despite|nevertheless|nonetheless|whereas|while|except(?:\s+for)?|apart\s+from|aside\s+from|save\s+for|other\s+than)\b/i,
+    );
+    const immediatePre = preClauses[preClauses.length - 1];
+
+    const isNegated =
+      /\b(?:not|neither|no|never|unlikely|hardly|outside|non-?|fails?\s+to\s+be)\s*$/i.test(
+        immediatePre.trim(),
+      );
+    if (!isNegated) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function extractClinicalInfoWithRules(text: string): ClinicalInfo {
   if (!text || !text.trim()) {
     return {
@@ -216,11 +250,20 @@ export function extractClinicalInfoWithRules(text: string): ClinicalInfo {
     extractionMethod: 'rules',
   };
 
+  const detectedOrgans: Array<{ organ: Organ; index: number; snippet?: string }> = [];
   for (const { organ, pattern } of ORGAN_RULES) {
-    if (pattern.test(text)) {
-      info.organsMentioned.push(organ);
+    const match = pattern.exec(text);
+    if (match) {
       const snippet = firstSentenceContaining(text, pattern);
-      if (snippet) info.evidenceSnippets.push(snippet);
+      detectedOrgans.push({ organ, index: match.index, snippet });
+    }
+  }
+  // Sort organs by chronological appearance in narrative to resolve multi-organ ambiguity
+  detectedOrgans.sort((a, b) => a.index - b.index);
+  for (const d of detectedOrgans) {
+    info.organsMentioned.push(d.organ);
+    if (d.snippet && !info.evidenceSnippets.includes(d.snippet)) {
+      info.evidenceSnippets.push(d.snippet);
     }
   }
   for (const { modality, pattern } of MODALITY_RULES) {
@@ -240,10 +283,7 @@ export function extractClinicalInfoWithRules(text: string): ClinicalInfo {
   const conditionsMatch = collectMatchesWithNegation(text, CONDITION_HINTS);
   info.suspectedConditions = conditionsMatch.affirmed;
 
-  const normalStudyPattern =
-    /\b(normal|unremarkable|within normal limits|wnl|no acute abnormality|no acute intracranial abnormality|clear lung fields|clear lungs|negative for malignancy|study is negative|negative study|routine screening|normal study|normal scan|healthy control|control scan|control study|negative for neoplasm|negative for tumor|negative for mass|unremarkable study|clear study|clear scan|unremarkable brain|unremarkable chest|unremarkable pancreas|unremarkable abdomen|no focal mass|no mass identified|no nodule identified|no suspicious lesion)\b/i;
-
-  const hasNormalCue = normalStudyPattern.test(text);
+  const hasNormalCue = hasAffirmedNormalStudyCue(text);
   const hasAffirmedNeoplasm =
     info.findings.some((f) => TARGET_NEOPLASM_FINDINGS.includes(f.toLowerCase())) ||
     info.suspectedConditions.length > 0;

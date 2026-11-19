@@ -105,9 +105,6 @@ export async function predictOrgan(args: {
   if (args.clinical?.evidenceSnippets && args.clinical.evidenceSnippets.length > 0) {
     form.append('clinical_notes', args.clinical.evidenceSnippets.join(' '));
   }
-  if (args.clinical?.evidenceSnippets?.length) {
-    form.append('clinical_notes', args.clinical.evidenceSnippets.join(' '));
-  }
 
   let res: Response;
   try {
