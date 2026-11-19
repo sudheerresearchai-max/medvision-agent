@@ -119,7 +119,12 @@ export async function POST(request: NextRequest) {
       pdf: pdfInput,
       clinicalText: notes,
       manualOrgan,
-      previewDataUrl: preview.startsWith('data:image/') ? preview : undefined,
+      previewDataUrl:
+        preview.startsWith('data:image/')
+          ? preview
+          : imageInput
+            ? `data:${imageInput.contentType || 'image/png'};base64,${Buffer.from(imageInput.bytes).toString('base64')}`
+            : undefined,
     });
 
     return NextResponse.json({ ok: true, result: result satisfies AnalysisResult });
