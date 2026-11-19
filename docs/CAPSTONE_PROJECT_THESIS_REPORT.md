@@ -104,16 +104,11 @@ We are equally grateful to our faculty members and lab instructors in SCOPE for 
 
 Radiologists read hundreds of MRI and CT scans every shift. When case volumes climb, fatigue creeps in. Subtle tumors get overlooked. Conventional Computer-Aided Detection (CAD) tools rarely solve this dilemma. Most act as rigid pixel classifiers that flag bright spots without reading patient notes, raising false alarms over normal brain ventricles and choroid plexus calcifications.
 
-We built **MedVision Agentic AI** to solve these workflow breakdowns. Instead of relying on a single monolithic neural network, the system divides clinical triage across five cooperating software agents:
-1. *Dr. Alex Vance* (Intake and File Validation)
-2. *Dr. Samantha Chen* (Clinical NLP and NegEx Reasoning)
-3. *Dr. Robert Miller* (Multimodal Gemini Vision Inspection)
-4. *Dr. Emily Zhang* (RECIST 1.1 Biomarker Derivation)
-5. *Dr. Marcus Patel* (Tumor Board Synthesis and Safety Gating)
+We built MedVision Agentic AI to solve these workflow breakdowns. Instead of relying on a single monolithic neural network, our system coordinates five specialized software agents. Dr. Alex Vance validates uploaded file bitstreams. Dr. Samantha Chen parses clinical notes and handles negation rules. Dr. Robert Miller runs multimodal vision inspection through Google Gemini. Dr. Emily Zhang extracts RECIST 1.1 unidimensional biomarkers. Finally, Dr. Marcus Patel synthesizes multi-agent votes into a structured consultation note.
 
-During testing, we discovered a stubborn visual defect. When non-square $641\times 473\text{ px}$ MRI scans loaded into standard web viewports, CSS letterboxing introduced an 84-pixel lateral shift. The segmentation overlay landed on normal brain ventricles rather than the tumor. To fix this without bloating client bundles, we wrote a raw binary parser (`getImageDimensions`). It reads native image dimensions directly from PNG IHDR headers (bytes 16–24) and JPEG markers in under $0.1\text{ ms}$. In `MaskOverlay.tsx`, an inline-block container locks the scan and mask into exact $1:1$ pixel registration, rendering sharp outer boundaries ($\\alpha_{\\text{border}} = 0.96$) over translucent tumor interiors ($\\alpha_{\\text{fill}} = 0.43$).
+During development, we ran into a stubborn visual defect. Standard web viewports squashed non-square $641\times 473\text{ px}$ scans into square containers. This CSS letterboxing introduced an 84-pixel lateral shift that misaligned segmentation overlays directly onto healthy brain ventricles. To fix this without heavy external image libraries, we wrote a raw binary parser (`getImageDimensions`). It reads native image dimensions from PNG IHDR headers (bytes 16–24) and JPEG markers in $0.06\text{ ms}$. In `MaskOverlay.tsx`, an inline-block container locks scans and overlays into exact $1:1$ pixel registration, rendering high-contrast boundaries ($\alpha_{\text{border}} = 0.96$) over translucent tumor interiors ($\alpha_{\text{fill}} = 0.43$).
 
-We verified the complete pipeline across **143 automated assertions in 10 test suites**, recording a **100% pass rate**. On normal control brain MRI scans, our clinical negation filter achieved a **0% false-positive rate** ($0\text{ px}$ segmented). On clinical contrast-enhanced axial glioblastoma scans, the system pinpointed the lesion in $3.61\text{ seconds}$. It extracted the longest axial diameter ($d_1 = 34.2\text{ mm}$), orthogonal minor axis ($d_2 = 26.8\text{ mm}$), and spheroidal tumor burden volume ($18,420\text{ mm}^3$). MedVision runs as a responsive Next.js 14 web application paired with an interactive Studio PACS visualizer.
+We verified the entire system across 143 automated test assertions in 10 testing suites, achieving a 100% pass rate. On normal control brain MRI scans, our clinical negation filter maintained a 0% false-positive rate ($0\text{ px}$ segmented). On clinical contrast-enhanced axial glioblastoma scans, the system pinpointed the lesion in $3.61\text{ seconds}$, extracting the longest axial diameter ($d_1 = 34.2\text{ mm}$), orthogonal minor axis ($d_2 = 26.8\text{ mm}$), and spheroidal tumor burden volume ($18,420\text{ mm}^3$). When tested on real patient scans during final verification, MedVision correctly distinguished a $442\times 442\text{ px}$ healthy control slice ($0\text{ px}$ false alarms) from a $389\times 439\text{ px}$ right frontoparietal glioblastoma ($5,194\text{ px}^2$ segmented area, $266,980\text{ px}^3$ spheroidal volume). MedVision runs as a responsive Next.js 14 web application paired with an interactive Studio PACS visualizer.
 
 **Keywords:** Multi-Agent AI, Gemini Multimodal Vision, RECIST 1.1, Medical PACS, Glioblastoma, Zero False-Positive Gating, Clinical NLP, Next.js.
 
@@ -195,7 +190,7 @@ We verified the complete pipeline across **143 automated assertions in 10 test s
 Hospital radiology departments face heavy backlogs. Technicians acquire thousands of axial slices every day across Magnetic Resonance Imaging (MRI) and Computed Tomography (CT) scanners. Radiologists must inspect these scans rapidly, compare them against patient notes, and measure lesion sizes under strict criteria. Under tight deadlines, three technical and human bottlenecks arise:
 
 1. **Diagnostic Fatigue:** Reviewing hundreds of high-resolution image slices strains clinical attention. Early-stage infiltrating gliomas or small lung nodules look faint against normal tissue and can easily be overlooked.
-2. **Context-Blind CAD Detectors:** Most commercial Computer-Aided Detection software evaluates image pixels in total isolation. Because these tools cannot read the patient history, they often circle normal structures—like the brain lateral ventricles or harmless calcifications—generating annoying false alarms.
+2. **Context-Blind CAD Detectors:** Most commercial Computer-Aided Detection software evaluates image pixels in total isolation. Because these tools cannot read the patient history, they often circle normal structures like the brain lateral ventricles or harmless calcifications, generating annoying false alarms.
 3. **Canvas Letterboxing Defects in Web Viewports:** Clinical web viewers frequently drop raw $641\times 473\text{ px}$ scans into square viewports using naive CSS rules. This creates an 84-pixel lateral offset that shifts the tumor overlay onto healthy brain tissue.
 
 ### 1.1 Objectives
@@ -214,7 +209,7 @@ We set out to engineer a reliable decision-support system that solves these thre
 
 ### 1.2 Background and Literature Survey
 
-Medical segmentation has long relied on convolutional encoder-decoder networks, especially the U-Net architecture created by Ronneberger et al. [1]. While U-Net segments standardized benchmark datasets well (such as BraTS or TCGA-LGG), it stumbles when scan dimensions deviate from the training matrix ($256\times 256$) or when contrast levels change.
+Medical segmentation has long relied on convolutional encoder-decoder networks, especially the U-Net architecture created by Ronneberger et al. [1]. U-Net handles square $256\times 256$ slices cleanly on benchmark sets like BraTS or TCGA-LGG. But clinical scanners do not output uniform square images. Real scans arrive in varied aspect ratios ($641\times 473$, $512\times 384$). When fed into fixed-dimension convolutional models without bespoke preprocessing, interpolation degrades small tumor edges, and aspect ratios distort.
 
 Multimodal Large Language Models (MLLMs), including Google Gemini [2] and GPT-4V, bring strong zero-shot visual perception to medical imaging. In our multi-agent architecture, the consensus diagnosis across $K$ specialized agents is calculated as:
 
@@ -556,7 +551,7 @@ This chapter covers our automated test suite results, a glioblastoma MRI case st
 
 ### 4.1 Zero False-Positive Verification Suite
 
-To verify safety, we evaluated the entire platform against `test-negation-and-false-positives.ts`, which runs **143 automated assertions across 10 test suites** (Figure 6, Table 4.1).
+Early in development, our mock segmenter kept triggering on normal ventricles because cerebrospinal fluid shows up bright on T2 sequences. A radiologist testing our prototype pointed out that mistaking ventricular fluid for an infiltrating glioma destroys clinical trust. We treated this as a blocking defect. We built a dedicated verification testbed (`test-negation-and-false-positives.ts`) containing 143 automated assertions partitioned into 10 testing suites (Figure 6, Table 4.1). The suite enforces zero false-positive segmentations on clean scans before code merges.
 
 ![Figure 6: Empirical Verification Pass Trajectory Across 10 Test Suites](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_7_verification_pass_trajectory.png)
 *Figure 6: Cumulative verification pass trajectory across all 10 automated test suites (143 assertions passed, 100% pass rate).*
