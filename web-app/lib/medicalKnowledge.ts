@@ -639,51 +639,76 @@ export interface OpenWebNinjaSearchResult {
 }
 
 /**
+ * OpenWebNinja API Key Pool with automatic rotation and failover.
+ */
+const OPENWEBNINJA_KEY_POOL: readonly string[] = [
+  'ak_3x5wh098sqrcd3d2r116wc4ph35bf4au1as0olt6tuhu7f2',
+  'ak_x8n9cm8qq6pwahtbosz93k1ujwhtbbiut4q9oxf80zgmx2q',
+  'ak_7o0g2vo006bwpo70m0q418zurcidlsl53gy0ueda44gd682',
+  'ak_7zdihpcsvdgrectjn15us5jadl712wudlg4xkn6f44km02f',
+];
+
+export function getOpenWebNinjaApiKeys(): string[] {
+  const envKeys = [
+    ...(process.env.OPENWEBNINJA_API_KEYS?.split(',') ?? []),
+    process.env.OPENWEBNINJA_API_KEY,
+  ]
+    .map((k) => k?.trim())
+    .filter((k): k is string => Boolean(k && k.length > 5));
+
+  const combined = Array.from(new Set([...envKeys, ...OPENWEBNINJA_KEY_POOL]));
+  return combined;
+}
+
+/**
  * Perform real-time web search via OpenWebNinja API for up-to-the-minute oncology guidelines,
  * evidence-based literature, side effects, and precautions.
+ * Automatically tries fallback keys from the pool if one hits a rate limit or error.
  */
 export async function searchRealtimeWeb(query: string): Promise<OpenWebNinjaSearchResult[]> {
-  const apiKey =
-    process.env.OPENWEBNINJA_API_KEY?.trim() ||
-    'ak_7zdihpcsvdgrectjn15us5jadl712wudlg4xkn6f44km02f';
+  const keys = getOpenWebNinjaApiKeys();
+  if (!keys.length) return [];
 
-  if (!apiKey) return [];
+  const url = new URL('https://api.openwebninja.com/realtime-web-search/search');
+  url.searchParams.set('q', query);
 
-  try {
-    const url = new URL('https://api.openwebninja.com/realtime-web-search/search');
-    url.searchParams.set('q', query);
+  for (const apiKey of keys) {
+    try {
+      const res = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          'X-API-Key': apiKey,
+          'Accept': 'application/json',
+        },
+        signal: AbortSignal.timeout(8000),
+      });
 
-    const res = await fetch(url.toString(), {
-      method: 'GET',
-      headers: {
-        'X-API-Key': apiKey,
-        'Accept': 'application/json',
-      },
-      signal: AbortSignal.timeout(8000),
-    });
+      if (!res.ok) {
+        console.warn(`[OpenWebNinja] Key ${apiKey.slice(0, 8)}... returned HTTP ${res.status}`);
+        continue;
+      }
 
-    if (!res.ok) {
-      console.warn(`[OpenWebNinja] Search returned HTTP ${res.status}`);
-      return [];
+      const json = await res.json();
+      const organic = (json?.data?.organic_results || json?.organic_results || []) as Array<{
+        title?: string;
+        url?: string;
+        snippet?: string;
+        description?: string;
+      }>;
+
+      if (organic.length > 0) {
+        return organic.slice(0, 5).map((r) => ({
+          title: r.title || 'Clinical Oncology Guideline',
+          url: r.url || 'https://www.nccn.org',
+          snippet: r.snippet || r.description || '',
+        }));
+      }
+    } catch (err) {
+      console.warn(`[OpenWebNinja] Search failed with key ${apiKey.slice(0, 8)}...`, err);
     }
-
-    const json = await res.json();
-    const organic = (json?.data?.organic_results || json?.organic_results || []) as Array<{
-      title?: string;
-      url?: string;
-      snippet?: string;
-      description?: string;
-    }>;
-
-    return organic.slice(0, 5).map((r) => ({
-      title: r.title || 'Clinical Oncology Guideline',
-      url: r.url || 'https://www.nccn.org',
-      snippet: r.snippet || r.description || '',
-    }));
-  } catch (err) {
-    console.warn('[OpenWebNinja] Real-time search failed:', err);
-    return [];
   }
+
+  return [];
 }
 
 /**

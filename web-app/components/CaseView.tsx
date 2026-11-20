@@ -2,12 +2,13 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Stethoscope, Sparkles } from 'lucide-react';
+import { ArrowLeft, Sparkles } from 'lucide-react';
 import type { AnalysisResult } from '@/lib/types';
+import { buttonVariants } from '@/components/ui/button';
 import { MaskOverlay } from '@/components/MaskOverlay';
 import { ReportPanel } from '@/components/ReportPanel';
 import { TumorVerdictCard } from '@/components/TumorVerdictCard';
-import { DiagnosticReasoningPill } from '@/components/DiagnosticReasoningPill';
+import { ClaudeThinkingPill } from '@/components/ClaudeThinkingPill';
 import { ClinicalKnowledgePanel } from '@/components/ClinicalKnowledgePanel';
 import { ClinicalSafetyPrecautions } from '@/components/ClinicalSafetyPrecautions';
 import { cn } from '@/lib/utils';
@@ -87,12 +88,34 @@ export function CaseView({ data }: { data: AnalysisResult }) {
             </p>
           </div>
 
-        {/* Comprehensive Medical Report */}
-        <ReportPanel report={data.report} />
+          <div className="rounded-xl border border-border/70 bg-card/60 p-3 text-center space-y-1">
+            <span className="text-[10px] uppercase text-muted-foreground tracking-wider">
+              Orthogonal Short Axis
+            </span>
+            <p className="text-sm font-semibold text-foreground">
+              {shortAxis ? `${shortAxis.value} ${shortAxis.unit}` : 'Cross-Sectional'}
+            </p>
+          </div>
 
-        {/* Clinical Safety & Regulatory Precautions */}
-        <ClinicalSafetyPrecautions />
-      </div>
+          <div className="col-span-2 sm:col-span-1 rounded-xl border border-border/70 bg-card/60 p-3 text-center space-y-1">
+            <span className="text-[10px] uppercase text-muted-foreground tracking-wider">
+              Tumor Volume Burden
+            </span>
+            <p className="text-sm font-semibold text-foreground">
+              {volumeBurden ? `${volumeBurden.value} ${volumeBurden.unit}` : 'Volumetric Approximation'}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Authoritative Clinical Knowledge & Oncology Intelligence */}
+      <ClinicalKnowledgePanel knowledge={data.clinicalKnowledge} />
+
+      {/* Comprehensive Medical Report */}
+      <ReportPanel report={data.report} />
+
+      {/* Clinical Safety & Regulatory Precautions */}
+      <ClinicalSafetyPrecautions />
     </div>
   );
 }
