@@ -9,46 +9,46 @@
 
 @layer base {
   :root {
-    /* Clinical Light Mode — Clean Medical Slate */
-    --background: 210 20% 98%;             /* #F8FAFC */
-    --foreground: 222 47% 11%;            /* #0F172A deep slate */
-    --card: 0 0% 100%;                    /* #FFFFFF */
-    --card-foreground: 222 47% 11%;
-    --primary: 199 89% 48%;               /* #0EA5E9 Diagnostic Sky/Cyan */
+    /* Clean Medical Light Mode */
+    --background: 220 15% 97%;            /* #F5F7FA */
+    --foreground: 225 11% 15%;            /* #22242A */
+    --card: 0 0% 100%;
+    --card-foreground: 225 11% 15%;
+    --primary: 199 89% 48%;               /* #0EA5E9 Diagnostic Sky */
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 28% 95%;             /* #F1F5F9 */
-    --secondary-foreground: 215 25% 27%;  /* #334155 */
-    --muted: 210 28% 95%;
-    --muted-foreground: 215 16% 47%;      /* #64748B */
+    --secondary: 220 14% 92%;
+    --secondary-foreground: 225 11% 25%;
+    --muted: 220 14% 92%;
+    --muted-foreground: 225 10% 45%;
     --accent: 199 89% 48%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 347 87% 58%;           /* #F43F5E Signal Rose */
+    --destructive: 347 87% 58%;           /* #F43F5E */
     --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 91%;                /* #E2E8F0 */
-    --input: 214 32% 91%;
+    --border: 220 13% 86%;
+    --input: 220 13% 86%;
     --ring: 199 89% 48%;
     --radius: 0.75rem;
   }
 
   .dark {
-    /* MedVision Clinical PACS Dark Mode — Deep Obsidian & Precision Slate */
-    --background: 222 47% 5%;             /* #070A10 obsidian clinical slate */
-    --foreground: 210 40% 98%;            /* #F8FAFC high-contrast text */
-    --card: 222 44% 9%;                   /* #0E1422 workstation panel */
-    --card-foreground: 210 40% 98%;
-    --primary: 199 89% 48%;               /* #0EA5E9 Diagnostic Cyan */
+    /* User Color Template: #22242A (Background) & #272930 (Cards/Panels) */
+    --background: 225 11% 15%;            /* #22242A Canvas Background */
+    --foreground: 220 18% 96%;            /* #F2F4F8 Crisp text */
+    --card: 227 10% 17%;                  /* #272930 Workstation Surface */
+    --card-foreground: 220 18% 96%;
+    --primary: 199 89% 50%;               /* #0EA5E9 Diagnostic Cyan */
     --primary-foreground: 0 0% 100%;
-    --secondary: 217 33% 14%;             /* #182234 inset clinical surface */
-    --secondary-foreground: 210 40% 92%;
-    --muted: 217 33% 14%;
-    --muted-foreground: 215 20% 65%;      /* #94A3B8 clinical technical text */
-    --accent: 199 89% 48%;
+    --secondary: 225 10% 21%;             /* #2F323C Inset / Hover Surface */
+    --secondary-foreground: 220 18% 92%;
+    --muted: 225 10% 21%;
+    --muted-foreground: 225 10% 64%;      /* #979EAC Muted technical text */
+    --accent: 199 89% 50%;
     --accent-foreground: 0 0% 100%;
     --destructive: 347 87% 58%;           /* #F43F5E Lesion Alert */
     --destructive-foreground: 0 0% 100%;
-    --border: 217 33% 18%;                /* #1E293B precision hairline border */
-    --input: 217 33% 18%;
-    --ring: 199 89% 48%;
+    --border: 225 10% 24%;                /* #353844 Hairline border */
+    --input: 225 10% 24%;
+    --ring: 199 89% 50%;
   }
 
   * {
@@ -67,13 +67,13 @@
   .workstation-card {
     background-color: hsl(var(--card));
     border: 1px solid hsl(var(--border));
-    box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.4), 0 12px 24px -6px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 8px -2px rgba(15, 17, 23, 0.4), 0 10px 22px -6px rgba(15, 17, 23, 0.3);
   }
 
   /* Diagnostic clinical pill chip */
   .clinical-pill {
     border-radius: 9999px;
-    background: hsl(var(--secondary) / 0.7);
+    background: hsl(var(--secondary) / 0.75);
     border: 1px solid hsl(var(--border));
     transition: all 0.15s ease-in-out;
   }
@@ -86,26 +86,10 @@
   /* Medical calibration grid for scan viewport contrast */
   .pacs-grid {
     background-image:
-      linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
     background-size: 24px 24px;
-    background-color: #05070B;
-  }
-
-  /* Pulse animation for active diagnostic agent scanning */
-  @keyframes scanline {
-    0% { transform: translateY(-100%); }
-    100% { transform: translateY(1000%); }
-  }
-
-  .scanline-effect {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, transparent, rgba(14, 165, 233, 0.8), transparent);
-    animation: scanline 3s linear infinite;
+    background-color: #191B20;
   }
 }
 
