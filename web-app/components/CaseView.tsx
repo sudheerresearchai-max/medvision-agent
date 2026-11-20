@@ -2,16 +2,30 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Stethoscope, Sparkles, Copy, Check, Printer, Share2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  Stethoscope,
+  Copy,
+  Check,
+  Printer,
+  Share2,
+  FileText,
+  Activity,
+  Layers,
+  Sparkles,
+  ShieldAlert,
+  Clock,
+  Ruler,
+} from 'lucide-react';
 import type { AnalysisResult } from '@/lib/types';
-import { buttonVariants } from '@/components/ui/button';
 import { MaskOverlay } from '@/components/MaskOverlay';
 import { ReportPanel } from '@/components/ReportPanel';
 import { TumorVerdictCard } from '@/components/TumorVerdictCard';
-import { ClaudeThinkingPill } from '@/components/ClaudeThinkingPill';
+import { DiagnosticReasoningPill } from '@/components/DiagnosticReasoningPill';
 import { ClinicalKnowledgePanel } from '@/components/ClinicalKnowledgePanel';
 import { ClinicalSafetyPrecautions } from '@/components/ClinicalSafetyPrecautions';
 import { SymptomAnalysisCard } from '@/components/SymptomAnalysisCard';
+import { MultiAgentTrace } from '@/components/MultiAgentTrace';
 import { cn } from '@/lib/utils';
 
 function formatConsultationSummary(data: AnalysisResult): string {
@@ -134,39 +148,44 @@ export function CaseView({ data }: { data: AnalysisResult }) {
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 py-4">
-      {/* Claude Style Minimal Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3 no-print font-mono text-xs">
-        <div className="flex items-center gap-2">
+    <div className="space-y-6 py-2">
+      {/* Top Clinical Case Action Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/80 pb-4 no-print text-xs">
+        <div className="flex items-center gap-3">
           <Link
             href="/"
-            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 transition-colors"
+            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 transition-colors px-2.5 py-1.5 rounded-lg hover:bg-secondary border border-transparent hover:border-border/60"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>New analysis</span>
+            <span>Diagnostic Studio</span>
           </Link>
           <span className="text-border">/</span>
-          <span className="text-muted-foreground truncate max-w-[160px] sm:max-w-none">
-            {data.caseId}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-muted-foreground truncate max-w-[140px] sm:max-w-none">
+              Case {data.caseId}
+            </span>
+            <span className="clinical-pill px-2.5 py-0.5 text-[11px] font-mono text-primary border-primary/30 bg-primary/10">
+              {data.routing.modelKey ? data.routing.modelKey.toUpperCase() : 'MULTIMODAL'}
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={handleCopy}
-            className="claude-pill px-3 py-1 text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5"
+            className="clinical-pill px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5"
             title="Copy consultation summary"
           >
             {copied ? (
               <>
-                <Check className="w-3.5 h-3.5 text-primary" />
-                <span className="text-primary font-medium">Copied</span>
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-emerald-400 font-medium">Copied Note</span>
               </>
             ) : (
               <>
                 <Copy className="w-3.5 h-3.5" />
-                <span>Copy</span>
+                <span>Copy Consult Summary</span>
               </>
             )}
           </button>
@@ -174,18 +193,18 @@ export function CaseView({ data }: { data: AnalysisResult }) {
           <button
             type="button"
             onClick={handlePrint}
-            className="claude-pill px-3 py-1 text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5"
+            className="clinical-pill px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5"
             title="Print or export consultation report"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Print</span>
+            <span>Print Report</span>
           </button>
         </div>
       </div>
 
-      {/* Claude Thinking Accordion */}
-      <div className="pt-1">
-        <ClaudeThinkingPill
+      {/* Deliberation Status Widget */}
+      <div className="pt-0.5">
+        <DiagnosticReasoningPill
           isThinking={false}
           elapsedMs={totalMs}
           trace={data.multiAgentTrace}
@@ -193,75 +212,87 @@ export function CaseView({ data }: { data: AnalysisResult }) {
         />
       </div>
 
-      {/* Primary Diagnosis & Danger Verdict Strip */}
-      <TumorVerdictCard data={data} />
+      {/* Ergonomic 2-Column Clinical Workstation Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column: Radiologic PACS Viewport & Calipers (Span 7) */}
+        <div className="lg:col-span-7 space-y-6">
+          {data.inference ? (
+            <MaskOverlay
+              originalSrc={preview}
+              inference={data.inference}
+              measurements={data.measurements}
+            />
+          ) : (
+            <div className="workstation-card rounded-2xl border border-dashed border-border/80 p-8 text-center space-y-2">
+              <div className="flex items-center justify-center gap-2 text-sm font-medium text-foreground">
+                <Stethoscope className="w-4 h-4 text-primary" />
+                <span>Clinical Symptoms Consultation (No Radiological Scan Attached)</span>
+              </div>
+              <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
+                The multi-agent panel completed differential diagnosis triage and recommended diagnostic imaging protocols detailed in the clinical workup panel.
+              </p>
+            </div>
+          )}
 
-      {/* Multimodal & Clinical Symptoms Reasoning Card */}
-      {data.symptomAnalysis && (
-        <SymptomAnalysisCard symptoms={data.symptomAnalysis} />
-      )}
+          {/* Quick RECIST 1.1 Biomarker Summary */}
+          {isTumor && data.measurements.length > 0 && (
+            <div className="grid grid-cols-3 gap-3 font-mono text-xs">
+              <div className="workstation-card rounded-xl p-3.5 text-center space-y-1">
+                <span className="text-[10px] uppercase text-muted-foreground tracking-wider block">
+                  RECIST Longest Axis
+                </span>
+                <p className="text-base font-bold text-foreground">
+                  {longestAxis ? `${longestAxis.value} ${longestAxis.unit}` : 'Measurable Target'}
+                </p>
+              </div>
 
-      {/* Interactive Scan Visualizer or Symptoms-Only Notification */}
-      {data.inference ? (
-        <div className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs">
-          <MaskOverlay
-            originalSrc={preview}
-            inference={data.inference}
-            measurements={data.measurements}
-          />
+              <div className="workstation-card rounded-xl p-3.5 text-center space-y-1">
+                <span className="text-[10px] uppercase text-muted-foreground tracking-wider block">
+                  Orthogonal Short Axis
+                </span>
+                <p className="text-base font-bold text-foreground">
+                  {shortAxis ? `${shortAxis.value} ${shortAxis.unit}` : 'Cross-Sectional'}
+                </p>
+              </div>
+
+              <div className="workstation-card rounded-xl p-3.5 text-center space-y-1">
+                <span className="text-[10px] uppercase text-muted-foreground tracking-wider block">
+                  Volume Burden
+                </span>
+                <p className="text-base font-bold text-foreground">
+                  {volumeBurden ? `${volumeBurden.value} ${volumeBurden.unit}` : 'Volumetric Est.'}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="rounded-2xl border border-dashed border-border/80 bg-card/40 p-6 text-center space-y-2">
-          <div className="flex items-center justify-center gap-2 text-xs font-mono font-medium text-foreground">
-            <Stethoscope className="w-4 h-4 text-primary" />
-            <span>Clinical Symptoms Consultation (No Radiological Scan Attached)</span>
-          </div>
-          <p className="text-[11px] font-mono text-muted-foreground max-w-md mx-auto">
-            The multi-agent panel completed differential diagnosis triage and recommended diagnostic imaging protocols detailed in the clinical workup above.
-          </p>
+
+        {/* Right Column: Specialist Consensus & Differential Diagnosis (Span 5) */}
+        <div className="lg:col-span-5 space-y-5">
+          {/* Executive Verdict Strip */}
+          <TumorVerdictCard data={data} />
+
+          {/* Symptom & Multimodal Concordance Card */}
+          {data.symptomAnalysis && (
+            <SymptomAnalysisCard symptoms={data.symptomAnalysis} />
+          )}
+
+          {/* Clinical Knowledge & NCCN Insights */}
+          <ClinicalKnowledgePanel knowledge={data.clinicalKnowledge} />
         </div>
-      )}
+      </div>
 
-      {/* Key RECIST 1.1 Biomarker Metric Strip (If tumor detected) */}
-      {isTumor && data.measurements.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 font-mono text-xs">
-          <div className="rounded-xl border border-border/70 bg-card/60 p-3 text-center space-y-1">
-            <span className="text-[10px] uppercase text-muted-foreground tracking-wider">
-              RECIST 1.1 Longest Axis
-            </span>
-            <p className="text-sm font-semibold text-foreground">
-              {longestAxis ? `${longestAxis.value} ${longestAxis.unit}` : 'Measurable Target'}
-            </p>
-          </div>
+      {/* Lower Full-Width Diagnostic Modules */}
+      <div className="space-y-6 pt-4 border-t border-border/60">
+        {/* Multi-Agent Specialist Trace */}
+        {data.multiAgentTrace && (
+          <MultiAgentTrace trace={data.multiAgentTrace} />
+        )}
 
-          <div className="rounded-xl border border-border/70 bg-card/60 p-3 text-center space-y-1">
-            <span className="text-[10px] uppercase text-muted-foreground tracking-wider">
-              Orthogonal Short Axis
-            </span>
-            <p className="text-sm font-semibold text-foreground">
-              {shortAxis ? `${shortAxis.value} ${shortAxis.unit}` : 'Cross-Sectional'}
-            </p>
-          </div>
+        {/* Comprehensive Medical Report */}
+        <ReportPanel report={data.report} />
 
-          <div className="col-span-2 sm:col-span-1 rounded-xl border border-border/70 bg-card/60 p-3 text-center space-y-1">
-            <span className="text-[10px] uppercase text-muted-foreground tracking-wider">
-              Tumor Volume Burden
-            </span>
-            <p className="text-sm font-semibold text-foreground">
-              {volumeBurden ? `${volumeBurden.value} ${volumeBurden.unit}` : 'Volumetric Approximation'}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Authoritative Clinical Knowledge & Oncology Intelligence (Symptoms, Side Effects, Precautions & Red Flags) */}
-      <ClinicalKnowledgePanel knowledge={data.clinicalKnowledge} />
-
-      {/* Full Structured Medical Report */}
-      <ReportPanel report={data.report} />
-
-      {/* Understated Clinical Precautions (Collapsed) */}
-      <div className="pt-2">
+        {/* Clinical Safety & Regulatory Precautions */}
         <ClinicalSafetyPrecautions />
       </div>
     </div>

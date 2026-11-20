@@ -88,7 +88,7 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
 
   if (!inference) {
     return (
-      <div className="claude-card rounded-2xl p-6 text-center space-y-2">
+      <div className="workstation-card rounded-2xl p-6 text-center space-y-2">
         <p className="text-xs font-mono text-muted-foreground">No radiological scan available for this case.</p>
       </div>
     );
@@ -102,11 +102,11 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
   };
 
   return (
-    <div className="claude-card rounded-2xl overflow-hidden border border-white/[0.08] shadow-2xl">
+    <div className="workstation-card rounded-2xl overflow-hidden border border-border shadow-2xl">
       {/* Studio Header */}
-      <div className="px-5 py-3.5 border-b border-white/[0.08] bg-black/40 flex flex-wrap items-center justify-between gap-3">
+      <div className="px-5 py-3.5 border-b border-border/80 bg-secondary/30 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-xl bg-primary/15 text-primary flex items-center justify-center border border-primary/20">
+          <div className="w-7 h-7 rounded-lg bg-primary/15 text-primary flex items-center justify-center border border-primary/30">
             <Layers className="h-4 w-4" />
           </div>
           <div>
@@ -120,16 +120,16 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
         </div>
 
         <div className="flex items-center gap-2 font-mono text-xs">
-          <span className="claude-pill px-3 py-1 text-[11px] text-muted-foreground">
+          <span className="clinical-pill px-3 py-1 text-[11px] text-muted-foreground">
             {inference.modelFile}
           </span>
           {isLesion ? (
-            <span className="claude-pill px-3 py-1 text-[11px] text-red-400 bg-red-500/10 border-red-500/25 font-semibold flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+            <span className="clinical-pill px-3 py-1 text-[11px] text-rose-400 bg-rose-500/10 border-rose-500/25 font-semibold flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
               Lesion: {(inference.confidence * 100).toFixed(1)}% ({inference.metrics.areaPx} px)
             </span>
           ) : (
-            <span className="claude-pill px-3 py-1 text-[11px] text-emerald-400 bg-emerald-500/10 border-emerald-500/25 font-semibold flex items-center gap-1.5">
+            <span className="clinical-pill px-3 py-1 text-[11px] text-emerald-400 bg-emerald-500/10 border-emerald-500/25 font-semibold flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               Clear Scan · No Lesion (0 px)
             </span>
@@ -404,7 +404,7 @@ export function MaskOverlay({ originalSrc, inference, measurements }: MaskOverla
             </div>
             <dl className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 font-mono text-xs">
               {measurements.map((m) => (
-                <div key={m.label} title={m.note} className="claude-card rounded-xl p-3 shadow-xs">
+                <div key={m.label} title={m.note} className="workstation-card rounded-xl p-3 shadow-xs bg-card/80">
                   <dt className="truncate text-[10px] text-muted-foreground uppercase tracking-wide">{m.label}</dt>
                   <dd className="mt-1 flex items-baseline gap-1 text-sm font-bold text-foreground tabular-nums">
                     <span>{m.value.toLocaleString()}</span>

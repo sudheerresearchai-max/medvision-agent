@@ -44,7 +44,7 @@ async function testScan(filePath: string, label: string, clinicalNotes?: string)
   for (const w of result.inference?.warnings ?? []) {
     console.log(`  * ${w}`);
   }
-  console.log(`\nMulti-Agent Consensus: Score=${result.multiAgentTrace?.consensusScore}, Acuity Level=${result.multiAgentTrace?.acuityRating}/5`);
+  console.log(`\nMulti-Agent Consensus: Score=${result.multiAgentTrace?.consensusScore}, Acuity Level=${(result.multiAgentTrace as unknown as { acuityRating?: number })?.acuityRating ?? 'N/A'}/5`);
   return result;
 }
 

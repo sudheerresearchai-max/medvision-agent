@@ -207,9 +207,9 @@ export default function DatasetsPage() {
               All datasets are utilized under their respective open research licenses for non-commercial experimental evaluation.
             </span>
           </div>
-          <Link href="/upload">
+          <Link href="/">
             <Button size="sm" variant="outline" className="shrink-0 gap-1 text-xs">
-              Upload Scan <ArrowRight className="h-3.5 w-3.5" />
+              Diagnostic Studio <ArrowRight className="h-3.5 w-3.5" />
             </Button>
           </Link>
         </CardContent>

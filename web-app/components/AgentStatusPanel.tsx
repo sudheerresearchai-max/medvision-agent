@@ -243,7 +243,7 @@ export function AgentStatusPanel({ steps, running = false, className }: AgentSta
             >
               <div className="flex items-center gap-1.5">
                 <Terminal className="h-3.5 w-3.5 text-primary" />
-                <span>Thinking Process (Claude-Style Reasoning Stream)</span>
+                <span>Specialist Thinking Process &middot; Telemetry Stream</span>
                 <span className="text-[10px] font-mono text-muted-foreground">({streamedLogs.length} tokens)</span>
               </div>
               {showThinkingDrawer ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
