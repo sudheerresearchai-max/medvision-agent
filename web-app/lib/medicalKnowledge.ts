@@ -642,10 +642,9 @@ export interface OpenWebNinjaSearchResult {
  * OpenWebNinja API Key Pool with automatic rotation and failover.
  */
 const OPENWEBNINJA_KEY_POOL: readonly string[] = [
+  'ak_7o0g2vo006bwpo70m0q418zurcidlsl53gy0ueda44gd682',
   'ak_3x5wh098sqrcd3d2r116wc4ph35bf4au1as0olt6tuhu7f2',
   'ak_x8n9cm8qq6pwahtbosz93k1ujwhtbbiut4q9oxf80zgmx2q',
-  'ak_7o0g2vo006bwpo70m0q418zurcidlsl53gy0ueda44gd682',
-  'ak_7zdihpcsvdgrectjn15us5jadl712wudlg4xkn6f44km02f',
 ];
 
 export function getOpenWebNinjaApiKeys(): string[] {
