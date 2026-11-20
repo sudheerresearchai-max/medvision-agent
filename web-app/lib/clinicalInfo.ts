@@ -131,10 +131,21 @@ function collectMatchesWithNegation(
         /^\s*(?:identified|detected|demonstrated|seen|revealed)\s*,\s*not\s+(?:seen|identified|detected)\s+(?:previously|on\s+prior)/i.test(immediatePost);
 
       const isActiveSuspicion = activeSuspicionRe.test(immediatePre);
-      const isRuleOutIndication = !isActiveSuspicion && /\b(?:rule\s+out|r\/o)\b/i.test(immediatePre);
+      const isRuleOutIndication = !isActiveSuspicion && /\b(?:rule[\s-]+out|r[\./]?o)\b/i.test(immediatePre);
 
       if (isRuleOutIndication) {
         // Clinical question/ordering indication: neither confirmed finding nor proven absence
+        continue;
+      }
+
+      // Family history antecedents: describe familial risk, NOT an affirmed finding or suspected condition for the current patient
+      const isFamilyHistory =
+        /\b(?:family\s+(?:history|hx|h\/o)(?:\s+(?:of|for|includes|notable\s+for)|\s*[:\-])?|fhx(?:\s+(?:of|for|includes|notable\s+for)|\s*[:\-])?|fam\s+hx(?:\s+(?:of|for))?|fh\s+(?:of|for))\b/i.test(
+          immediatePre,
+        );
+
+      if (isFamilyHistory) {
+        // Exclude terms preceded by family history indicators from being added to findings or suspectedConditions
         continue;
       }
 

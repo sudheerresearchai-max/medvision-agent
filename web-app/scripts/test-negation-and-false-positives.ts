@@ -74,6 +74,17 @@ async function runAllTests() {
   assert(positiveInfo.suspectedConditions.includes('glioma'), 'Positive case: "glioma" identified in suspected conditions');
   assert(positiveInfo.isNormalOrNegative === false, 'Positive case: isNormalOrNegative correctly flagged as FALSE');
 
+  // Hyphenated rule-out: neither affirmed finding nor proven normal
+  const hypRuleOutInfo = extractClinicalInfoWithRules('Ordering indication: rule-out pancreatic mass');
+  assert(hypRuleOutInfo.findings.length === 0, 'Hyphenated rule-out: "rule-out pancreatic mass" yields 0 affirmed findings');
+  assert(hypRuleOutInfo.suspectedConditions.length === 0, 'Hyphenated rule-out: 0 suspected conditions');
+
+  // Family history antecedent: familial risk excluded from patient findings and suspectedConditions
+  const famHistInfo = extractClinicalInfoWithRules('Patient reports family history of glioma. Routine brain MRI is normal.');
+  assert(famHistInfo.findings.length === 0, 'Family history: "family history of glioma" excluded from affirmed findings');
+  assert(famHistInfo.suspectedConditions.length === 0, 'Family history: "family history of glioma" excluded from suspectedConditions');
+  assert(famHistInfo.isNormalOrNegative === true, 'Family history: Scan noted normal correctly marked isNormalOrNegative = true');
+
   // ──────────────────────────────────────────────────────────────────────────
   // TEST SUITE 2: Mock Inference Lesion vs Clean Scan Discrimination
   // ──────────────────────────────────────────────────────────────────────────
@@ -406,6 +417,36 @@ async function runAllTests() {
   assert(tumorWithSymptomsOnly.clinical.isNormalOrNegative === false, 'Adversarial E2E: Clinical text with symptoms only is not marked normal');
   assert(tumorWithSymptomsOnly.inference!.metrics.areaPx > 500, 'Adversarial E2E: Real tumor on symptom-only order is NOT suppressed');
   assert(tumorWithSymptomsOnly.inference!.confidence > 0.5, 'Adversarial E2E: Real tumor on symptom-only order maintains confidence');
+
+  // 7G: Ordering indication (hyphenated rule-out) on normal scan yields area 0 px, danger level 0
+  const e2eHyphenatedRuleOut = await runAnalysis({
+    image: {
+      fileName: 'pancreas_normal_control.png',
+      contentType: 'image/png',
+      sizeBytes: pancNormalBytes.length,
+      bytes: pancNormalBytes,
+    },
+    clinicalText: 'Ordering indication: rule-out pancreatic mass',
+    manualOrgan: 'pancreas',
+  });
+  const ruleOutVerdict = calculateTumorVerdict(e2eHyphenatedRuleOut);
+  assert(e2eHyphenatedRuleOut.inference!.metrics.areaPx === 0, 'Adversarial: "Ordering indication: rule-out pancreatic mass" on normal scan yields area 0 px');
+  assert(ruleOutVerdict.dangerLevel === 0, 'Adversarial: "Ordering indication: rule-out pancreatic mass" on normal scan yields danger level 0');
+
+  // 7H: Family history antecedent on normal scan yields area 0 px, danger level 0
+  const e2eFamilyHistory = await runAnalysis({
+    image: {
+      fileName: 'brain_mri_normal_scan.png',
+      contentType: 'image/png',
+      sizeBytes: brainNormalBytes.length,
+      bytes: brainNormalBytes,
+    },
+    clinicalText: 'Patient reports family history of glioma. Routine brain MRI is normal.',
+    manualOrgan: 'brain',
+  });
+  const familyHistoryVerdict = calculateTumorVerdict(e2eFamilyHistory);
+  assert(e2eFamilyHistory.inference!.metrics.areaPx === 0, 'Adversarial: "Patient reports family history of glioma. Routine brain MRI is normal." yields area 0 px');
+  assert(familyHistoryVerdict.dangerLevel === 0, 'Adversarial: "Patient reports family history of glioma. Routine brain MRI is normal." yields danger level 0');
 
   // ──────────────────────────────────────────────────────────────────────────
   // TEST SUITE 8: Tri-Modal End-to-End Normal Controls
