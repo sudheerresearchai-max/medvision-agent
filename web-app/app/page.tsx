@@ -22,6 +22,22 @@ export default function HomePage() {
         <p className="text-xs sm:text-sm text-muted-foreground font-mono max-w-xl mx-auto leading-relaxed">
           Five specialized autonomous clinical agents collaborate to inspect cross-sectional scans, delineate neoplastic boundaries, and compute RECIST 1.1 biomarkers.
         </p>
+
+        {/* Clinical Modality Tags */}
+        <div className="flex flex-wrap items-center justify-center gap-2 pt-1 font-mono text-[11px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-secondary/80 border border-border/70">
+            <Brain className="w-3.5 h-3.5 text-blue-400" />
+            Neuro: Brain MRI (GBM / LGG)
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-secondary/80 border border-border/70">
+            <Wind className="w-3.5 h-3.5 text-cyan-400" />
+            Thoracic: Chest CT (NSCLC / Solitary Nodule)
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-secondary/80 border border-border/70">
+            <Dna className="w-3.5 h-3.5 text-purple-400" />
+            Abdominal: Pancreas CT (PDAC)
+          </span>
+        </div>
       </section>
 
       {/* Primary Minimalist Workspace (Upload / Quick Scan / Claude Animation) */}

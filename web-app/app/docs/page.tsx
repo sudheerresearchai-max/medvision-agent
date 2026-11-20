@@ -456,7 +456,7 @@ export default function DocsPage() {
           <h3 className="font-bold text-sm">Ready to evaluate a study?</h3>
           <p className="text-xs text-muted-foreground">Test the multi-agent system on verified clinical scans.</p>
         </div>
-        <Link href="/upload">
+        <Link href="/">
           <Button className="gap-2">
             <Zap className="h-4 w-4" /> Launch Multi-Agent Evaluator
           </Button>

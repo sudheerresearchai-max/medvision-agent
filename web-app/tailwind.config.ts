@@ -1,8 +1,8 @@
 import type { Config } from 'tailwindcss';
 
 /**
- * Tailwind config following shadcn/ui conventions:
- * design tokens live as CSS variables in globals.css and are mapped here.
+ * MedVision Workstation Tailwind Configuration.
+ * Design tokens reflect clinical imaging suite precision.
  */
 const config: Config = {
   darkMode: ['class'],
@@ -15,7 +15,7 @@ const config: Config = {
     container: {
       center: true,
       padding: '1.5rem',
-      screens: { '2xl': '1200px' },
+      screens: { '2xl': '1280px' },
     },
     extend: {
       colors: {
@@ -48,9 +48,9 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-        // Medical-imaging accent used for scan panels & masks
         lesion: {
-          DEFAULT: '#f84848',
+          DEFAULT: '#f43f5e',
+          glow: 'rgba(244, 63, 94, 0.4)',
         },
       },
       borderRadius: {
@@ -59,7 +59,7 @@ const config: Config = {
         sm: 'calc(var(--radius) - 4px)',
       },
       fontFamily: {
-        sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-sans)', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['var(--font-mono)', 'ui-monospace', 'monospace'],
       },
       keyframes: {
@@ -67,9 +67,14 @@ const config: Config = {
           from: { opacity: '0', transform: 'translateY(4px)' },
           to: { opacity: '1', transform: 'translateY(0)' },
         },
+        'pulse-subtle': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.6' },
+        },
       },
       animation: {
-        'fade-in': 'fade-in 0.25s ease-out both',
+        'fade-in': 'fade-in 0.2s ease-out both',
+        'pulse-subtle': 'pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
     },
   },

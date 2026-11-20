@@ -76,6 +76,7 @@ export function UploadForm() {
   const [activeSampleId, setActiveSampleId] = React.useState<string | null>(null);
   const [stageIndex, setStageIndex] = React.useState(0);
   const [thinkingStartMs, setThinkingStartMs] = React.useState<number | null>(null);
+  const [selectedDemoId, setSelectedDemoId] = React.useState<string | null>(null);
 
   // Animate thinking stages when submitting
   React.useEffect(() => {
@@ -159,7 +160,7 @@ export function UploadForm() {
       try {
         sessionStorage.setItem(`medvision.case.${payload.result.caseId}`, JSON.stringify(payload.result));
       } catch {
-        /* fallback to server */
+        /* fallback */
       }
       router.push(`/case/${payload.result.caseId}`);
     } catch (err) {
