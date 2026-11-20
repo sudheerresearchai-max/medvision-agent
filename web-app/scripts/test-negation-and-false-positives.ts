@@ -112,6 +112,42 @@ async function runAllTests() {
   assert(uncleMassInfo.findings.length === 0, 'Familial antecedent: "Paternal uncle had pancreatic mass" yields 0 affirmed findings');
   assert(uncleMassInfo.isNormalOrNegative === true, 'Familial antecedent: Paternal uncle had mass on unremarkable scan isNormalOrNegative = true');
 
+  // Post-positioned maternal/paternal family history mentions
+  const maternalAuntPostInfo = extractClinicalInfoWithRules('Glioblastoma in maternal aunt. Normal brain MRI.');
+  assert(maternalAuntPostInfo.findings.length === 0, 'Familial post-cue: "Glioblastoma in maternal aunt" yields 0 affirmed findings');
+  assert(maternalAuntPostInfo.suspectedConditions.length === 0, 'Familial post-cue: "Glioblastoma in maternal aunt" yields 0 suspected conditions');
+  assert(maternalAuntPostInfo.isNormalOrNegative === true, 'Familial post-cue: Glioblastoma in maternal aunt on normal scan isNormalOrNegative = true');
+
+  const paternalUnclePostInfo = extractClinicalInfoWithRules('Pancreatic mass in paternal uncle. Pancreas scan unremarkable.');
+  assert(paternalUnclePostInfo.findings.length === 0, 'Familial post-cue: "Pancreatic mass in paternal uncle" yields 0 affirmed findings');
+  assert(paternalUnclePostInfo.isNormalOrNegative === true, 'Familial post-cue: Pancreatic mass in paternal uncle on normal scan isNormalOrNegative = true');
+
+  const maternalGrandmotherPostInfo = extractClinicalInfoWithRules('Lung nodule in maternal grandmother. CT is normal.');
+  assert(maternalGrandmotherPostInfo.findings.length === 0, 'Familial post-cue: "Lung nodule in maternal grandmother" yields 0 affirmed findings');
+  assert(maternalGrandmotherPostInfo.isNormalOrNegative === true, 'Familial post-cue: Lung nodule in maternal grandmother on normal scan isNormalOrNegative = true');
+
+  // Intervening modifiers in normal screening scan
+  const sisterNormalScreeningInfo = extractClinicalInfoWithRules('Sister had lung cancer. Normal screening scan.');
+  assert(sisterNormalScreeningInfo.findings.length === 0, 'Normal screening: "Sister had lung cancer. Normal screening scan." yields 0 affirmed findings');
+  assert(sisterNormalScreeningInfo.isNormalOrNegative === true, 'Normal screening: "Sister had lung cancer. Normal screening scan." isNormalOrNegative = true');
+
+  // True neoplasms separated from family history by commas or conjunctions must be preserved
+  const fatherColonLungNoduleInfo = extractClinicalInfoWithRules('Father had colon cancer, chest CT reveals 3cm lung nodule.');
+  assert(fatherColonLungNoduleInfo.findings.includes('nodule'), 'Clause delimiter: "Father had colon cancer, chest CT reveals 3cm lung nodule" retains nodule');
+  assert(fatherColonLungNoduleInfo.isNormalOrNegative === false, 'Clause delimiter: Father colon cancer with lung nodule isNormalOrNegative = false');
+
+  const motherPancreasHeadMassInfo = extractClinicalInfoWithRules('Mother had pancreatic cancer, patient presents with 35mm pancreatic head mass.');
+  assert(motherPancreasHeadMassInfo.findings.includes('mass'), 'Clause delimiter: "Mother had pancreatic cancer, patient presents with 35mm pancreatic head mass" retains mass');
+  assert(motherPancreasHeadMassInfo.isNormalOrNegative === false, 'Clause delimiter: Mother pancreatic cancer with pancreatic head mass isNormalOrNegative = false');
+
+  const fhAdenoPresentsMassInfo = extractClinicalInfoWithRules('Patient has family history of pancreatic adenocarcinoma and presents with 3cm pancreatic mass.');
+  assert(fhAdenoPresentsMassInfo.findings.includes('mass'), 'Conjunction delimiter: "Patient has family history... and presents with 3cm pancreatic mass" retains mass');
+  assert(fhAdenoPresentsMassInfo.isNormalOrNegative === false, 'Conjunction delimiter: FH adenocarcinoma and presents with mass isNormalOrNegative = false');
+
+  const fhGliomaMriShowsLesionInfo = extractClinicalInfoWithRules('Family history of glioma, MRI shows 25mm enhancing temporal lesion.');
+  assert(fhGliomaMriShowsLesionInfo.findings.includes('lesion'), 'Clause delimiter: "Family history of glioma, MRI shows 25mm enhancing temporal lesion" retains lesion');
+  assert(fhGliomaMriShowsLesionInfo.isNormalOrNegative === false, 'Clause delimiter: FH glioma with temporal lesion isNormalOrNegative = false');
+
   // Period-delimited rule-out abbreviations: "r.o." must not be fragmented into affirmed findings
   const roBrainInfo = extractClinicalInfoWithRules('Indication: r.o. brain tumor');
   assert(roBrainInfo.findings.length === 0, 'Period rule-out: "Indication: r.o. brain tumor" yields 0 affirmed findings');
@@ -547,6 +583,135 @@ async function runAllTests() {
   const roBrainVerdict = calculateTumorVerdict(e2eRoBrain);
   assert(e2eRoBrain.inference!.metrics.areaPx === 0, 'Adversarial E2E: "Indication: r.o. brain tumor" on normal scan yields area 0 px');
   assert(roBrainVerdict.dangerLevel === 0, 'Adversarial E2E: "Indication: r.o. brain tumor" on normal scan yields danger level 0');
+
+  // 7M: Glioblastoma in maternal aunt on normal scan yields area 0 px, danger level 0
+  const e2eMaternalAunt = await runAnalysis({
+    image: {
+      fileName: 'brain_scan.png',
+      contentType: 'image/png',
+      sizeBytes: brainNormalBytes.length,
+      bytes: brainNormalBytes,
+    },
+    clinicalText: 'Glioblastoma in maternal aunt. Normal brain MRI.',
+    manualOrgan: 'brain',
+  });
+  const maternalAuntVerdict = calculateTumorVerdict(e2eMaternalAunt);
+  assert(e2eMaternalAunt.inference!.metrics.areaPx === 0, 'Adversarial E2E: "Glioblastoma in maternal aunt" yields area 0 px');
+  assert(maternalAuntVerdict.dangerLevel === 0, 'Adversarial E2E: "Glioblastoma in maternal aunt" yields danger level 0');
+
+  // 7N: Pancreatic mass in paternal uncle on normal scan yields area 0 px, danger level 0
+  const e2ePaternalUncle = await runAnalysis({
+    image: {
+      fileName: 'pancreas_scan.png',
+      contentType: 'image/png',
+      sizeBytes: pancNormalBytes.length,
+      bytes: pancNormalBytes,
+    },
+    clinicalText: 'Pancreatic mass in paternal uncle. Pancreas scan unremarkable.',
+    manualOrgan: 'pancreas',
+  });
+  const paternalUncleVerdict = calculateTumorVerdict(e2ePaternalUncle);
+  assert(e2ePaternalUncle.inference!.metrics.areaPx === 0, 'Adversarial E2E: "Pancreatic mass in paternal uncle" yields area 0 px');
+  assert(paternalUncleVerdict.dangerLevel === 0, 'Adversarial E2E: "Pancreatic mass in paternal uncle" yields danger level 0');
+
+  // 7O: Lung nodule in maternal grandmother on normal scan yields area 0 px, danger level 0
+  const e2eMaternalGma = await runAnalysis({
+    image: {
+      fileName: 'lung_scan.png',
+      contentType: 'image/png',
+      sizeBytes: lungNormalBytes.length,
+      bytes: lungNormalBytes,
+    },
+    clinicalText: 'Lung nodule in maternal grandmother. CT is normal.',
+    manualOrgan: 'lung',
+  });
+  const maternalGmaVerdict = calculateTumorVerdict(e2eMaternalGma);
+  assert(e2eMaternalGma.inference!.metrics.areaPx === 0, 'Adversarial E2E: "Lung nodule in maternal grandmother" yields area 0 px');
+  assert(maternalGmaVerdict.dangerLevel === 0, 'Adversarial E2E: "Lung nodule in maternal grandmother" yields danger level 0');
+
+  // 7P: Sister had lung cancer, normal screening scan yields area 0 px, danger level 0
+  const e2eSisterScreening = await runAnalysis({
+    image: {
+      fileName: 'lung_scan.png',
+      contentType: 'image/png',
+      sizeBytes: lungNormalBytes.length,
+      bytes: lungNormalBytes,
+    },
+    clinicalText: 'Sister had lung cancer. Normal screening scan.',
+    manualOrgan: 'lung',
+  });
+  const sisterScreeningVerdict = calculateTumorVerdict(e2eSisterScreening);
+  assert(e2eSisterScreening.inference!.metrics.areaPx === 0, 'Adversarial E2E: "Sister had lung cancer. Normal screening scan." yields area 0 px');
+  assert(sisterScreeningVerdict.dangerLevel === 0, 'Adversarial E2E: "Sister had lung cancer. Normal screening scan." yields danger level 0');
+
+  // Multi-byte raster with variance > 25 for testing affirmative clinical sensitivity preservation on generic scans
+  const genericRasterBytes = new Uint8Array(1000);
+  genericRasterBytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+  for (let i = 8; i < 1000; i++) genericRasterBytes[i] = (i * 37) % 256;
+
+  // 7Q: Father had colon cancer, chest CT reveals 3cm lung nodule (preserved sensitivity across comma)
+  const e2eFatherColonLung = await runAnalysis({
+    image: {
+      fileName: 'patient_scan.png',
+      contentType: 'image/png',
+      sizeBytes: genericRasterBytes.length,
+      bytes: genericRasterBytes,
+    },
+    clinicalText: 'Father had colon cancer, chest CT reveals 3cm lung nodule.',
+    manualOrgan: 'lung',
+  });
+  const fatherColonLungVerdict = calculateTumorVerdict(e2eFatherColonLung);
+  assert(e2eFatherColonLung.inference!.metrics.areaPx > 0, 'Adversarial E2E: "Father had colon cancer, chest CT reveals 3cm lung nodule" retains lesion area');
+  assert(fatherColonLungVerdict.isTumor === true, 'Adversarial E2E: Father colon cancer with 3cm lung nodule isTumor = true');
+  assert(fatherColonLungVerdict.dangerLevel >= 3, 'Adversarial E2E: Father colon cancer with 3cm lung nodule yields danger level >= 3');
+
+  // 7R: Mother had pancreatic cancer, patient presents with 35mm pancreatic head mass
+  const e2eMotherPancMass = await runAnalysis({
+    image: {
+      fileName: 'patient_scan.png',
+      contentType: 'image/png',
+      sizeBytes: genericRasterBytes.length,
+      bytes: genericRasterBytes,
+    },
+    clinicalText: 'Mother had pancreatic cancer, patient presents with 35mm pancreatic head mass.',
+    manualOrgan: 'pancreas',
+  });
+  const motherPancMassVerdict = calculateTumorVerdict(e2eMotherPancMass);
+  assert(e2eMotherPancMass.inference!.metrics.areaPx > 0, 'Adversarial E2E: "Mother had pancreatic cancer... presents with 35mm pancreatic head mass" retains lesion area');
+  assert(motherPancMassVerdict.isTumor === true, 'Adversarial E2E: Mother pancreatic cancer with 35mm head mass isTumor = true');
+  assert(motherPancMassVerdict.dangerLevel >= 4, 'Adversarial E2E: Mother pancreatic cancer with 35mm head mass yields danger level >= 4');
+
+  // 7S: Patient has family history of pancreatic adenocarcinoma and presents with 3cm pancreatic mass
+  const e2eFhAdenoMass = await runAnalysis({
+    image: {
+      fileName: 'patient_scan.png',
+      contentType: 'image/png',
+      sizeBytes: genericRasterBytes.length,
+      bytes: genericRasterBytes,
+    },
+    clinicalText: 'Patient has family history of pancreatic adenocarcinoma and presents with 3cm pancreatic mass.',
+    manualOrgan: 'pancreas',
+  });
+  const fhAdenoMassVerdict = calculateTumorVerdict(e2eFhAdenoMass);
+  assert(e2eFhAdenoMass.inference!.metrics.areaPx > 0, 'Adversarial E2E: "Patient has family history... and presents with 3cm pancreatic mass" retains lesion area');
+  assert(fhAdenoMassVerdict.isTumor === true, 'Adversarial E2E: FH adenocarcinoma and presents with 3cm mass isTumor = true');
+  assert(fhAdenoMassVerdict.dangerLevel >= 4, 'Adversarial E2E: FH adenocarcinoma and presents with 3cm mass yields danger level >= 4');
+
+  // 7T: Family history of glioma, MRI shows 25mm enhancing temporal lesion
+  const e2eFhGliomaLesion = await runAnalysis({
+    image: {
+      fileName: 'patient_scan.png',
+      contentType: 'image/png',
+      sizeBytes: genericRasterBytes.length,
+      bytes: genericRasterBytes,
+    },
+    clinicalText: 'Family history of glioma, MRI shows 25mm enhancing temporal lesion.',
+    manualOrgan: 'brain',
+  });
+  const fhGliomaLesionVerdict = calculateTumorVerdict(e2eFhGliomaLesion);
+  assert(e2eFhGliomaLesion.inference!.metrics.areaPx > 0, 'Adversarial E2E: "Family history of glioma, MRI shows 25mm enhancing temporal lesion" retains lesion area');
+  assert(fhGliomaLesionVerdict.isTumor === true, 'Adversarial E2E: FH glioma with temporal lesion isTumor = true');
+  assert(fhGliomaLesionVerdict.dangerLevel >= 4, 'Adversarial E2E: FH glioma with temporal lesion yields danger level >= 4');
 
   // ──────────────────────────────────────────────────────────────────────────
   // TEST SUITE 8: Tri-Modal End-to-End Normal Controls

@@ -186,6 +186,53 @@ class InferenceBreakTests(unittest.TestCase):
         self.assertEqual(mask3.sum(), 0)
         self.assertEqual(conf3, 0.0)
 
+    def test_post_positioned_maternal_paternal_family_history(self):
+        """Post-positioned maternal/paternal mentions must NOT affirm neoplasm for patient."""
+        dummy_png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 500
+
+        cases = [
+            ("brain", "Glioblastoma in maternal aunt. Normal brain MRI.", "brain_scan.png"),
+            ("pancreas", "Pancreatic mass in paternal uncle. Pancreas scan unremarkable.", "pancreas_scan.png"),
+            ("lung", "Lung nodule in maternal grandmother. CT is normal.", "lung_scan.png"),
+        ]
+
+        for organ, note, fn in cases:
+            has_norm, aff, neg = parse_clinical_findings(note)
+            self.assertEqual(aff, 0, f"'{note}' must not affirm neoplasm for patient")
+            self.assertTrue(check_clinical_is_negative(note), f"'{note}' must evaluate to is_negative=True")
+            self.assertFalse(check_clinical_has_positive(note), f"'{note}' must evaluate to has_positive=False")
+            mask, conf = synthetic_mask(organ, dummy_png, 256, 256, is_normal=False, filename=fn, clinical_notes=note)
+            self.assertEqual(mask.sum(), 0, f"'{note}' must yield 0 mask area")
+            self.assertEqual(conf, 0.0, f"'{note}' must yield 0.0 confidence")
+
+    def test_normal_screening_scan_modifier(self):
+        """Intervening modifiers between 'normal' and scan/study nouns must match normal cues."""
+        note = "Sister had lung cancer. Normal screening scan."
+        has_norm, aff, neg = parse_clinical_findings(note)
+        self.assertTrue(has_norm, f"'{note}' must detect normal cue for 'normal screening scan'")
+        self.assertEqual(aff, 0)
+        self.assertTrue(check_clinical_is_negative(note), f"'{note}' must evaluate to is_negative=True")
+        self.assertFalse(check_clinical_has_positive(note), f"'{note}' must evaluate to has_positive=False")
+
+    def test_clause_delimited_patient_neoplasm_preservation(self):
+        """True neoplasms across commas or conjunctions must NOT be swallowed by family history lookback."""
+        dummy_png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 500
+
+        cases = [
+            ("lung", "Father had colon cancer, chest CT reveals 3cm lung nodule.", "patient_scan.png"),
+            ("pancreas", "Mother had pancreatic cancer, patient presents with 35mm pancreatic head mass.", "patient_scan.png"),
+            ("pancreas", "Patient has family history of pancreatic adenocarcinoma and presents with 3cm pancreatic mass.", "patient_scan.png"),
+            ("brain", "Family history of glioma, MRI shows 25mm enhancing temporal lesion.", "patient_scan.png"),
+        ]
+
+        for organ, note, fn in cases:
+            has_norm, aff, neg = parse_clinical_findings(note)
+            self.assertGreaterEqual(aff, 1, f"'{note}' must retain genuine patient neoplasm in affirmed count")
+            self.assertTrue(check_clinical_has_positive(note), f"'{note}' must evaluate to has_positive=True")
+            mask, conf = synthetic_mask(organ, dummy_png, 256, 256, is_normal=False, filename=fn, clinical_notes=note)
+            self.assertGreater(mask.sum(), 0, f"'{note}' must synthesize non-zero lesion area")
+            self.assertGreater(conf, 0.70, f"'{note}' must retain high confidence")
+
 
 if __name__ == "__main__":
     unittest.main()

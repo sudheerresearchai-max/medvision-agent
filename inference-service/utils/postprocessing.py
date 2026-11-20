@@ -61,7 +61,7 @@ def parse_clinical_findings(clinical_notes: Optional[str]) -> tuple[bool, int, i
         r"clear lungs|clear lung fields|clear bilaterally|negative for malignancy|negative study|study is negative|"
         r"negative for neoplasm|negative for tumor|negative for mass|routine screening|"
         r"no focal (?:mass|lesion|nodule)|no suspicious (?:lesion|mass|nodule)|no nodule identified|"
-        r"clear scan|clear study|normal (?:study|scan|brain|chest|pancreas|parenchyma|contours|mri|ct|examination|exam)|"
+        r"clear scan|clear study|normal\s+(?:screening|baseline|routine)?\s*(?:study|scan|brain|chest|pancreas|parenchyma|contours|mri|ct|examination|exam)|"
         r"(?:study|scan|brain|chest|pancreas|parenchyma|contours|mri|ct|examination|exam)\s+(?:is|was|are|were)?\s*normal|"
         r"(?:is|was|are|were)\s+normal|"
         r"symmetric (?:parenchyma|brain))\b",
@@ -129,11 +129,17 @@ def parse_clinical_findings(clinical_notes: Optional[str]) -> tuple[bool, int, i
 
     post_family_history = re.compile(
         r"\b(?:in\s+(?:his\s+|her\s+|their\s+|patient(?:'s)?\s+)?(?:"
+        r"(?:maternal|paternal)\s+)?(?:"
         r"mother|father|parent|parents|brother|sister|sibling|siblings|family|grandmother|grandfather|uncle|aunt|cousin|relative|relatives))\b",
         re.IGNORECASE,
     )
 
-    clause_split = re.compile(r"[.;!?\n]|\b(?:but|however|although|except|apart\s+from)\b", re.IGNORECASE)
+    clause_split = re.compile(
+        r"[.;!?\n]|\b(?:but|however|although|except|apart\s+from|while|whereas)\b|"
+        r",\s*(?=(?:and\s+)?(?:patient(?:\'s)?|pt|he|she|they|scan|ct|mri|study|chest|brain|pancreas|abdomen|axial|contrast|findings?|reveals?|shows?|demonstrates?|presents?|identified|noted|has|found|diagnosed)\b|\b(?:and|while|whereas|but|however|although)\b)|"
+        r"\band\s+(?:also\s+)?(?:patient(?:\'s)?|pt|he|she|they|scan|ct|mri|study|chest|brain|pancreas|abdomen|axial|contrast|findings?|reveals?|shows?|demonstrates?|presents?|identified|noted|has|found|diagnosed)\b",
+        re.IGNORECASE,
+    )
 
     affirmed_count = 0
     negated_count = 0
@@ -160,7 +166,14 @@ def parse_clinical_findings(clinical_notes: Optional[str]) -> tuple[bool, int, i
                 # Ordering indication (e.g. "Rule out tumor", "Tumor: r/o"): neither confirmed finding nor proven absence
                 continue
 
-            if family_history.search(clause_pre) or post_family_history.search(clause_post):
+            fh_match = family_history.search(clause_pre)
+            is_fh_pre = False
+            if fh_match:
+                intervening = clause_pre[fh_match.end():]
+                if not re.search(r"[,;]|\b(?:and|shows?|reveals?|demonstrates?|presents?)\b", intervening, re.IGNORECASE):
+                    is_fh_pre = True
+
+            if is_fh_pre or post_family_history.search(clause_post):
                 # Familial history: describes family member risk, NOT affirmed patient finding
                 continue
 

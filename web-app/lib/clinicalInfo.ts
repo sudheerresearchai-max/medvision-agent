@@ -98,14 +98,15 @@ function collectMatchesWithNegation(
     /(?:\b(?:is\s+ruled\s+out|was\s+ruled\s+out|not\s+seen(?!\s+(?:previously|on\s+prior|on\s+previous|on\s+earlier|before))|not\s+identified(?!\s+(?:previously|on\s+prior|on\s+previous|on\s+earlier|before))|not\s+detected(?!\s+(?:previously|on\s+prior|on\s+previous|on\s+earlier|before))|not\s+visualized(?!\s+(?:previously|on\s+prior|on\s+previous|on\s+earlier|before))|not\s+found|not\s+noted|not\s+observed|not\s+demonstrated|(?:is|was|are|were)?\s+not\s+present|is\s+absent|was\s+absent|are\s+absent|were\s+absent|is\s+negative|was\s+negative|are\s+negative|were\s+negative|within\s+normal\s+limits|wnl|unremarkable|is\s+excluded|was\s+excluded|are\s+excluded|were\s+excluded|\bnone\b|\bzero\b|(?:has|is|was|completely)?\s*resolved\b|as\s+expected\b|expected\s+signal\b)|:\s*none\b|:\s*zero\b|[-:]\s*negative\b|[-:]\s*absent\b)/i;
 
   // Clauses split by major sentence delimiters or contrasting conjunctions
-  const clauseDelimRe = /[.;!?\n]|\b(?:but|however|although|except|apart\s+from)\b/i;
+  const clauseDelimRe =
+    /[.;!?\n]|\b(?:but|however|although|except|apart\s+from|while|whereas)\b|,\s*(?=(?:and\s+)?(?:patient(?:'s)?|pt|he|she|they|scan|ct|mri|study|chest|brain|pancreas|abdomen|axial|contrast|findings?|reveals?|shows?|demonstrates?|presents?|identified|noted|has|found|diagnosed)\b|\b(?:and|while|whereas|but|however|although)\b)|\band\s+(?:also\s+)?(?:patient(?:'s)?|pt|he|she|they|scan|ct|mri|study|chest|brain|pancreas|abdomen|axial|contrast|findings?|reveals?|shows?|demonstrates?|presents?|identified|noted|has|found|diagnosed)\b/i;
 
   // Family history antecedents: describe familial risk, NOT an affirmed finding or suspected condition for the current patient
   const familyHistoryPreRe =
     /\b(?:family\s+(?:history|hx|h\/o)(?:\s+(?:of|for|includes|notable\s+for)|\s*[:\-])?|fhx(?:\s+(?:of|for|includes|notable\s+for)|\s*[:\-])?|fam\s+hx(?:\s+(?:of|for))?|fh\s+(?:of|for)|(?:patient(?:'s)?\s+|his\s+|her\s+|their\s+)?(?:(?:mother|father|parent|parents|brother|sister|sibling|siblings|grandmother|grandfather|grandparent|grandparents|aunt|uncle|cousin|son|daughter)(?:\s+of\s+(?:the\s+)?patient)?|maternal\s+(?:aunt|uncle|grandmother|grandfather)|paternal\s+(?:aunt|uncle|grandmother|grandfather))\s+(?:(?:had|has|was|were)?\s*(?:diagnosed\s+with|history\s+of|died\s+of|passed\s+away\s+from|treated\s+for|positive\s+for|had|has|with)))\b/i;
 
   const familyHistoryPostRe =
-    /\b(?:in\s+(?:his\s+|her\s+|their\s+|patient(?:'s)?\s+)?(?:mother|father|parent|parents|brother|sister|sibling|siblings|family|grandmother|grandfather|uncle|aunt|cousin|relative|relatives))\b/i;
+    /\b(?:in\s+(?:his\s+|her\s+|their\s+|patient(?:'s)?\s+)?(?:(?:maternal|paternal)\s+)?(?:mother|father|parent|parents|brother|sister|sibling|siblings|family|grandmother|grandfather|uncle|aunt|cousin|relative|relatives))\b/i;
 
   // Sort terms by length descending so longer composite terms (e.g. 'enhancing lesion') are tested first
   const sortedTerms = [...terms].sort((a, b) => b.length - a.length);
@@ -149,7 +150,16 @@ function collectMatchesWithNegation(
       }
 
       // Family history antecedents: describe familial risk, NOT an affirmed finding or suspected condition for the current patient
-      const isFamilyHistory = familyHistoryPreRe.test(immediatePre) || familyHistoryPostRe.test(immediatePost);
+      let isFamilyHistory = familyHistoryPostRe.test(immediatePost);
+      if (!isFamilyHistory) {
+        const fhMatch = familyHistoryPreRe.exec(immediatePre);
+        if (fhMatch) {
+          const intervening = immediatePre.slice(fhMatch.index + fhMatch[0].length);
+          if (!/[,;]|\b(?:and|shows?|reveals?|demonstrates?|presents?)\b/i.test(intervening)) {
+            isFamilyHistory = true;
+          }
+        }
+      }
 
       if (isFamilyHistory) {
         // Exclude terms preceded by family history indicators from being added to findings or suspectedConditions
