@@ -75,10 +75,13 @@ const CONDITION_HINTS: string[] = [
 
 function collectMatchesWithNegation(
   text: string,
-  terms: string[],
+  terms: readonly string[],
 ): { affirmed: string[]; negated: string[] } {
   const affirmed = new Set<string>();
   const negated = new Set<string>();
+
+  // Pre-normalize period-delimited rule-out abbreviations so clause splitters do not fragment them
+  const cleanText = text.replace(/\br\.\s*o(?:\.|\b)/gi, 'r/o');
 
   // Cues that negate a subsequent finding in the same clause (supports long clauses & multi-term lists)
   // NOTE: "rule out" is an indication, NOT a negation; only "rules out" / "ruled out" are negations.
@@ -97,6 +100,13 @@ function collectMatchesWithNegation(
   // Clauses split by major sentence delimiters or contrasting conjunctions
   const clauseDelimRe = /[.;!?\n]|\b(?:but|however|although|except|apart\s+from)\b/i;
 
+  // Family history antecedents: describe familial risk, NOT an affirmed finding or suspected condition for the current patient
+  const familyHistoryPreRe =
+    /\b(?:family\s+(?:history|hx|h\/o)(?:\s+(?:of|for|includes|notable\s+for)|\s*[:\-])?|fhx(?:\s+(?:of|for|includes|notable\s+for)|\s*[:\-])?|fam\s+hx(?:\s+(?:of|for))?|fh\s+(?:of|for)|(?:patient(?:'s)?\s+|his\s+|her\s+|their\s+)?(?:(?:mother|father|parent|parents|brother|sister|sibling|siblings|grandmother|grandfather|grandparent|grandparents|aunt|uncle|cousin|son|daughter)(?:\s+of\s+(?:the\s+)?patient)?|maternal\s+(?:aunt|uncle|grandmother|grandfather)|paternal\s+(?:aunt|uncle|grandmother|grandfather))\s+(?:(?:had|has|was|were)?\s*(?:diagnosed\s+with|history\s+of|died\s+of|passed\s+away\s+from|treated\s+for|positive\s+for|had|has|with)))\b/i;
+
+  const familyHistoryPostRe =
+    /\b(?:in\s+(?:his\s+|her\s+|their\s+|patient(?:'s)?\s+)?(?:mother|father|parent|parents|brother|sister|sibling|siblings|family|grandmother|grandfather|uncle|aunt|cousin|relative|relatives))\b/i;
+
   // Sort terms by length descending so longer composite terms (e.g. 'enhancing lesion') are tested first
   const sortedTerms = [...terms].sort((a, b) => b.length - a.length);
 
@@ -109,19 +119,19 @@ function collectMatchesWithNegation(
     let foundAffirmed = false;
     let foundNegated = false;
 
-    while ((match = termRe.exec(text)) !== null) {
+    while ((match = termRe.exec(cleanText)) !== null) {
       const matchStart = match.index;
       const matchEnd = match.index + match[0].length;
 
       // Extract clause preceding the term (look back up to 350 characters within clause)
       const windowStart = Math.max(0, matchStart - 350);
-      const preSlice = text.slice(windowStart, matchStart);
+      const preSlice = cleanText.slice(windowStart, matchStart);
       const preClauses = preSlice.split(clauseDelimRe);
       const immediatePre = preClauses[preClauses.length - 1];
 
       // Extract clause following the term (look forward up to 150 characters within clause)
-      const windowEnd = Math.min(text.length, matchEnd + 150);
-      const postSlice = text.slice(matchEnd, windowEnd);
+      const windowEnd = Math.min(cleanText.length, matchEnd + 150);
+      const postSlice = cleanText.slice(matchEnd, windowEnd);
       const postClauses = postSlice.split(clauseDelimRe);
       const immediatePost = postClauses[0];
 
@@ -139,10 +149,7 @@ function collectMatchesWithNegation(
       }
 
       // Family history antecedents: describe familial risk, NOT an affirmed finding or suspected condition for the current patient
-      const isFamilyHistory =
-        /\b(?:family\s+(?:history|hx|h\/o)(?:\s+(?:of|for|includes|notable\s+for)|\s*[:\-])?|fhx(?:\s+(?:of|for|includes|notable\s+for)|\s*[:\-])?|fam\s+hx(?:\s+(?:of|for))?|fh\s+(?:of|for))\b/i.test(
-          immediatePre,
-        );
+      const isFamilyHistory = familyHistoryPreRe.test(immediatePre) || familyHistoryPostRe.test(immediatePost);
 
       if (isFamilyHistory) {
         // Exclude terms preceded by family history indicators from being added to findings or suspectedConditions
@@ -213,32 +220,35 @@ export function extractClinicalInfoWithRules(text: string): ClinicalInfo {
     extractionMethod: 'rules',
   };
 
+  // Pre-normalize period-delimited rule-out abbreviations so clause splitters do not fragment them
+  const normalizedText = text.replace(/\br\.\s*o(?:\.|\b)/gi, 'r/o');
+
   for (const { organ, pattern } of ORGAN_RULES) {
-    if (pattern.test(text)) {
+    if (pattern.test(normalizedText)) {
       info.organsMentioned.push(organ);
     }
   }
   for (const { modality, pattern } of MODALITY_RULES) {
-    if (modality !== 'PET' && pattern.test(text)) info.modalitiesMentioned.push(modality);
-    else if (modality === 'PET' && pattern.test(text) && !info.modalitiesMentioned.includes('PET')) {
+    if (modality !== 'PET' && pattern.test(normalizedText)) info.modalitiesMentioned.push(modality);
+    else if (modality === 'PET' && pattern.test(normalizedText) && !info.modalitiesMentioned.includes('PET')) {
       // PET is context only; recorded but routing treats it as unknown modality.
     }
   }
 
-  const symptomsMatch = collectMatchesWithNegation(text, SYMPTOMS);
+  const symptomsMatch = collectMatchesWithNegation(normalizedText, SYMPTOMS);
   info.symptoms = symptomsMatch.affirmed;
 
-  const findingsMatch = collectMatchesWithNegation(text, FINDINGS);
+  const findingsMatch = collectMatchesWithNegation(normalizedText, FINDINGS);
   info.findings = findingsMatch.affirmed;
   info.negatedFindings = findingsMatch.negated;
 
-  const conditionsMatch = collectMatchesWithNegation(text, CONDITION_HINTS);
+  const conditionsMatch = collectMatchesWithNegation(normalizedText, CONDITION_HINTS);
   info.suspectedConditions = conditionsMatch.affirmed;
 
   const normalStudyPattern =
     /\b(normal|unremarkable|within normal limits|wnl|no acute abnormality|no acute intracranial abnormality|no acute intracranial process|no acute cardiopulmonary pathology|unremarkable examination|unremarkable contours|clear bilaterally|clear lung fields|clear lungs|negative for malignancy|study is negative|negative study|routine screening|normal study|normal scan|healthy control|control scan|control study|negative for neoplasm|negative for tumor|negative for mass|unremarkable study|clear study|clear scan|unremarkable brain|unremarkable chest|unremarkable pancreas|unremarkable abdomen|no focal mass|no mass identified|no nodule identified|no suspicious lesion)\b/i;
 
-  const hasNormalCue = normalStudyPattern.test(text);
+  const hasNormalCue = normalStudyPattern.test(normalizedText);
   const hasAffirmedNeoplasm =
     info.findings.some((f) => TARGET_NEOPLASM_FINDINGS.includes(f.toLowerCase())) ||
     info.suspectedConditions.length > 0;
@@ -251,7 +261,7 @@ export function extractClinicalInfoWithRules(text: string): ClinicalInfo {
     !hasAffirmedNeoplasm && (hasNormalCue || hasNegatedTarget);
 
   // Preserve clinical context in evidenceSnippets without dropping negative findings, impressions, or normal cues
-  const rawSentences = text
+  const rawSentences = normalizedText
     .split(/(?<=[.;!?\n])\s+/)
     .map((s) => s.trim())
     .filter(Boolean);

@@ -53,6 +53,7 @@ def parse_clinical_findings(clinical_notes: Optional[str]) -> tuple[bool, int, i
     if not clinical_notes or not clinical_notes.strip():
         return False, 0, 0
     text = clinical_notes.lower()
+    text = re.sub(r"\br\.\s*o(?:\.|\b)", "r/o", text)
 
     normal_pattern = re.compile(
         r"\b(unremarkable|within normal limits|wnl|"
@@ -61,13 +62,15 @@ def parse_clinical_findings(clinical_notes: Optional[str]) -> tuple[bool, int, i
         r"negative for neoplasm|negative for tumor|negative for mass|routine screening|"
         r"no focal (?:mass|lesion|nodule)|no suspicious (?:lesion|mass|nodule)|no nodule identified|"
         r"clear scan|clear study|normal (?:study|scan|brain|chest|pancreas|parenchyma|contours|mri|ct|examination|exam)|"
+        r"(?:study|scan|brain|chest|pancreas|parenchyma|contours|mri|ct|examination|exam)\s+(?:is|was|are|were)?\s*normal|"
+        r"(?:is|was|are|were)\s+normal|"
         r"symmetric (?:parenchyma|brain))\b",
         re.IGNORECASE,
     )
     has_normal_cue = False
     for m in normal_pattern.finditer(text):
         pre = text[max(0, m.start() - 25):m.start()].lower()
-        if not re.search(r"\b(?:prior|previous|earlier|history\s+of|h/o)\s+$", pre):
+        if not re.search(r"\b(?:prior|previous|earlier|history\s+of|h/o|not|non-?)\s+$", pre):
             has_normal_cue = True
             break
 
@@ -112,6 +115,24 @@ def parse_clinical_findings(clinical_notes: Optional[str]) -> tuple[bool, int, i
         re.IGNORECASE,
     )
 
+    family_history = re.compile(
+        r"\b(?:family\s+(?:history|hx|h/o)(?:\s+(?:of|for|includes|notable\s+for)|\s*[:\-])?|"
+        r"fhx(?:\s+(?:of|for|includes|notable\s+for)|\s*[:\-])?|"
+        r"fam\s+hx(?:\s+(?:of|for))?|fh\s+(?:of|for)|"
+        r"(?:patient(?:'s)?\s+|his\s+|her\s+|their\s+)?(?:"
+        r"(?:mother|father|parent|parents|brother|sister|sibling|siblings|grandmother|grandfather|grandparent|grandparents|aunt|uncle|cousin|son|daughter)(?:\s+of\s+(?:the\s+)?patient)?|"
+        r"maternal\s+(?:aunt|uncle|grandmother|grandfather)|"
+        r"paternal\s+(?:aunt|uncle|grandmother|grandfather)"
+        r")\s+(?:(?:had|has|was|were)?\s*(?:diagnosed\s+with|history\s+of|died\s+of|passed\s+away\s+from|treated\s+for|positive\s+for|had|has|with)))\b",
+        re.IGNORECASE,
+    )
+
+    post_family_history = re.compile(
+        r"\b(?:in\s+(?:his\s+|her\s+|their\s+|patient(?:'s)?\s+)?(?:"
+        r"mother|father|parent|parents|brother|sister|sibling|siblings|family|grandmother|grandfather|uncle|aunt|cousin|relative|relatives))\b",
+        re.IGNORECASE,
+    )
+
     clause_split = re.compile(r"[.;!?\n]|\b(?:but|however|although|except|apart\s+from)\b", re.IGNORECASE)
 
     affirmed_count = 0
@@ -137,6 +158,10 @@ def parse_clinical_findings(clinical_notes: Optional[str]) -> tuple[bool, int, i
 
             if rule_out_indication.search(clause_pre) or rule_out_indication.search(clause_post):
                 # Ordering indication (e.g. "Rule out tumor", "Tumor: r/o"): neither confirmed finding nor proven absence
+                continue
+
+            if family_history.search(clause_pre) or post_family_history.search(clause_post):
+                # Familial history: describes family member risk, NOT affirmed patient finding
                 continue
 
             is_neg = bool(neg_prefix.search(clause_pre)) or bool(post_negation.search(clause_post))

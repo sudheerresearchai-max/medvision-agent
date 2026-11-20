@@ -48,7 +48,7 @@ export function CaseView({ data }: { data: AnalysisResult }) {
               <Sparkles className="w-3 h-3" /> Gemini Multimodal Vision
             </span>
           )}
-          <span className="text-[11px] font-mono text-muted-foreground hidden sm:inline">
+          <span className="text-[11px] font-mono text-muted-foreground hidden sm:inline" suppressHydrationWarning>
             {new Date(data.createdAt).toLocaleTimeString()}
           </span>
         </div>

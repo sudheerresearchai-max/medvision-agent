@@ -46,7 +46,7 @@ export function ReportPanel({ report }: ReportPanelProps) {
               <FileText className="h-5 w-5 text-primary" />
               Comprehensive Clinical Oncology Report
             </CardTitle>
-            <CardDescription className="text-xs">
+            <CardDescription className="text-xs" suppressHydrationWarning>
               Automated Diagnostic Evaluation · Generated {new Date(report.generatedAt).toLocaleString()}
             </CardDescription>
           </div>

@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 from utils.visualization import synthetic_mask
 from utils.postprocessing import (
+    parse_clinical_findings,
     check_clinical_is_negative,
     check_clinical_has_positive,
     is_control_filename,
@@ -105,6 +106,85 @@ class InferenceBreakTests(unittest.TestCase):
         self.assertFalse(check_clinical_has_positive("Rule out pancreatic tumor"))
         self.assertFalse(check_clinical_has_positive("r/o brain mass"))
         self.assertFalse(check_clinical_has_positive("no brain mass identified"))
+
+    def test_family_history_does_not_affirm_tumor(self):
+        """Family history mentions (e.g. 'mother had', 'father had', 'fhx of') must NOT affirm neoplasm for patient."""
+        dummy_png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 500
+
+        # 1. Family history with normal MRI
+        note1 = "Patient reports family history of glioma. Routine brain MRI is normal."
+        has_norm, aff, neg = parse_clinical_findings(note1)
+        self.assertTrue(has_norm, f"'{note1}' must detect normal cue")
+        self.assertEqual(aff, 0, f"'{note1}' must NOT affirm glioma for patient")
+        self.assertTrue(check_clinical_is_negative(note1), f"'{note1}' must evaluate to is_negative=True")
+        self.assertFalse(check_clinical_has_positive(note1), f"'{note1}' must evaluate to has_positive=False")
+        mask1, conf1 = synthetic_mask("brain", dummy_png, 256, 256, is_normal=False, filename="brain_scan.png", clinical_notes=note1)
+        self.assertEqual(mask1.sum(), 0, "Family history of glioma on normal scan must yield zero mask")
+        self.assertEqual(conf1, 0.0)
+
+        # 2. Mother had pancreatic adenocarcinoma with screening unremarkable
+        note2 = "Mother had pancreatic adenocarcinoma. Screening scan unremarkable."
+        has_norm, aff, neg = parse_clinical_findings(note2)
+        self.assertTrue(has_norm, f"'{note2}' must detect normal cue")
+        self.assertEqual(aff, 0, f"'{note2}' must NOT affirm adenocarcinoma for patient")
+        self.assertTrue(check_clinical_is_negative(note2), f"'{note2}' must evaluate to is_negative=True")
+        self.assertFalse(check_clinical_has_positive(note2), f"'{note2}' must evaluate to has_positive=False")
+        mask2, conf2 = synthetic_mask("pancreas", dummy_png, 256, 256, is_normal=False, filename="pancreas_scan.png", clinical_notes=note2)
+        self.assertEqual(mask2.sum(), 0, "Mother had adenocarcinoma on normal scan must yield zero mask")
+        self.assertEqual(conf2, 0.0)
+
+        # 3. Father had glioblastoma with routine MRI unremarkable
+        note3 = "Father had glioblastoma. Routine MRI unremarkable."
+        has_norm, aff, neg = parse_clinical_findings(note3)
+        self.assertTrue(has_norm)
+        self.assertEqual(aff, 0)
+        self.assertTrue(check_clinical_is_negative(note3))
+        self.assertFalse(check_clinical_has_positive(note3))
+        mask3, conf3 = synthetic_mask("brain", dummy_png, 256, 256, is_normal=False, filename="brain_scan.png", clinical_notes=note3)
+        self.assertEqual(mask3.sum(), 0)
+        self.assertEqual(conf3, 0.0)
+
+        # 4. Mother had pancreatic mass (bare familial finding without scan unremarkable)
+        note4 = "Mother had pancreatic mass."
+        has_norm, aff, neg = parse_clinical_findings(note4)
+        self.assertEqual(aff, 0, f"'{note4}' must NOT affirm mass for patient")
+        self.assertFalse(check_clinical_has_positive(note4), f"'{note4}' must evaluate to has_positive=False")
+        mask4, conf4 = synthetic_mask("pancreas", dummy_png, 256, 256, is_normal=False, filename="pancreas_scan.png", clinical_notes=note4)
+        self.assertEqual(mask4.sum(), 0, "Mother had pancreatic mass must NOT synthesize false positive tumor")
+        self.assertEqual(conf4, 0.0)
+
+    def test_period_delimited_rule_out_abbreviations(self):
+        """Period-delimited rule-out abbreviations ('r.o.') must NOT be fragmented and affirm neoplasm."""
+        dummy_png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 500
+
+        # 1. Bare indication 'r.o. brain tumor'
+        note1 = "Indication: r.o. brain tumor"
+        has_norm, aff, neg = parse_clinical_findings(note1)
+        self.assertEqual(aff, 0, f"'{note1}' must NOT affirm tumor")
+        self.assertFalse(check_clinical_has_positive(note1), f"'{note1}' must NOT have positive finding")
+        mask1, conf1 = synthetic_mask("brain", dummy_png, 256, 256, is_normal=False, filename="brain_scan.png", clinical_notes=note1)
+        self.assertEqual(mask1.sum(), 0)
+        self.assertEqual(conf1, 0.0)
+
+        # 2. 'r.o. brain tumor' with normal study
+        note2 = "Indication: r.o. brain tumor. Routine brain MRI is normal."
+        has_norm, aff, neg = parse_clinical_findings(note2)
+        self.assertTrue(has_norm)
+        self.assertEqual(aff, 0)
+        self.assertTrue(check_clinical_is_negative(note2))
+        self.assertFalse(check_clinical_has_positive(note2))
+        mask2, conf2 = synthetic_mask("brain", dummy_png, 256, 256, is_normal=False, filename="brain_scan.png", clinical_notes=note2)
+        self.assertEqual(mask2.sum(), 0)
+        self.assertEqual(conf2, 0.0)
+
+        # 3. Capitalized 'R.O. lung mass'
+        note3 = "Indication: R.O. lung mass"
+        has_norm, aff, neg = parse_clinical_findings(note3)
+        self.assertEqual(aff, 0)
+        self.assertFalse(check_clinical_has_positive(note3))
+        mask3, conf3 = synthetic_mask("lung", dummy_png, 256, 256, is_normal=False, filename="lung_scan.png", clinical_notes=note3)
+        self.assertEqual(mask3.sum(), 0)
+        self.assertEqual(conf3, 0.0)
 
 
 if __name__ == "__main__":

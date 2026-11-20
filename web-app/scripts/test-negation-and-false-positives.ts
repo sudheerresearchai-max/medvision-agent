@@ -85,6 +85,46 @@ async function runAllTests() {
   assert(famHistInfo.suspectedConditions.length === 0, 'Family history: "family history of glioma" excluded from suspectedConditions');
   assert(famHistInfo.isNormalOrNegative === true, 'Family history: Scan noted normal correctly marked isNormalOrNegative = true');
 
+  // Familial relation antecedents: Mother had adenocarcinoma, Father had glioblastoma, Mother had mass
+  const motherAdenoInfo = extractClinicalInfoWithRules('Mother had pancreatic adenocarcinoma. Screening scan unremarkable.');
+  assert(motherAdenoInfo.findings.length === 0, 'Familial antecedent: "Mother had pancreatic adenocarcinoma" yields 0 affirmed findings');
+  assert(motherAdenoInfo.suspectedConditions.length === 0, 'Familial antecedent: "Mother had pancreatic adenocarcinoma" yields 0 suspected conditions');
+  assert(motherAdenoInfo.isNormalOrNegative === true, 'Familial antecedent: "Mother had adenocarcinoma... scan unremarkable" isNormalOrNegative = true');
+
+  const fatherGbmInfo = extractClinicalInfoWithRules('Father had glioblastoma. Routine MRI unremarkable.');
+  assert(fatherGbmInfo.findings.length === 0, 'Familial antecedent: "Father had glioblastoma" yields 0 affirmed findings');
+  assert(fatherGbmInfo.suspectedConditions.length === 0, 'Familial antecedent: "Father had glioblastoma" yields 0 suspected conditions');
+  assert(fatherGbmInfo.isNormalOrNegative === true, 'Familial antecedent: "Father had glioblastoma... MRI unremarkable" isNormalOrNegative = true');
+
+  const motherMassInfo = extractClinicalInfoWithRules('Mother had pancreatic mass.');
+  assert(motherMassInfo.findings.length === 0, 'Familial antecedent: "Mother had pancreatic mass" yields 0 affirmed findings');
+  assert(motherMassInfo.suspectedConditions.length === 0, 'Familial antecedent: "Mother had pancreatic mass" yields 0 suspected conditions');
+
+  const sisterDiagInfo = extractClinicalInfoWithRules('Sister was diagnosed with brain tumor. Normal brain scan.');
+  assert(sisterDiagInfo.findings.length === 0, 'Familial antecedent: "Sister was diagnosed with brain tumor" yields 0 affirmed findings');
+  assert(sisterDiagInfo.isNormalOrNegative === true, 'Familial antecedent: Sister diagnosed with brain tumor on normal scan isNormalOrNegative = true');
+
+  const auntGbmInfo = extractClinicalInfoWithRules('Maternal aunt had glioblastoma. Routine MRI unremarkable.');
+  assert(auntGbmInfo.findings.length === 0, 'Familial antecedent: "Maternal aunt had glioblastoma" yields 0 affirmed findings');
+  assert(auntGbmInfo.isNormalOrNegative === true, 'Familial antecedent: Maternal aunt had glioblastoma on unremarkable scan isNormalOrNegative = true');
+
+  const uncleMassInfo = extractClinicalInfoWithRules('Paternal uncle had pancreatic mass. Screening scan unremarkable.');
+  assert(uncleMassInfo.findings.length === 0, 'Familial antecedent: "Paternal uncle had pancreatic mass" yields 0 affirmed findings');
+  assert(uncleMassInfo.isNormalOrNegative === true, 'Familial antecedent: Paternal uncle had mass on unremarkable scan isNormalOrNegative = true');
+
+  // Period-delimited rule-out abbreviations: "r.o." must not be fragmented into affirmed findings
+  const roBrainInfo = extractClinicalInfoWithRules('Indication: r.o. brain tumor');
+  assert(roBrainInfo.findings.length === 0, 'Period rule-out: "Indication: r.o. brain tumor" yields 0 affirmed findings');
+  assert(roBrainInfo.suspectedConditions.length === 0, 'Period rule-out: "Indication: r.o. brain tumor" yields 0 suspected conditions');
+
+  const roNormalInfo = extractClinicalInfoWithRules('Indication: r.o. brain tumor. Routine brain MRI is normal.');
+  assert(roNormalInfo.findings.length === 0, 'Period rule-out: "r.o. brain tumor" on normal MRI yields 0 affirmed findings');
+  assert(roNormalInfo.isNormalOrNegative === true, 'Period rule-out: "r.o. brain tumor" on normal MRI isNormalOrNegative = true');
+
+  const roLungInfo = extractClinicalInfoWithRules('Indication: R.O. lung mass');
+  assert(roLungInfo.findings.length === 0, 'Period rule-out: "Indication: R.O. lung mass" yields 0 affirmed findings');
+  assert(roLungInfo.suspectedConditions.length === 0, 'Period rule-out: "Indication: R.O. lung mass" yields 0 suspected conditions');
+
   // ──────────────────────────────────────────────────────────────────────────
   // TEST SUITE 2: Mock Inference Lesion vs Clean Scan Discrimination
   // ──────────────────────────────────────────────────────────────────────────
@@ -447,6 +487,66 @@ async function runAllTests() {
   const familyHistoryVerdict = calculateTumorVerdict(e2eFamilyHistory);
   assert(e2eFamilyHistory.inference!.metrics.areaPx === 0, 'Adversarial: "Patient reports family history of glioma. Routine brain MRI is normal." yields area 0 px');
   assert(familyHistoryVerdict.dangerLevel === 0, 'Adversarial: "Patient reports family history of glioma. Routine brain MRI is normal." yields danger level 0');
+
+  // 7I: Mother had pancreatic adenocarcinoma on normal scan yields area 0 px, danger level 0
+  const e2eMotherAdeno = await runAnalysis({
+    image: {
+      fileName: 'pancreas_scan.png',
+      contentType: 'image/png',
+      sizeBytes: pancNormalBytes.length,
+      bytes: pancNormalBytes,
+    },
+    clinicalText: 'Mother had pancreatic adenocarcinoma. Screening scan unremarkable.',
+    manualOrgan: 'pancreas',
+  });
+  const motherAdenoVerdict = calculateTumorVerdict(e2eMotherAdeno);
+  assert(e2eMotherAdeno.inference!.metrics.areaPx === 0, 'Adversarial E2E: "Mother had pancreatic adenocarcinoma. Screening scan unremarkable." yields area 0 px');
+  assert(motherAdenoVerdict.dangerLevel === 0, 'Adversarial E2E: "Mother had pancreatic adenocarcinoma. Screening scan unremarkable." yields danger level 0');
+
+  // 7J: Father had glioblastoma on normal scan yields area 0 px, danger level 0
+  const e2eFatherGbm = await runAnalysis({
+    image: {
+      fileName: 'brain_scan.png',
+      contentType: 'image/png',
+      sizeBytes: brainNormalBytes.length,
+      bytes: brainNormalBytes,
+    },
+    clinicalText: 'Father had glioblastoma. Routine MRI unremarkable.',
+    manualOrgan: 'brain',
+  });
+  const fatherGbmVerdict = calculateTumorVerdict(e2eFatherGbm);
+  assert(e2eFatherGbm.inference!.metrics.areaPx === 0, 'Adversarial E2E: "Father had glioblastoma. Routine MRI unremarkable." yields area 0 px');
+  assert(fatherGbmVerdict.dangerLevel === 0, 'Adversarial E2E: "Father had glioblastoma. Routine MRI unremarkable." yields danger level 0');
+
+  // 7K: Mother had pancreatic mass (bare familial finding without scan unremarkable) on normal scan yields area 0 px, danger level 0
+  const e2eMotherMass = await runAnalysis({
+    image: {
+      fileName: 'pancreas_scan.png',
+      contentType: 'image/png',
+      sizeBytes: pancNormalBytes.length,
+      bytes: pancNormalBytes,
+    },
+    clinicalText: 'Mother had pancreatic mass.',
+    manualOrgan: 'pancreas',
+  });
+  const motherMassVerdict = calculateTumorVerdict(e2eMotherMass);
+  assert(e2eMotherMass.inference!.metrics.areaPx === 0, 'Adversarial E2E: "Mother had pancreatic mass." on normal scan yields area 0 px');
+  assert(motherMassVerdict.dangerLevel === 0, 'Adversarial E2E: "Mother had pancreatic mass." on normal scan yields danger level 0');
+
+  // 7L: Period-delimited rule-out abbreviation (r.o.) on normal scan yields area 0 px, danger level 0
+  const e2eRoBrain = await runAnalysis({
+    image: {
+      fileName: 'brain_scan.png',
+      contentType: 'image/png',
+      sizeBytes: brainNormalBytes.length,
+      bytes: brainNormalBytes,
+    },
+    clinicalText: 'Indication: r.o. brain tumor',
+    manualOrgan: 'brain',
+  });
+  const roBrainVerdict = calculateTumorVerdict(e2eRoBrain);
+  assert(e2eRoBrain.inference!.metrics.areaPx === 0, 'Adversarial E2E: "Indication: r.o. brain tumor" on normal scan yields area 0 px');
+  assert(roBrainVerdict.dangerLevel === 0, 'Adversarial E2E: "Indication: r.o. brain tumor" on normal scan yields danger level 0');
 
   // ──────────────────────────────────────────────────────────────────────────
   // TEST SUITE 8: Tri-Modal End-to-End Normal Controls

@@ -4,7 +4,7 @@ import * as React from 'react';
 import { AlertCircle, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AnalysisResult } from '@/lib/types';
-import { calculateTumorVerdict } from '@/lib/agent';
+import { calculateTumorVerdict } from '@/lib/tumorVerdict';
 
 interface TumorVerdictCardProps {
   data: AnalysisResult;
