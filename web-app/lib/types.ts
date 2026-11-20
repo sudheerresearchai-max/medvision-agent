@@ -4,19 +4,9 @@
  * RESEARCH PROTOTYPE ONLY — NOT APPROVED FOR CLINICAL DIAGNOSIS.
  */
 
-export type Organ =
-  | 'brain'
-  | 'lung'
-  | 'pancreas'
-  | 'breast'
-  | 'liver'
-  | 'kidney'
-  | 'skin'
-  | 'colon'
-  | 'prostate'
-  | 'general';
-export type Modality = 'MRI' | 'CT' | 'PET' | 'XRAY' | 'ULTRASOUND' | 'MAMMOGRAM' | 'DERMOSCOPY' | 'unknown';
-export type ModelKey = Organ;
+export type Organ = 'brain' | 'lung' | 'pancreas';
+export type Modality = 'MRI' | 'CT' | 'PET' | 'unknown';
+export type ModelKey = Organ; // one lightweight U-Net per organ
 
 export const DISCLAIMER =
   'MedVision is an AI-assisted decision support system designed for multi-modal oncology analysis.';
@@ -28,11 +18,6 @@ export const SUPPORTED_IMAGE_EXTENSIONS = [
   '.dcm',
   '.nii',
   '.nii.gz',
-  '.webp',
-] as const;
-
-export const SUPPORTED_DOCUMENT_EXTENSIONS = [
-  '.pdf',
 ] as const;
 
 export const IMAGE_MAX_BYTES = 4 * 1024 * 1024; // Vercel-friendly cap
@@ -210,6 +195,7 @@ export interface MedicalSourceRef {
   sourceType: 'guideline' | 'registry' | 'peer_reviewed' | 'database';
   url: string;
   citation: string;
+  isLiveWeb?: boolean;
 }
 
 export interface ClinicalKnowledgeBrief {
@@ -228,44 +214,6 @@ export interface ClinicalKnowledgeBrief {
   emergencyRedFlags: string[];
   sources: MedicalSourceRef[];
   retrievedAt: string;
-}
-
-export interface DifferentialDiagnosis {
-  condition: string;
-  probability: 'high' | 'moderate' | 'low';
-  confidenceScore: number;
-  organSystem: string;
-  rationale: string;
-  supportingSymptoms: string[];
-  refutingFactors: string[];
-}
-
-export interface RecommendedImagingOrder {
-  modality: string;
-  protocol: string;
-  indication: string;
-  urgency: string;
-}
-
-export interface RecommendedLabTest {
-  testName: string;
-  rationale: string;
-  priority: string;
-}
-
-export interface SymptomAnalysisResult {
-  primaryComplaint: string;
-  symptomSeverity: 'critical' | 'high' | 'moderate' | 'mild';
-  acuityLevel: 'emergency' | 'urgent' | 'routine';
-  differentials: DifferentialDiagnosis[];
-  recommendedImaging: RecommendedImagingOrder[];
-  recommendedLabs: RecommendedLabTest[];
-  clinicalRedFlags: string[];
-  suggestedActionPlan: string[];
-  multimodalConcordance?: {
-    isConcordant: boolean;
-    summary: string;
-  };
 }
 
 // ---------------------------------------------------------------------------
@@ -299,7 +247,6 @@ export interface AnalysisResult {
   trace: AgentStep[];
   multiAgentTrace?: import('./multiAgent/types').MultiAgentSessionTrace;
   clinicalKnowledge?: ClinicalKnowledgeBrief;
-  symptomAnalysis?: SymptomAnalysisResult;
 }
 
 // ---------------------------------------------------------------------------

@@ -2,55 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Claude / Anthropic Authentic Design System */
+/* Anthropic-inspired warm minimalist typography & tokens */
 :root {
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-serif: "Iowan Old Style", "Apple Garamond", Baskerville, "Times New Roman", "Droid Serif", Times, Source Serif Pro, serif;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 @layer base {
   :root {
-    /* Claude Light Mode — Warm Sand & Terracotta */
-    --background: 40 20% 98%;             /* #FAF9F5 warm ivory */
-    --foreground: 24 10% 12%;            /* #1F1E1B deep charcoal */
-    --card: 40 15% 95%;                  /* #F4F2EC warm sand */
+    /* Anthropic warm ivory & stone aesthetic */
+    --background: 40 20% 98%;          /* #FAF9F5 */
+    --foreground: 24 10% 12%;          /* #201E1D */
+    --card: 0 0% 100%;                 /* #FFFFFF */
     --card-foreground: 24 10% 12%;
-    --primary: 16 56% 56%;               /* #CC785C Claude Terracotta */
+    --primary: 16 68% 54%;             /* Anthropic Terracotta #D97757 */
     --primary-foreground: 0 0% 100%;
-    --secondary: 40 10% 91%;             /* #EAE7DE */
-    --secondary-foreground: 24 10% 20%;
-    --muted: 40 10% 91%;
-    --muted-foreground: 25 5% 45%;       /* #75736E warm stone */
-    --accent: 16 56% 56%;
+    --secondary: 40 15% 94%;           /* Warm Stone #F3F2EE */
+    --secondary-foreground: 24 10% 18%;
+    --muted: 40 15% 94%;
+    --muted-foreground: 30 6% 45%;     /* Warm Taupe #73706A */
+    --accent: 16 68% 54%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 70% 55%;
+    --destructive: 0 72% 51%;          /* High-Contrast Clinical Red #DC2626 */
     --destructive-foreground: 0 0% 100%;
-    --border: 40 10% 86%;                /* #DDD9CE */
-    --input: 40 10% 86%;
-    --ring: 16 56% 56%;
-    --radius: 0.875rem;
+    --border: 40 12% 88%;              /* Warm Border #E6E4DD */
+    --input: 40 12% 86%;
+    --ring: 16 68% 54%;
+    --radius: 0.75rem;
   }
 
   .dark {
-    /* Claude Dark Mode — Warm Deep Charcoal & Terracotta */
-    --background: 30 4% 11%;             /* #1B1A18 Claude dark */
-    --foreground: 45 10% 95%;            /* #F3F1EC warm off-white */
-    --card: 30 4% 14%;                   /* #242320 Claude surface card */
-    --card-foreground: 45 10% 95%;
-    --primary: 16 56% 58%;               /* #D47A5B Claude warm terracotta */
+    /* Anthropic warm obsidian stone dark mode */
+    --background: 30 5% 8%;            /* #141413 */
+    --foreground: 40 20% 96%;          /* #FAF9F5 */
+    --card: 30 6% 11%;                 /* #1C1B18 */
+    --card-foreground: 40 20% 96%;
+    --primary: 16 68% 54%;             /* Anthropic Terracotta #D97757 */
     --primary-foreground: 0 0% 100%;
-    --secondary: 30 4% 18%;              /* #2E2D29 warm secondary */
-    --secondary-foreground: 45 10% 90%;
-    --muted: 30 4% 18%;
-    --muted-foreground: 30 4% 62%;       /* #A09E96 Claude muted warm gray */
-    --accent: 16 56% 58%;
+    --secondary: 30 6% 15%;            /* #262522 */
+    --secondary-foreground: 40 20% 96%;
+    --muted: 30 6% 15%;
+    --muted-foreground: 35 6% 62%;     /* #A19E95 */
+    --accent: 16 68% 54%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 65% 58%;
+    --destructive: 0 72% 51%;          /* High-Contrast Clinical Red #DC2626 */
     --destructive-foreground: 0 0% 100%;
-    --border: 30 4% 20%;                 /* #33322D subtle hairline border */
-    --input: 30 4% 20%;
-    --ring: 16 56% 58%;
+    --border: 30 5% 18%;               /* #2E2C29 */
+    --input: 30 5% 20%;
+    --ring: 16 68% 54%;
   }
 
   * {
@@ -59,44 +58,43 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    letter-spacing: -0.01em;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }
 
 @layer utilities {
-  /* Claude elevated card */
-  .claude-card,
-  .apple-card {
-    background-color: hsl(var(--card));
-    border: 1px solid hsl(var(--border));
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 8px 24px -4px rgba(0, 0, 0, 0.25);
-  }
-
-  /* Claude pill chip */
-  .claude-pill,
-  .apple-pill {
-    border-radius: 9999px;
-    background: hsl(var(--secondary) / 0.6);
-    border: 1px solid hsl(var(--border));
-    transition: all 0.15s ease-in-out;
-  }
-  .claude-pill:hover,
-  .apple-pill:hover {
-    background: hsl(var(--secondary));
-    border-color: hsl(var(--primary) / 0.4);
-    color: hsl(var(--foreground));
-  }
-
   /* Subtle medical checkerboard background for scan contrast */
   .checkerboard {
     background-image:
-      linear-gradient(45deg, #18181b 25%, transparent 25%),
-      linear-gradient(-45deg, #18181b 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, #18181b 75%),
-      linear-gradient(-45deg, transparent 75%, #18181b 75%);
+      linear-gradient(45deg, #e4e2dc 25%, transparent 25%),
+      linear-gradient(-45deg, #e4e2dc 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #e4e2dc 75%),
+      linear-gradient(-45deg, transparent 75%, #e4e2dc 75%);
     background-size: 16px 16px;
     background-position: 0 0, 0 8px, 8px -8px, -8px 0;
-    background-color: #0d0d10;
+    background-color: #f7f6f2;
+  }
+
+  /* Anthropic-style shimmering pulse */
+  .anthropic-pulse {
+    animation: anthropicPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Anthropic subtle glowing border */
+  .anthropic-glow {
+    box-shadow: 0 0 16px -2px rgba(217, 119, 87, 0.25);
+  }
+
+  /* Shimmer gradient line */
+  .anthropic-shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(217, 119, 87, 0.05) 0%,
+      rgba(217, 119, 87, 0.35) 50%,
+      rgba(217, 119, 87, 0.05) 100%
+    );
+    background-size: 200% 100%;
+    animation: anthropicShimmer 2.2s infinite linear;
   }
 
   /* Blinking stream cursor */
@@ -106,6 +104,26 @@
     color: hsl(var(--primary));
     animation: cursorBlink 0.9s steps(2, start) infinite;
     margin-left: 2px;
+  }
+}
+
+@keyframes anthropicPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes anthropicShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
   }
 }
 
@@ -121,7 +139,7 @@
 /* Authentic Claude thinking dot wave */
 @keyframes claudePulseDot {
   0%, 80%, 100% {
-    opacity: 0.3;
+    opacity: 0.35;
     transform: scale(0.85);
   }
   40% {
@@ -145,12 +163,3 @@
   animation-delay: 0.44s;
 }
 
-/* Print / PDF Export Styles */
-@media print {
-  header,
-  footer,
-  nav,
-  .no-print {
-    display: none !important;
-  }
-}

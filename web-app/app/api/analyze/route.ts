@@ -26,18 +26,7 @@ export const dynamic = 'force-dynamic';
 // Keep long enough for cold HF Space starts; capped by plan limits.
 export const maxDuration = 60;
 
-const ORGANS: ReadonlySet<string> = new Set([
-  'brain',
-  'lung',
-  'pancreas',
-  'breast',
-  'liver',
-  'kidney',
-  'skin',
-  'colon',
-  'prostate',
-  'general',
-]);
+const ORGANS: ReadonlySet<string> = new Set(['brain', 'lung', 'pancreas']);
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,16 +38,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let form: FormData;
-    try {
-      form = await request.formData();
-    } catch (formErr) {
-      return NextResponse.json(
-        { ok: false, detail: `Malformed multipart form payload: ${errorMessage(formErr)}` },
-        { status: 400 },
-      );
-    }
-
+    const form = await request.formData();
     const organRaw = String(form.get('organ') ?? 'auto');
     const manualOrgan: Organ | 'auto' =
       organRaw === 'auto' || !ORGANS.has(organRaw) ? 'auto' : (organRaw as Organ);
@@ -71,11 +51,8 @@ export async function POST(request: NextRequest) {
     if (imageEntry && typeof imageEntry !== 'string') {
       const file = imageEntry as File;
       const ext = fileExtension(file.name || 'scan.png');
-      if (!file.name || !file.name.trim()) {
+      if (!file.name) {
         return NextResponse.json({ ok: false, detail: 'Image filename missing.' }, { status: 400 });
-      }
-      if (file.size === 0) {
-        return NextResponse.json({ ok: false, detail: 'Image file is empty (0 bytes).' }, { status: 400 });
       }
       if (file.size > IMAGE_MAX_BYTES) {
         return NextResponse.json(
@@ -97,9 +74,6 @@ export async function POST(request: NextRequest) {
     const pdfEntry = form.get('pdf');
     if (pdfEntry && typeof pdfEntry !== 'string') {
       const file = pdfEntry as File;
-      if (file.size === 0) {
-        return NextResponse.json({ ok: false, detail: 'PDF file is empty (0 bytes).' }, { status: 400 });
-      }
       if (file.size > PDF_MAX_BYTES) {
         return NextResponse.json(
           { ok: false, detail: `PDF exceeds ${PDF_MAX_BYTES / 1024 / 1024} MB limit.` },
@@ -119,12 +93,7 @@ export async function POST(request: NextRequest) {
       pdf: pdfInput,
       clinicalText: notes,
       manualOrgan,
-      previewDataUrl:
-        preview.startsWith('data:image/')
-          ? preview
-          : imageInput
-            ? `data:${imageInput.contentType || 'image/png'};base64,${Buffer.from(imageInput.bytes).toString('base64')}`
-            : undefined,
+      previewDataUrl: preview.startsWith('data:image/') ? preview : undefined,
     });
 
     return NextResponse.json({ ok: true, result: result satisfies AnalysisResult });

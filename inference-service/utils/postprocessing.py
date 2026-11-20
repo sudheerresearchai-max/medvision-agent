@@ -44,25 +44,36 @@ def is_control_filename(filename: str) -> bool:
     return bool(CONTROL_FILENAME_RE.search(filename))
 
 
-def check_clinical_is_negative(clinical_notes: Optional[str]) -> bool:
-    """Evaluate whether clinical narrative confirms normal/negative study with absence of mass."""
+def parse_clinical_findings(clinical_notes: Optional[str]) -> tuple[bool, int, int]:
+    """Parse clinical notes for normal cues, affirmed neoplasm findings, and negated findings.
+
+    Returns:
+        (has_normal_cue, affirmed_count, negated_count)
+    """
     if not clinical_notes or not clinical_notes.strip():
-        return False
+        return False, 0, 0
     text = clinical_notes.lower()
 
     normal_pattern = re.compile(
         r"\b(unremarkable|within normal limits|wnl|"
-        r"no acute (?:intracranial|cardiopulmonary|abnormality|pathology)|"
-        r"clear lungs|clear lung fields|negative for malignancy|negative study|study is negative|"
+        r"no acute (?:intracranial|cardiopulmonary|abnormality|pathology|process)|"
+        r"clear lungs|clear lung fields|clear bilaterally|negative for malignancy|negative study|study is negative|"
         r"negative for neoplasm|negative for tumor|negative for mass|routine screening|"
-        r"clear scan|clear study|normal (?:study|scan|brain|chest|pancreas|parenchyma|contours|mri|ct))\b",
+        r"no focal (?:mass|lesion|nodule)|no suspicious (?:lesion|mass|nodule)|no nodule identified|"
+        r"clear scan|clear study|normal (?:study|scan|brain|chest|pancreas|parenchyma|contours|mri|ct|examination|exam)|"
+        r"symmetric (?:parenchyma|brain))\b",
         re.IGNORECASE,
     )
-    has_normal_cue = bool(normal_pattern.search(text))
+    has_normal_cue = False
+    for m in normal_pattern.finditer(text):
+        pre = text[max(0, m.start() - 25):m.start()].lower()
+        if not re.search(r"\b(?:prior|previous|earlier|history\s+of|h/o)\s+$", pre):
+            has_normal_cue = True
+            break
 
     lesion_terms = [
         "mass", "tumor", "tumour", "lesion", "nodule", "adenocarcinoma", "carcinoma", "gbm",
-        "glioma", "malignancy", "neoplasm", "metastasis", "metastases",
+        "glioblastoma", "glioma", "malignancy", "neoplasm", "metastasis", "metastases", "cancer",
     ]
 
     # Pre-negation cues: must NOT include "rule out" (which is an indication)
@@ -91,9 +102,13 @@ def check_clinical_is_negative(clinical_notes: Optional[str]) -> bool:
         re.IGNORECASE,
     )
 
-    pseudo_negation = re.compile(
-        r"\b(?:cannot|can\s+not|unable\s+to|hard\s+to|difficult\s+to|not)\s+(?:rule\s+out|exclude)\b|"
-        r"\b(?:rule\s+out|r/o)\b",
+    active_suspicion = re.compile(
+        r"\b(?:cannot|can\s+not|unable\s+to|hard\s+to|difficult\s+to|not)\s+(?:rule[\s-]+out|exclude)\b",
+        re.IGNORECASE,
+    )
+
+    rule_out_indication = re.compile(
+        r"\b(?:rule[\s-]+out|r[\./]?o)\b",
         re.IGNORECASE,
     )
 
@@ -116,8 +131,12 @@ def check_clinical_is_negative(clinical_notes: Optional[str]) -> bool:
             post = text[m.end():end]
             clause_post = clause_split.split(post)[0]
 
-            if pseudo_negation.search(clause_pre):
+            if active_suspicion.search(clause_pre) or active_suspicion.search(clause_post):
                 affirmed_count += 1
+                continue
+
+            if rule_out_indication.search(clause_pre) or rule_out_indication.search(clause_post):
+                # Ordering indication (e.g. "Rule out tumor", "Tumor: r/o"): neither confirmed finding nor proven absence
                 continue
 
             is_neg = bool(neg_prefix.search(clause_pre)) or bool(post_negation.search(clause_post))
@@ -126,7 +145,24 @@ def check_clinical_is_negative(clinical_notes: Optional[str]) -> bool:
             else:
                 affirmed_count += 1
 
+    return has_normal_cue, affirmed_count, negated_count
+
+
+def check_clinical_is_negative(clinical_notes: Optional[str]) -> bool:
+    """Evaluate whether clinical narrative confirms normal/negative study with absence of mass."""
+    has_normal_cue, affirmed_count, negated_count = parse_clinical_findings(clinical_notes)
     return (has_normal_cue or negated_count > 0) and affirmed_count == 0
+
+
+def check_clinical_has_positive(clinical_notes: Optional[str]) -> bool:
+    """Evaluate whether clinical narrative contains genuine affirmative neoplasm findings.
+
+    Ordering indications (e.g. 'Rule out pancreatic tumor', 'r/o mass') without active
+    suspicion ('cannot rule out', 'unable to exclude') and negated terms ('no tumor')
+    do NOT count as affirmative positive findings.
+    """
+    _, affirmed_count, _ = parse_clinical_findings(clinical_notes)
+    return affirmed_count > 0
 
 
 def sigmoid(x: np.ndarray) -> np.ndarray:

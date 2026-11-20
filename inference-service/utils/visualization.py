@@ -98,16 +98,13 @@ def synthetic_mask(
                 "tumor", "tumour", "mass", "lesion", "nodule", "cancer", "carcinoma",
                 "gbm", "glioma", "case01", "case02", "case03"
             )
-        )
+        ) and not any(r in fn_lower for r in ("rule_out", "rule-out", "r_o", "r-o", "ruleout"))
         has_pos_clinical = False
         if clinical_notes:
-            from .postprocessing import check_clinical_is_negative
+            from .postprocessing import check_clinical_is_negative, check_clinical_has_positive
             if check_clinical_is_negative(clinical_notes):
                 return np.zeros((height, width), dtype=np.uint8), 0.0
-            has_pos_clinical = any(
-                k in clinical_notes.lower()
-                for k in ("tumor", "tumour", "mass", "lesion", "nodule", "adenocarcinoma", "gbm", "glioma")
-            )
+            has_pos_clinical = check_clinical_has_positive(clinical_notes)
 
         if not (has_pos_fn or has_pos_clinical):
             return np.zeros((height, width), dtype=np.uint8), 0.0

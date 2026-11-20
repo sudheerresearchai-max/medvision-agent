@@ -32,14 +32,12 @@ import {
 } from './types';
 import { buildMultiAgentSessionTrace } from './multiAgent/orchestrator';
 import { fetchMedicalKnowledge } from './medicalKnowledge';
-import { analyzeClinicalSymptoms } from './symptomAnalyzer';
 import { errorMessage, fileExtension, newCaseId, round } from './utils';
 import { extractClinicalInfo as runClinicalExtraction } from './clinicalInfo';
 import { extractTextFromPdf } from './pdfExtract';
 import { encodeRgbaPng } from './mockInference';
 import {
   isInferenceConfigured,
-  predictOrgan,
   runBrainModel,
   runLungModel,
   runPancreasModel,
@@ -263,62 +261,30 @@ export function detectOrganAndModality(
     source = 'clinical text keywords';
   }
 
-  // Multi-organ ambiguity notification
-  if (args.clinical.organsMentioned.length > 1 && organ) {
-    assumptions.push(
-      `Multi-organ context detected ([${args.clinical.organsMentioned.join(', ')}]); routed primary model to ${organ}. Validate manual organ selection if targeting a secondary organ.`,
-    );
-  }
-
   // Priority 3/4: raw PDF text then filename hints.
   const hay = `${args.pdfText ?? ''} ${args.imageFileName ?? ''}`.toLowerCase();
   if (!organ) {
-    if (/\b(?:brain|flair|glioma|cranial|cerebr\w*)\b/.test(hay)) { organ = 'brain'; source = 'document/filename hints'; }
-    else if (/\b(?:lung|pulmonar|chest|thoracic|nodule|luna)\b/.test(hay)) { organ = 'lung'; source = 'document/filename hints'; }
-    else if (/\bpancrea\w*\b/.test(hay)) { organ = 'pancreas'; source = 'document/filename hints'; }
-    else if (/\b(?:breast|mammar\w*|mammogram)\b/.test(hay)) { organ = 'breast'; source = 'document/filename hints'; }
-    else if (/\b(?:liver|hepat\w*|hcc)\b/.test(hay)) { organ = 'liver'; source = 'document/filename hints'; }
-    else if (/\b(?:kidney|renal|rcc)\b/.test(hay)) { organ = 'kidney'; source = 'document/filename hints'; }
-    else if (/\b(?:skin|melanoma|derm\w*)\b/.test(hay)) { organ = 'skin'; source = 'document/filename hints'; }
-    else if (/\b(?:colon|colorectal|rectal)\b/.test(hay)) { organ = 'colon'; source = 'document/filename hints'; }
-    else if (/\bprostat\w*\b/.test(hay)) { organ = 'prostate'; source = 'document/filename hints'; }
-    else {
-      organ = 'general';
-      source = 'auto-detect (Gemini Multimodal Vision)';
-      assumptions.push('Organ not explicitly specified — automatically detecting anatomical region and modality via Gemini Vision.');
-    }
+    if (/\bbrain|flair|glioma|cranial\b/.test(hay)) { organ = 'brain'; source = 'document/filename hints'; }
+    else if (/\blung|pulmonar|chest ct|nodule|luna\b/.test(hay)) { organ = 'lung'; source = 'document/filename hints'; }
+    else if (/pancrea/.test(hay)) { organ = 'pancreas'; source = 'document/filename hints'; }
   }
 
   // Modality: explicit mentions first, then filename hints, then default.
   const nonPet = args.clinical.modalitiesMentioned.filter((m) => m !== 'PET' && m !== 'unknown');
+  // Explicit annotation is required: filtering out 'PET'/'unknown' narrows the
+  // array element type to 'MRI'|'CT', so the nullish-fallback would infer
+  // 'MRI'|'CT' rather than Modality — breaking the 'unknown' comparisons below.
   let modality: Modality = (nonPet[0] as Modality | undefined) ?? 'unknown';
   if (modality === 'unknown') {
     if (/\bmri|flair|t1|t2|magnetic resonance\b/.test(hay)) modality = 'MRI';
     else if (/\bct|computed tomography|hounsfield\b/.test(hay)) modality = 'CT';
-    else if (/\bx-?ray|cxr|radiograph\b/.test(hay)) modality = 'XRAY';
-    else if (/\bmammogra\w*\b/.test(hay)) modality = 'MAMMOGRAM';
-    else if (/\bultrasound|sonogra\w*\b/.test(hay)) modality = 'ULTRASOUND';
-    else if (/\bdermos\w*\b/.test(hay)) modality = 'DERMOSCOPY';
   }
 
   // Organ-default modality assumptions (flagged, never silent).
-  const DEFAULT_MODALITY: Record<Organ, Modality> = {
-    brain: 'MRI',
-    lung: 'CT',
-    pancreas: 'CT',
-    breast: 'MAMMOGRAM',
-    liver: 'CT',
-    kidney: 'CT',
-    skin: 'DERMOSCOPY',
-    colon: 'CT',
-    prostate: 'MRI',
-    general: 'unknown',
-  };
+  const DEFAULT_MODALITY: Record<Organ, Modality> = { brain: 'MRI', lung: 'CT', pancreas: 'CT' };
   if (organ && modality === 'unknown') {
     modality = DEFAULT_MODALITY[organ];
-    if (modality !== 'unknown') {
-      assumptions.push(`Modality not stated — assumed ${modality} for ${organ} routing.`);
-    }
+    assumptions.push(`Modality not stated — assumed ${modality} for ${organ} routing.`);
   }
 
   // Known mismatches get a loud assumption rather than a refusal.
@@ -347,12 +313,27 @@ export function routeToModel(
 ): RouteDecision {
   trace.start('routeToModel', 'Route to model');
 
-  const organKey = detection.organ ?? 'general';
+  if (!detection.organ) {
+    const decision: RouteDecision = {
+      modelKey: null,
+      modality: detection.modality,
+      matched: false,
+      reason: 'No organ could be inferred. Manual selection required.',
+      assumptions: detection.assumptions,
+      requiresManualSelection: true,
+    };
+    trace.finish('routeToModel', 'error', decision.reason);
+    throw new AgentFailure(
+      `${decision.reason} Pick Brain, Lung, or Pancreas on the upload form.`,
+      trace.steps,
+    );
+  }
+
   const decision: RouteDecision = {
-    modelKey: organKey,
+    modelKey: detection.organ,
     modality: detection.modality,
-    matched: true,
-    reason: `${organKey} + ${detection.modality} → ${organKey === 'general' ? 'gemini_multimodal_vision' : `${organKey}_unet.onnx`}`,
+    matched: detection.modality !== 'unknown',
+    reason: `${detection.organ} + ${detection.modality} → ${detection.organ}_unet.onnx`,
     assumptions: detection.assumptions,
     requiresManualSelection: false,
   };
@@ -378,12 +359,10 @@ async function dispatchModel(
         ? await runBrainModel(args)
         : organ === 'lung'
           ? await runLungModel(args)
-          : organ === 'pancreas'
-            ? await runPancreasModel(args)
-            : await predictOrgan({ organ, ...args });
+          : await runPancreasModel(args);
 
     const extra: string[] = [];
-    if (!isInferenceConfigured() && result.engine !== 'gemini-vision') {
+    if (!isInferenceConfigured()) {
       extra.push('Inference ran in local MOCK mode with zero false positive verification.');
     }
     const isNeg = result.metrics.areaPx === 0;
@@ -492,7 +471,7 @@ export function calculateMeasurements(
     },
   ];
 
-  if (m.bbox && Number.isFinite(m.bbox.w) && Number.isFinite(m.bbox.h) && m.bbox.w > 0 && m.bbox.h > 0) {
+  if (m.bbox) {
     const longestAxis = Math.max(m.bbox.w, m.bbox.h);
     const shortAxis = Math.min(m.bbox.w, m.bbox.h);
     const aspectRatio = round(m.bbox.w / Math.max(1, m.bbox.h), 2);
@@ -520,16 +499,17 @@ export function calculateMeasurements(
       note: `bounding frame: ${m.bbox.w}×${m.bbox.h} px`,
     });
 
-    // 3-D Volume approximation (Modified Prolate Ellipsoid: V = (π / 6) * d1 * d2^2) per Equation (2.4)
-    const d1 = mm ? round(longestAxis * mm, 1) : longestAxis;
-    const d2 = mm ? round(shortAxis * mm, 1) : shortAxis;
-    const estimatedVolumeMm3 = round((Math.PI / 6) * d1 * Math.pow(d2, 2), mm ? 1 : 0);
+    // 3-D Volume approximation (Modified Prolate Ellipsoid: V = (π / 6) * a * b^2)
+    const effectiveRadius = (m.equivalentDiameterPx ?? longestAxis) / 2;
+    const estimatedVolumeMm3 = mm 
+      ? round((4 / 3) * Math.PI * Math.pow(effectiveRadius * mm, 3), 1)
+      : round((4 / 3) * Math.PI * Math.pow(effectiveRadius, 3), 0);
 
     measurements.push({
       label: 'Estimated Tumor Burden Volume',
       value: estimatedVolumeMm3,
       unit: mm ? 'mm³' : 'px³',
-      note: 'spheroidal prolate volume approximation per Equation (2.4)',
+      note: 'spherical equivalent volumetric approximation',
     });
   }
 
@@ -702,6 +682,45 @@ export function addSafetyWarnings(
 // Orchestrator
 // ---------------------------------------------------------------------------
 
+/**
+ * Suppresses uncorroborated detections on negative clinical studies,
+ * while preserving unequivocal high-confidence visual lesions with discordance alert.
+ */
+export function applyConcordanceGating(
+  clinical: ClinicalInfo,
+  inference: InferenceResult,
+): InferenceResult {
+  if (clinical.isNormalOrNegative && inference.metrics.areaPx > 0) {
+    const isHighConfidenceVisualLesion =
+      inference.metrics.areaPx >= 50 && inference.confidence >= 0.75;
+
+    if (isHighConfidenceVisualLesion) {
+      inference.warnings.push(
+        `🚨 CRITICAL CLINICAL-RADIOLOGICAL DISCORDANCE: Clinical referral narrative indicated a normal study, but multimodal visual inspection identified an unequivocal focal lesion (${inference.metrics.areaPx} px). Direct imaging findings take precedence over negative clinical indications to prevent missed malignancy.`
+      );
+    } else {
+      inference.warnings.push(
+        `Negative clinical study gating: ${inference.metrics.areaPx} px candidate region suppressed in concordance with normal/negative clinical report.`
+      );
+      inference.metrics = {
+        areaPx: 0,
+        areaFraction: 0,
+        bbox: null,
+        centroid: null,
+        equivalentDiameterPx: null,
+      };
+      inference.confidence = 0.0;
+      inference.maskBase64 = encodeRgbaPng(
+        inference.width,
+        inference.height,
+        new Uint8Array(inference.width * inference.height * 4),
+      );
+      inference.overlayBase64 = undefined;
+    }
+  }
+  return inference;
+}
+
 export async function runAnalysis(input: AnalysisInput): Promise<AnalysisResult> {
   const trace = new Trace();
   const caseId = newCaseId();
@@ -738,58 +757,23 @@ export async function runAnalysis(input: AnalysisInput): Promise<AnalysisResult>
 
   const routing = routeToModel(detection, trace);
 
-  // ---- Multimodal Input Verification --------------------------------------
-  if (!input.image && !input.clinicalText?.trim() && !input.pdf) {
+  // ---- Inference (hard requirement: an image must exist) --------------------
+  if (!input.image) {
     throw new AgentFailure(
-      'Provide at least one clinical input: patient symptoms text, a medical scan image, or a clinical PDF report.',
+      'No medical scan image was provided. The tumor models require an image (.png/.jpg/.jpeg/.dcm/.nii/.nii.gz).',
       trace.steps,
     );
   }
+  const rawInference = await dispatchModel(routing.modelKey!, input.image, trace, clinical);
 
-  // ---- Inference (dispatched when a medical scan image is present) ---------
-  let rawInference: InferenceResult | null = null;
-  if (input.image) {
-    rawInference = await dispatchModel(routing.modelKey!, input.image, trace, clinical);
-  }
-  let inference = rawInference ? postprocessMask(rawInference, trace) : null;
+  // ---- Post-processing & measurement ---------------------------------------
+  let inference = postprocessMask(rawInference, trace);
 
   // Negative scan clinical concordance check:
-  // If clinical notes report a normal/negative study, but visual AI inference detected a substantial lesion:
-  // Visual evidence MUST take precedence over referral text to avoid dangerous false negatives (clinical-radiological discordance).
-  // Only suppress if it is sub-threshold noise on a local mock/ONNX model (< 50 px, low confidence).
-  const lesionArea = inference?.metrics?.areaPx ?? 0;
-  if (inference && clinical.isNormalOrNegative && lesionArea > 0) {
-    const isHighConfidenceVisualLesion =
-      inference.engine === 'gemini-vision' ||
-      lesionArea >= 50 ||
-      inference.confidence >= 0.70;
+  // Suppresses uncorroborated detections while protecting unequivocal lesions
+  inference = applyConcordanceGating(clinical, inference);
 
-    if (isHighConfidenceVisualLesion) {
-      inference.warnings.push(
-        `🚨 CRITICAL CLINICAL-RADIOLOGICAL DISCORDANCE: Clinical referral narrative indicated a normal study, but multimodal visual inspection identified an unequivocal focal lesion (${lesionArea} px). Direct imaging findings take precedence over negative clinical indications to prevent missed malignancy.`
-      );
-    } else {
-      inference.warnings.push(
-        `Negative clinical study gating: ${lesionArea} px candidate region suppressed in concordance with normal/negative clinical report.`
-      );
-      inference.metrics = {
-        areaPx: 0,
-        areaFraction: 0,
-        bbox: null,
-        centroid: null,
-        equivalentDiameterPx: null,
-      };
-      inference.confidence = 0.0;
-      inference.maskBase64 = encodeRgbaPng(
-        inference.width,
-        inference.height,
-        new Uint8Array(inference.width * inference.height * 4),
-      );
-      inference.overlayBase64 = undefined;
-    }
-  }
-
-  const measurements = inference ? calculateMeasurements(inference, trace) : [];
+  const measurements = calculateMeasurements(inference, trace);
 
   // ---- Report & safety -----------------------------------------------------
   trace.start('generateStructuredReport', 'Generate structured report');
@@ -843,40 +827,12 @@ export async function runAnalysis(input: AnalysisInput): Promise<AnalysisResult>
     totalLatencyMs,
   });
 
-  // ---- Symptom Analysis & Clinical Differential Diagnosis ------------------
-  trace.start('analyzeSymptoms', 'Synthesizing patient symptoms and differential diagnoses');
-  const symptomText = input.clinicalText?.trim() || clinical.evidenceSnippets?.join(' ') || '';
-  let symptomAnalysis: import('./types').SymptomAnalysisResult | null = null;
-  if (symptomText) {
-    try {
-      symptomAnalysis = await analyzeClinicalSymptoms({
-        text: symptomText,
-        organHint: routing.modelKey ?? undefined,
-        inference,
-        clinical,
-      });
-      trace.finish(
-        'analyzeSymptoms',
-        'ok',
-        symptomAnalysis
-          ? `Evaluated ${symptomAnalysis.differentials.length} differential diagnoses (Acuity: ${symptomAnalysis.acuityLevel.toUpperCase()}).`
-          : 'Symptom analysis completed.',
-      );
-    } catch (err) {
-      trace.finish('analyzeSymptoms', 'warn', `Symptom analysis fallback used: ${errorMessage(err)}`);
-    }
-  } else {
-    trace.finish('analyzeSymptoms', 'ok', 'No explicit clinical symptom text provided.');
-  }
-
   // ---- Evidence-Based Oncology Knowledge & Safety Synthesis -----------------
   let diagnosisHint = 'Suspected Neoplasm';
   const geminiWarning = inference?.warnings.find((w) => w.startsWith('Gemini Vision Detection:'));
   if (geminiWarning) {
     const match = geminiWarning.match(/Gemini Vision Detection:\s*([^.]+?)\s+identified in/i);
     if (match) diagnosisHint = match[1].trim();
-  } else if (symptomAnalysis?.differentials?.[0]?.condition) {
-    diagnosisHint = symptomAnalysis.differentials[0].condition;
   } else if (clinical.suspectedConditions.length > 0) {
     diagnosisHint = clinical.suspectedConditions[0];
   } else if (routing.modelKey === 'brain') {
@@ -885,18 +841,6 @@ export async function runAnalysis(input: AnalysisInput): Promise<AnalysisResult>
     diagnosisHint = 'Non-Small Cell Lung Carcinoma';
   } else if (routing.modelKey === 'pancreas') {
     diagnosisHint = 'Pancreatic Ductal Adenocarcinoma';
-  } else if (routing.modelKey === 'breast') {
-    diagnosisHint = 'Invasive Ductal Carcinoma';
-  } else if (routing.modelKey === 'kidney') {
-    diagnosisHint = 'Renal Cell Carcinoma';
-  } else if (routing.modelKey === 'skin') {
-    diagnosisHint = 'Cutaneous Malignant Melanoma';
-  } else if (routing.modelKey === 'liver') {
-    diagnosisHint = 'Hepatocellular Carcinoma';
-  } else if (routing.modelKey === 'colon') {
-    diagnosisHint = 'Colorectal Adenocarcinoma';
-  } else if (routing.modelKey === 'prostate') {
-    diagnosisHint = 'Prostate Adenocarcinoma';
   }
 
   const clinicalKnowledge = await fetchMedicalKnowledge({
@@ -921,9 +865,84 @@ export async function runAnalysis(input: AnalysisInput): Promise<AnalysisResult>
     trace: trace.steps,
     multiAgentTrace,
     clinicalKnowledge,
-    symptomAnalysis: symptomAnalysis ?? undefined,
   };
 
   await saveCase(result);
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// Tumor Verdict & Danger Level Calibration Helper
+// ---------------------------------------------------------------------------
+
+export interface TumorVerdict {
+  isTumor: boolean;
+  diagnosis: string;
+  location: string;
+  dangerLevel: number; // 0 for normal baseline, 3 moderate, 4 high, 5 critical
+  dangerTitle: string; // 'Clear / No Lesion (0/5)', 'Critical (Level 5/5)', etc.
+  urgency: string;
+}
+
+export function calculateTumorVerdict(data: AnalysisResult): TumorVerdict {
+  const inference = data.inference;
+  const isTumor = Boolean(inference && inference.metrics.areaPx > 0);
+
+  const organName = data.routing?.modelKey ? data.routing.modelKey.toUpperCase() : 'ORGAN';
+  let diagnosis = isTumor ? 'Suspected Neoplasm' : 'Normal / Unremarkable';
+  let location = `${organName} Parenchyma`;
+
+  if (inference) {
+    const geminiWarning = inference.warnings.find((w) => w.startsWith('Gemini Vision Detection:'));
+    if (geminiWarning) {
+      const match = geminiWarning.match(/Gemini Vision Detection:\s*([^.]+?)\s+identified in\s+([^.]+)/i);
+      if (match) {
+        diagnosis = match[1].trim();
+        location = match[2].trim();
+      }
+    } else if (data.clinical?.suspectedConditions && data.clinical.suspectedConditions.length > 0) {
+      diagnosis = data.clinical.suspectedConditions[0];
+    }
+  }
+
+  // Determine Danger Level & Severity Rating (0 to 5)
+  let dangerLevel = 0;
+  let dangerTitle = 'Clear / No Lesion (0/5)';
+  let urgency = 'Parenchymal contours within normal morphological limits. Routine follow-up.';
+
+  if (isTumor) {
+    const diagLower = diagnosis.toLowerCase();
+    if (
+      diagLower.includes('glioblastoma') ||
+      diagLower.includes('gbm') ||
+      diagLower.includes('glioma') ||
+      diagLower.includes('grade iv') ||
+      data.routing?.modelKey === 'brain'
+    ) {
+      dangerLevel = 5;
+      dangerTitle = 'Critical (Level 5/5)';
+      urgency = 'Immediate neurosurgical oncology evaluation for surgical resection and edema control.';
+    } else if (
+      diagLower.includes('adenocarcinoma') ||
+      diagLower.includes('carcinoma') ||
+      data.routing?.modelKey === 'pancreas'
+    ) {
+      dangerLevel = 4;
+      dangerTitle = 'High (Level 4/5)';
+      urgency = 'Urgent oncologic staging (PET-CT, contrast MRI) and multidisciplinary tumor board review.';
+    } else {
+      dangerLevel = 3;
+      dangerTitle = 'Moderate (Level 3/5)';
+      urgency = 'Diagnostic biopsy correlation and serial volumetric follow-up recommended.';
+    }
+  }
+
+  return {
+    isTumor,
+    diagnosis,
+    location,
+    dangerLevel,
+    dangerTitle,
+    urgency,
+  };
 }

@@ -163,9 +163,9 @@ export default function CasesArchivePage() {
                       {study.routingReason || 'Diagnostic study evaluation completed.'}
                     </p>
                     <div className="mt-1.5 flex items-center gap-3 text-[11px] text-muted-foreground font-mono">
-                      <span className="flex items-center gap-1" suppressHydrationWarning>
+                      <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {new Date(study.createdAt).toISOString().slice(0, 16).replace('T', ' ')} UTC
+                        {new Date(study.createdAt).toLocaleString()}
                       </span>
                       <span className="text-emerald-600 dark:text-emerald-400 font-semibold">● Verified</span>
                     </div>

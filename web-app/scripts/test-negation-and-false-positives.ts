@@ -7,13 +7,11 @@
  */
 
 import { extractClinicalInfoWithRules } from '../lib/clinicalInfo';
-import { generateMockPrediction } from '../lib/mockInference';
-import { runAnalysis } from '../lib/agent';
+import { generateMockPrediction, encodeRgbaPng } from '../lib/mockInference';
+import { runAnalysis, calculateTumorVerdict, applyConcordanceGating } from '../lib/agent';
 import { SAMPLE_CASES } from '../lib/sampleCases';
-import { normalizeBoundingBox, getImageDimensions, isGeminiVisionConfigured } from '../lib/geminiVision';
-import { analyzeClinicalSymptoms } from '../lib/symptomAnalyzer';
-import { fetchMedicalKnowledge } from '../lib/medicalKnowledge';
-import { extractJsonFromText } from '../lib/utils';
+import { inflateSync } from 'node:zlib';
+import type { InferenceResult } from '../lib/types';
 
 const GREEN = '\x1b[32m';
 const RED = '\x1b[31m';
@@ -405,263 +403,351 @@ async function runAllTests() {
     clinicalText: '45yo male presenting with new-onset seizures and severe progressive headache. CT brain ordered.',
     manualOrgan: 'brain',
   });
-  assert(tumorWithSymptomsOnly.clinical.isNormalOrNegative === false, 'Adversarial E2E: Real tumor on symptom-only order is NOT marked normal');
+  assert(tumorWithSymptomsOnly.clinical.isNormalOrNegative === false, 'Adversarial E2E: Clinical text with symptoms only is not marked normal');
   assert(tumorWithSymptomsOnly.inference!.metrics.areaPx > 500, 'Adversarial E2E: Real tumor on symptom-only order is NOT suppressed');
   assert(tumorWithSymptomsOnly.inference!.confidence > 0.5, 'Adversarial E2E: Real tumor on symptom-only order maintains confidence');
 
-  // 7G: Negated "normal" phrases must NOT be treated as a normal study
-  const notNormalInfo = extractClinicalInfoWithRules('Brain scan is not normal. Follow-up consultation advised.');
-  assert(notNormalInfo.isNormalOrNegative === false, 'Adversarial: "Brain scan is not normal" is NOT marked normal/negative');
+  // ──────────────────────────────────────────────────────────────────────────
+  // TEST SUITE 8: Tri-Modal End-to-End Normal Controls
+  // ──────────────────────────────────────────────────────────────────────────
+  console.log(`\n${CYAN}${BOLD}[Suite 8] Tri-Modal End-to-End Normal Controls${RESET}`);
 
-  // 7H: "Outside normal limits" must NOT be treated as a normal study
-  const outsideLimitsInfo = extractClinicalInfoWithRules('Appearance is outside normal limits.');
-  assert(outsideLimitsInfo.isNormalOrNegative === false, 'Adversarial: "Outside normal limits" is NOT marked normal/negative');
+  // 8A: Brain MRI Normal Control
+  const e2eBrainNormal = await runAnalysis({
+    image: {
+      fileName: brainNormalCase.fileName,
+      contentType: 'image/svg+xml',
+      sizeBytes: brainNormalBytes.length,
+      bytes: brainNormalBytes,
+    },
+    clinicalText: brainNormalCase.clinicalNotes,
+    manualOrgan: brainNormalCase.organ,
+  });
+  const brainNormalVerdict = calculateTumorVerdict(e2eBrainNormal);
+  assert(e2eBrainNormal.inference!.metrics.areaPx === 0, 'Suite 8 (Brain Normal): Area is strictly 0 px');
+  assert(e2eBrainNormal.inference!.metrics.bbox === null, 'Suite 8 (Brain Normal): Bbox is null');
+  assert(e2eBrainNormal.inference!.confidence === 0.0, 'Suite 8 (Brain Normal): Confidence is strictly 0.0');
+  assert(e2eBrainNormal.measurements.length === 0, 'Suite 8 (Brain Normal): Zero RECIST measurements');
+  assert(brainNormalVerdict.dangerLevel === 0, 'Suite 8 (Brain Normal): Danger level is 0');
+  assert(brainNormalVerdict.dangerTitle === 'Clear / No Lesion (0/5)', 'Suite 8 (Brain Normal): Danger title is Clear / No Lesion (0/5)');
+  assert(e2eBrainNormal.report.markdown.includes('NEGATIVE'), 'Suite 8 (Brain Normal): Report contains NEGATIVE');
+  assert(!e2eBrainNormal.report.markdown.includes('identified a region of interest consistent with potential lesion tissue'), 'Suite 8 (Brain Normal): No positive lesion claim in report');
+  assert(e2eBrainNormal.clinical.isNormalOrNegative === true, 'Suite 8 (Brain Normal): Clinical isNormalOrNegative is true');
+  assert(e2eBrainNormal.clinical.findings.length === 0, 'Suite 8 (Brain Normal): Zero affirmed clinical findings');
+  assert((e2eBrainNormal.multiAgentTrace?.consensusScore ?? 0) >= 0.98, 'Suite 8 (Brain Normal): Multi-agent consensus >= 0.98');
+  assert(Boolean(e2eBrainNormal.multiAgentTrace?.finalConsensusSummary.toLowerCase().includes('zero false positive')), 'Suite 8 (Brain Normal): Final consensus confirms zero false positive');
 
-  // 7I: "Not unremarkable" must NOT be treated as a normal study
-  const notUnremarkableInfo = extractClinicalInfoWithRules('Axial T2 imaging is not unremarkable.');
-  assert(notUnremarkableInfo.isNormalOrNegative === false, 'Adversarial: "Not unremarkable" is NOT marked normal/negative');
+  // 8B: Lung CT Normal Control
+  const e2eLungNormal = await runAnalysis({
+    image: {
+      fileName: lungNormalCase.fileName,
+      contentType: 'image/svg+xml',
+      sizeBytes: lungNormalBytes.length,
+      bytes: lungNormalBytes,
+    },
+    clinicalText: lungNormalCase.clinicalNotes,
+    manualOrgan: lungNormalCase.organ,
+  });
+  const lungNormalVerdict = calculateTumorVerdict(e2eLungNormal);
+  assert(e2eLungNormal.inference!.metrics.areaPx === 0, 'Suite 8 (Lung Normal): Area is strictly 0 px');
+  assert(e2eLungNormal.inference!.metrics.bbox === null, 'Suite 8 (Lung Normal): Bbox is null');
+  assert(e2eLungNormal.inference!.confidence === 0.0, 'Suite 8 (Lung Normal): Confidence is strictly 0.0');
+  assert(e2eLungNormal.measurements.length === 0, 'Suite 8 (Lung Normal): Zero RECIST measurements');
+  assert(lungNormalVerdict.dangerLevel === 0, 'Suite 8 (Lung Normal): Danger level is 0');
+  assert(lungNormalVerdict.dangerTitle === 'Clear / No Lesion (0/5)', 'Suite 8 (Lung Normal): Danger title is Clear / No Lesion (0/5)');
+  assert(e2eLungNormal.report.markdown.includes('NEGATIVE'), 'Suite 8 (Lung Normal): Report contains NEGATIVE');
+  assert(!e2eLungNormal.report.markdown.includes('identified a region of interest consistent with potential lesion tissue'), 'Suite 8 (Lung Normal): No positive lesion claim in report');
+  assert(e2eLungNormal.clinical.isNormalOrNegative === true, 'Suite 8 (Lung Normal): Clinical isNormalOrNegative is true');
+  assert(e2eLungNormal.clinical.findings.length === 0, 'Suite 8 (Lung Normal): Zero affirmed clinical findings');
 
-  // 7J: Symptoms-only analysis (no scan attached) runs cleanly through the agent pipeline
-  const symptomsOnlyAnalysis = await runAnalysis({
-    clinicalText: '54-year-old female presenting with severe progressive morning headaches, left hemiparesis, blurred vision, and morning nausea.',
+  // 8C: Pancreas CT Normal Control
+  const e2ePancreasNormal = await runAnalysis({
+    image: {
+      fileName: pancreasNormalCase.fileName,
+      contentType: 'image/svg+xml',
+      sizeBytes: pancNormalBytes.length,
+      bytes: pancNormalBytes,
+    },
+    clinicalText: pancreasNormalCase.clinicalNotes,
+    manualOrgan: pancreasNormalCase.organ,
+  });
+  const pancNormalVerdict = calculateTumorVerdict(e2ePancreasNormal);
+  assert(e2ePancreasNormal.inference!.metrics.areaPx === 0, 'Suite 8 (Pancreas Normal): Area is strictly 0 px');
+  assert(e2ePancreasNormal.inference!.metrics.bbox === null, 'Suite 8 (Pancreas Normal): Bbox is null');
+  assert(e2ePancreasNormal.inference!.confidence === 0.0, 'Suite 8 (Pancreas Normal): Confidence is strictly 0.0');
+  assert(e2ePancreasNormal.measurements.length === 0, 'Suite 8 (Pancreas Normal): Zero RECIST measurements');
+  assert(pancNormalVerdict.dangerLevel === 0, 'Suite 8 (Pancreas Normal): Danger level is 0');
+  assert(pancNormalVerdict.dangerTitle === 'Clear / No Lesion (0/5)', 'Suite 8 (Pancreas Normal): Danger title is Clear / No Lesion (0/5)');
+  assert(e2ePancreasNormal.report.markdown.includes('NEGATIVE'), 'Suite 8 (Pancreas Normal): Report contains NEGATIVE');
+  assert(!e2ePancreasNormal.report.markdown.includes('identified a region of interest consistent with potential lesion tissue'), 'Suite 8 (Pancreas Normal): No positive lesion claim in report');
+  assert(e2ePancreasNormal.clinical.isNormalOrNegative === true, 'Suite 8 (Pancreas Normal): Clinical isNormalOrNegative is true');
+  assert(e2ePancreasNormal.clinical.findings.length === 0, 'Suite 8 (Pancreas Normal): Zero affirmed clinical findings');
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // TEST SUITE 9: Tri-Modal End-to-End True Positives (Sensitivity Preservation)
+  // ──────────────────────────────────────────────────────────────────────────
+  console.log(`\n${CYAN}${BOLD}[Suite 9] Tri-Modal End-to-End True Positives (Sensitivity Preservation)${RESET}`);
+
+  // 9A: Brain Tumor (GBM)
+  const e2eBrainTumor = await runAnalysis({
+    image: {
+      fileName: brainTumorCase.fileName,
+      contentType: 'image/svg+xml',
+      sizeBytes: brainTumorBytes.length,
+      bytes: brainTumorBytes,
+    },
+    clinicalText: brainTumorCase.clinicalNotes,
+    manualOrgan: brainTumorCase.organ,
+  });
+  const brainTumorVerdict = calculateTumorVerdict(e2eBrainTumor);
+  assert(e2eBrainTumor.clinical.isNormalOrNegative === false, 'Suite 9 (Brain Tumor): isNormalOrNegative is false');
+  assert(e2eBrainTumor.clinical.findings.length > 0, 'Suite 9 (Brain Tumor): Affirmed findings present');
+  assert(e2eBrainTumor.inference!.metrics.areaPx > 100, `Suite 9 (Brain Tumor): Retains lesion area (${e2eBrainTumor.inference!.metrics.areaPx} px)`);
+  assert(e2eBrainTumor.inference!.confidence >= 0.70, `Suite 9 (Brain Tumor): Confidence >= 0.70 (${e2eBrainTumor.inference!.confidence})`);
+  assert(e2eBrainTumor.measurements.length >= 4, `Suite 9 (Brain Tumor): RECIST measurements >= 4 (got ${e2eBrainTumor.measurements.length})`);
+  assert(brainTumorVerdict.dangerLevel === 5, 'Suite 9 (Brain Tumor): GBM evaluates to Danger Level 5 (Critical)');
+  assert(brainTumorVerdict.dangerTitle === 'Critical (Level 5/5)', 'Suite 9 (Brain Tumor): Danger title is Critical (Level 5/5)');
+  assert(e2eBrainTumor.report.markdown.includes('consistent with potential lesion tissue'), 'Suite 9 (Brain Tumor): Report documents lesion tissue');
+
+  // 9B: Lung Tumor (Spiculated Adenocarcinoma)
+  const e2eLungTumor = await runAnalysis({
+    image: {
+      fileName: lungTumorCase.fileName,
+      contentType: 'image/svg+xml',
+      sizeBytes: lungTumorBytes.length,
+      bytes: lungTumorBytes,
+    },
+    clinicalText: lungTumorCase.clinicalNotes,
+    manualOrgan: lungTumorCase.organ,
+  });
+  const lungTumorVerdict = calculateTumorVerdict(e2eLungTumor);
+  assert(e2eLungTumor.clinical.isNormalOrNegative === false, 'Suite 9 (Lung Tumor): isNormalOrNegative is false');
+  assert(e2eLungTumor.clinical.findings.length > 0, 'Suite 9 (Lung Tumor): Affirmed findings present');
+  assert(e2eLungTumor.inference!.metrics.areaPx > 100, `Suite 9 (Lung Tumor): Retains lesion area (${e2eLungTumor.inference!.metrics.areaPx} px)`);
+  assert(e2eLungTumor.inference!.confidence >= 0.70, `Suite 9 (Lung Tumor): Confidence >= 0.70 (${e2eLungTumor.inference!.confidence})`);
+  assert(e2eLungTumor.measurements.length >= 4, `Suite 9 (Lung Tumor): RECIST measurements >= 4 (got ${e2eLungTumor.measurements.length})`);
+  assert(lungTumorVerdict.dangerLevel >= 3, 'Suite 9 (Lung Tumor): Danger Level >= 3');
+  assert(e2eLungTumor.report.markdown.includes('consistent with potential lesion tissue'), 'Suite 9 (Lung Tumor): Report documents lesion tissue');
+
+  // 9C: Pancreas Tumor (Head Adenocarcinoma)
+  const e2ePancreasTumor = await runAnalysis({
+    image: {
+      fileName: pancreasTumorCase.fileName,
+      contentType: 'image/svg+xml',
+      sizeBytes: pancTumorBytes.length,
+      bytes: pancTumorBytes,
+    },
+    clinicalText: pancreasTumorCase.clinicalNotes,
+    manualOrgan: pancreasTumorCase.organ,
+  });
+  const pancTumorVerdict = calculateTumorVerdict(e2ePancreasTumor);
+  assert(e2ePancreasTumor.clinical.isNormalOrNegative === false, 'Suite 9 (Pancreas Tumor): isNormalOrNegative is false');
+  assert(e2ePancreasTumor.clinical.findings.length > 0, 'Suite 9 (Pancreas Tumor): Affirmed findings present');
+  assert(e2ePancreasTumor.inference!.metrics.areaPx > 100, `Suite 9 (Pancreas Tumor): Retains lesion area (${e2ePancreasTumor.inference!.metrics.areaPx} px)`);
+  assert(e2ePancreasTumor.inference!.confidence >= 0.70, `Suite 9 (Pancreas Tumor): Confidence >= 0.70 (${e2ePancreasTumor.inference!.confidence})`);
+  assert(e2ePancreasTumor.measurements.length >= 4, `Suite 9 (Pancreas Tumor): RECIST measurements >= 4 (got ${e2ePancreasTumor.measurements.length})`);
+  assert(pancTumorVerdict.dangerLevel >= 3, 'Suite 9 (Pancreas Tumor): Danger Level >= 3');
+  assert(e2ePancreasTumor.report.markdown.includes('consistent with potential lesion tissue'), 'Suite 9 (Pancreas Tumor): Report documents lesion tissue');
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // TEST SUITE 10: Clinical Negation Suppression of Uncorroborated Detections
+  // ──────────────────────────────────────────────────────────────────────────
+  console.log(`\n${CYAN}${BOLD}[Suite 10] Clinical Negation Suppression of Uncorroborated Detections${RESET}`);
+
+  const normalBrainClinical = extractClinicalInfoWithRules(brainNormalCase.clinicalNotes);
+  const normalLungClinical = extractClinicalInfoWithRules(lungNormalCase.clinicalNotes);
+
+  // 10A: Uncorroborated Brain candidate detection (35 px, conf 0.45)
+  const candidateBrainInference: InferenceResult = {
+    organ: 'brain',
+    modelFile: 'brain_unet.onnx',
+    width: 256,
+    height: 256,
+    maskBase64: encodeRgbaPng(256, 256, new Uint8Array(256 * 256 * 4)),
+    confidence: 0.45,
+    metrics: {
+      areaPx: 35,
+      areaFraction: 35 / (256 * 256),
+      bbox: { x: 100, y: 100, w: 10, h: 10 },
+      centroid: { x: 105, y: 105 },
+      equivalentDiameterPx: 6.7,
+    },
+    warnings: [],
+    processingMs: 12,
+    engine: 'mock',
+  };
+  const gatedBrain = applyConcordanceGating(normalBrainClinical, candidateBrainInference);
+  assert(gatedBrain.metrics.areaPx === 0, 'Suite 10: Uncorroborated Brain candidate suppressed to 0 px');
+  assert(gatedBrain.confidence === 0.0, 'Suite 10: Uncorroborated Brain candidate confidence reset to 0.0');
+  assert(gatedBrain.metrics.bbox === null, 'Suite 10: Uncorroborated Brain candidate bbox reset to null');
+  assert(gatedBrain.warnings.some((w) => w.includes('Negative clinical study gating')), 'Suite 10: Negative clinical study gating warning attached');
+  const dummyBrainResult = {
+    inference: gatedBrain,
+    routing: { modelKey: 'brain' },
+    clinical: normalBrainClinical,
+  } as any;
+  assert(calculateTumorVerdict(dummyBrainResult).dangerLevel === 0, 'Suite 10: Suppressed candidate evaluates to Danger Level 0');
+  assert(calculateTumorVerdict(dummyBrainResult).dangerTitle === 'Clear / No Lesion (0/5)', 'Suite 10: Danger title is Clear / No Lesion (0/5)');
+
+  // 10B: Uncorroborated Lung candidate detection (40 px, conf 0.50)
+  const candidateLungInference: InferenceResult = {
+    organ: 'lung',
+    modelFile: 'lung_unet.onnx',
+    width: 256,
+    height: 256,
+    maskBase64: encodeRgbaPng(256, 256, new Uint8Array(256 * 256 * 4)),
+    confidence: 0.50,
+    metrics: {
+      areaPx: 40,
+      areaFraction: 40 / (256 * 256),
+      bbox: { x: 80, y: 80, w: 12, h: 12 },
+      centroid: { x: 86, y: 86 },
+      equivalentDiameterPx: 7.1,
+    },
+    warnings: [],
+    processingMs: 10,
+    engine: 'mock',
+  };
+  const gatedLung = applyConcordanceGating(normalLungClinical, candidateLungInference);
+  assert(gatedLung.metrics.areaPx === 0, 'Suite 10: Uncorroborated Lung candidate suppressed to 0 px');
+  assert(gatedLung.confidence === 0.0, 'Suite 10: Uncorroborated Lung candidate confidence reset to 0.0');
+  const dummyLungResult = {
+    inference: gatedLung,
+    routing: { modelKey: 'lung' },
+    clinical: normalLungClinical,
+  } as any;
+  assert(calculateTumorVerdict(dummyLungResult).dangerLevel === 0, 'Suite 10: Suppressed lung candidate evaluates to Danger Level 0');
+
+  // 10C: Discordance Protection Guard: Unequivocal high-confidence visual lesion (120 px, conf 0.85)
+  const highConfVisualInference: InferenceResult = {
+    organ: 'brain',
+    modelFile: 'brain_unet.onnx',
+    width: 256,
+    height: 256,
+    maskBase64: encodeRgbaPng(256, 256, new Uint8Array(256 * 256 * 4)),
+    confidence: 0.85,
+    metrics: {
+      areaPx: 120,
+      areaFraction: 120 / (256 * 256),
+      bbox: { x: 50, y: 50, w: 25, h: 25 },
+      centroid: { x: 62, y: 62 },
+      equivalentDiameterPx: 12.3,
+    },
+    warnings: [],
+    processingMs: 15,
+    engine: 'mock',
+  };
+  const gatedHighConf = applyConcordanceGating(normalBrainClinical, highConfVisualInference);
+  assert(gatedHighConf.metrics.areaPx === 120, 'Suite 10: Unequivocal high-confidence lesion is NOT suppressed');
+  assert(gatedHighConf.confidence === 0.85, 'Suite 10: Unequivocal high-confidence lesion maintains confidence');
+  assert(gatedHighConf.warnings.some((w) => w.includes('CRITICAL CLINICAL-RADIOLOGICAL DISCORDANCE')), 'Suite 10: Critical discordance warning attached for review');
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // TEST SUITE 11: Unremarkable Parenchyma with Non-Tumor Benign Findings
+  // ──────────────────────────────────────────────────────────────────────────
+  console.log(`\n${CYAN}${BOLD}[Suite 11] Unremarkable Parenchyma with Non-Tumor Benign Findings${RESET}`);
+
+  // 11A: Brain MRI — Age-Related Chronic Microvascular Ischemic Changes
+  const ischemicBrainText = `Axial T2/FLAIR MRI of the brain. Mild patchy periventricular white matter hyperintensities consistent with chronic microvascular ischemic disease. No acute territorial infarction, intracranial hemorrhage, mass effect, midline shift, or enhancing neoplasm. Ventricles and sulci age-appropriate.`;
+  const e2eIschemicBrain = await runAnalysis({
+    image: {
+      fileName: 'brain_mri_flair_patient_ischemic.png',
+      contentType: 'image/svg+xml',
+      sizeBytes: brainNormalBytes.length,
+      bytes: brainNormalBytes,
+    },
+    clinicalText: ischemicBrainText,
     manualOrgan: 'brain',
   });
-  assert(symptomsOnlyAnalysis.clinical.symptoms.length >= 3, 'Symptoms-only E2E: Extracts multiple clinical symptoms');
-  assert(Boolean(symptomsOnlyAnalysis.symptomAnalysis), 'Symptoms-only E2E: Synthesizes rich symptom analysis');
-  assert(symptomsOnlyAnalysis.symptomAnalysis!.differentials.length > 0, 'Symptoms-only E2E: Evaluates differential diagnoses');
-  assert(symptomsOnlyAnalysis.inference === null, 'Symptoms-only E2E: Image inference is safely null without throwing error');
-  assert(symptomsOnlyAnalysis.report.sections.length >= 5, 'Symptoms-only E2E: Generates full structured consultation report');
+  const ischemicVerdict = calculateTumorVerdict(e2eIschemicBrain);
+  assert(e2eIschemicBrain.clinical.isNormalOrNegative === true, 'Suite 11 (Brain Ischemic): isNormalOrNegative is true');
+  assert(e2eIschemicBrain.clinical.findings.length === 0, 'Suite 11 (Brain Ischemic): Zero affirmed neoplasm findings');
+  assert(e2eIschemicBrain.inference!.metrics.areaPx === 0, 'Suite 11 (Brain Ischemic): Output area is 0 px');
+  assert(e2eIschemicBrain.inference!.confidence === 0.0, 'Suite 11 (Brain Ischemic): Confidence is 0.0');
+  assert(ischemicVerdict.dangerLevel === 0, 'Suite 11 (Brain Ischemic): Danger Level is 0');
+  assert(ischemicVerdict.dangerTitle === 'Clear / No Lesion (0/5)', 'Suite 11 (Brain Ischemic): Danger title is Clear / No Lesion (0/5)');
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // TEST SUITE 8: Edge Cases & Resilient Engine Verification
-  // ──────────────────────────────────────────────────────────────────────────
-  console.log(`\n${CYAN}${BOLD}[Suite 8] Edge Cases & Resilient Engine Verification${RESET}`);
-
-  // 8A: Contrasting Conjunctions (yet, though, despite, other than, aside from)
-  const yetCase = extractClinicalInfoWithRules('No intracranial mass, yet headache reported.');
-  assert(yetCase.symptoms.includes('headache'), 'Contrasting: "yet" preserves affirmed headache despite preceding "no mass"');
-  assert(yetCase.negatedFindings.includes('mass'), 'Contrasting: "no mass" correctly negated before "yet"');
-
-  const thoughCase = extractClinicalInfoWithRules('No tumor identified, though persistent cough present.');
-  assert(thoughCase.symptoms.includes('cough'), 'Contrasting: "though" preserves affirmed cough');
-  assert(thoughCase.negatedFindings.includes('tumor'), 'Contrasting: "no tumor" correctly negated before "though"');
-
-  const despiteCase = extractClinicalInfoWithRules('No lesion detected, despite severe seizure episodes.');
-  assert(despiteCase.symptoms.includes('seizure'), 'Contrasting: "despite" preserves affirmed seizure');
-  assert(despiteCase.negatedFindings.includes('lesion'), 'Contrasting: "no lesion" correctly negated before "despite"');
-
-  const otherThanCase = extractClinicalInfoWithRules('Unremarkable cranial examination, other than solitary nodule.');
-  assert(otherThanCase.findings.includes('nodule'), 'Contrasting: "other than" retains affirmed nodule');
-
-  const asideFromCase = extractClinicalInfoWithRules('Negative chest CT, aside from breast lump.');
-  assert(asideFromCase.symptoms.includes('breast lump'), 'Contrasting: "aside from" retains affirmed breast lump');
-
-  // 8B: Advanced Negations (denying, visible/significant, colon/dash delimiters)
-  const denyingCase = extractClinicalInfoWithRules('Patient is denying headache and denying chest pain.');
-  assert(!denyingCase.symptoms.includes('headache'), 'Negation: "denying headache" excluded from symptoms');
-  assert(!denyingCase.symptoms.includes('chest pain'), 'Negation: "denying chest pain" excluded from symptoms');
-
-  const visibleMassCase = extractClinicalInfoWithRules('No visible mass and no significant edema on MRI brain.');
-  assert(visibleMassCase.negatedFindings.includes('mass'), 'Negation: "no visible mass" correctly negated');
-  assert(visibleMassCase.negatedFindings.includes('edema'), 'Negation: "no significant edema" correctly negated');
-
-  const colonDelimCase = extractClinicalInfoWithRules('Findings:\nMass: Not detected\nEdema: None seen\nMidline shift: Absent');
-  assert(colonDelimCase.negatedFindings.includes('mass'), 'Negation: "Mass: Not detected" correctly negated');
-  assert(colonDelimCase.negatedFindings.includes('edema'), 'Negation: "Edema: None seen" correctly negated');
-  assert(colonDelimCase.negatedFindings.includes('midline shift'), 'Negation: "Midline shift: Absent" correctly negated');
-  assert(colonDelimCase.isNormalOrNegative === true, 'Negation: colon-delimited negative study flagged normal');
-
-  const hyphenRuleOutCase = extractClinicalInfoWithRules('Rule-out brain mass.');
-  assert(hyphenRuleOutCase.findings.length === 0, 'Negation: "Rule-out brain mass" (hyphenated) produces 0 confirmed findings');
-  assert(hyphenRuleOutCase.isNormalOrNegative === false, 'Adversarial: "Rule-out brain mass" is an indication, NOT a normal study');
-
-  // 8C: Multi-organ Ambiguity Resolution
-  const multiOrganCase1 = extractClinicalInfoWithRules(
-    'Chest CT ordered: pulmonary nodule noted in patient with prior remote history of skin mole.',
-  );
-  assert(multiOrganCase1.organsMentioned[0] === 'lung', 'Multi-organ: chronological priority places primary target "lung" first');
-  assert(multiOrganCase1.organsMentioned.includes('skin'), 'Multi-organ: secondary mention of "skin" is retained');
-
-  const multiOrganCase2 = extractClinicalInfoWithRules(
-    'Brain MRI for headache in patient with remote history of lung infection.',
-  );
-  assert(multiOrganCase2.organsMentioned[0] === 'brain', 'Multi-organ: chronological priority places primary target "brain" first');
-
-  // 8D: Gemini Vision Bounding Box Normalization (0..1, 0..100, 0..1000, inverted coords, object schemas)
-  const norm1000 = normalizeBoundingBox([250, 450, 450, 650], 256, 256);
-  assert(norm1000[0] === 115 && norm1000[1] === 64 && norm1000[2] === 166 && norm1000[3] === 115, 'BBox: 0..1000 scale normalizes to [115, 64, 166, 115]');
-
-  const norm100 = normalizeBoundingBox([25, 45, 45, 65], 256, 256);
-  assert(norm100[0] === 115 && norm100[1] === 64 && norm100[2] === 166 && norm100[3] === 115, 'BBox: 0..100 percentage scale normalizes to [115, 64, 166, 115]');
-
-  const norm1 = normalizeBoundingBox([0.25, 0.45, 0.45, 0.65], 256, 256);
-  assert(norm1[0] === 115 && norm1[1] === 64 && norm1[2] === 166 && norm1[3] === 115, 'BBox: 0..1 float scale normalizes to [115, 64, 166, 115]');
-
-  const normInverted = normalizeBoundingBox([450, 650, 250, 450], 256, 256);
-  assert(normInverted[0] === 115 && normInverted[1] === 64 && normInverted[2] === 166 && normInverted[3] === 115, 'BBox: inverted coordinates correctly sorted (minX <= maxX, minY <= maxY)');
-
-  const normObject = normalizeBoundingBox({ ymin: 250, xmin: 450, ymax: 450, xmax: 650 }, 256, 256);
-  assert(normObject[0] === 115 && normObject[1] === 64 && normObject[2] === 166 && normObject[3] === 115, 'BBox: object schema {ymin, xmin, ymax, xmax} parsed correctly');
-
-  // 8E: Empty / 0-byte Buffer Handling in Mock Inference
-  const emptyBytesPred = generateMockPrediction('brain', new Uint8Array(0));
-  assert(emptyBytesPred.metrics.areaPx === 0, 'Mock Inference: 0-byte image buffer produces 0 px lesion (no divide-by-zero or NaN)');
-  assert(emptyBytesPred.confidence === 0.0, 'Mock Inference: 0-byte image buffer confidence is 0.0');
-
-  // 8F: Symptom Fallback with Explicit organHint Priority
-  const lungSymptomResult = await analyzeClinicalSymptoms({
-    text: 'Patient reports progressive fatigue, weakness, and mild dyspnea.',
-    organHint: 'lung',
+  // 11B: Lung CT — Dependent Atelectasis / Clear Parenchyma
+  const atelectasisLungText = `High-resolution chest CT. Mild bibasilar dependent subsegmental atelectasis clearing anteriorly. No solitary pulmonary nodule, consolidation, or pleural mass. Normal hilar and mediastinal lymph nodes. Unremarkable examination.`;
+  const e2eAtelectasisLung = await runAnalysis({
+    image: {
+      fileName: 'lung_chest_ct_atelectasis.png',
+      contentType: 'image/svg+xml',
+      sizeBytes: lungNormalBytes.length,
+      bytes: lungNormalBytes,
+    },
+    clinicalText: atelectasisLungText,
+    manualOrgan: 'lung',
   });
-  assert(
-    lungSymptomResult !== null &&
-      lungSymptomResult.differentials[0].organSystem.includes('Pulmonary'),
-    'Symptom Analyzer: explicit organHint="lung" routes to Pulmonary oncology even with constitutional weakness',
-  );
+  const atelectasisVerdict = calculateTumorVerdict(e2eAtelectasisLung);
+  assert(e2eAtelectasisLung.clinical.isNormalOrNegative === true, 'Suite 11 (Lung Atelectasis): isNormalOrNegative is true');
+  assert(e2eAtelectasisLung.clinical.findings.length === 0, 'Suite 11 (Lung Atelectasis): Zero affirmed neoplasm findings');
+  assert(e2eAtelectasisLung.inference!.metrics.areaPx === 0, 'Suite 11 (Lung Atelectasis): Output area is 0 px');
+  assert(e2eAtelectasisLung.inference!.confidence === 0.0, 'Suite 11 (Lung Atelectasis): Confidence is 0.0');
+  assert(atelectasisVerdict.dangerLevel === 0, 'Suite 11 (Lung Atelectasis): Danger Level is 0');
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // TEST SUITE 9: Deep Codebase Flaw Fixes & Multi-Organ Engine Verification
-  // ──────────────────────────────────────────────────────────────────────────
-  console.log(`\n${CYAN}${BOLD}[Suite 9] Deep Codebase Flaw Fixes & Multi-Organ Engine Verification${RESET}`);
-
-  // 9A: extractJsonFromText Markdown Fence & Commentary Resilience
-  const rawFencedJson = '```json\n{\n  "has_tumor": true,\n  "diagnosis": "Glioma"\n}\n```';
-  const parsedFenced = extractJsonFromText<{ has_tumor: boolean; diagnosis: string }>(rawFencedJson);
-  assert(parsedFenced?.has_tumor === true, 'JSON Extractor: successfully strips markdown code fences');
-  assert(parsedFenced?.diagnosis === 'Glioma', 'JSON Extractor: accurately parses JSON payload within code fences');
-
-  const rawConversationalJson = 'Here is the requested clinical evaluation:\n```json\n{"status": "ok"}\n```\nHope this helps!';
-  const parsedConv = extractJsonFromText<{ status: string }>(rawConversationalJson);
-  assert(parsedConv?.status === 'ok', 'JSON Extractor: successfully extracts JSON enclosed in conversational text');
-
-  const invalidJsonText = 'This is not valid json at all.';
-  const parsedInvalid = extractJsonFromText(invalidJsonText);
-  assert(parsedInvalid === null, 'JSON Extractor: safely returns null for invalid non-JSON strings without throwing');
-
-  // 9B: Extended normalizeBoundingBox schemas and high-res scaling
-  const normMinMaxObj = normalizeBoundingBox({ minX: 450, minY: 250, maxX: 650, maxY: 450 }, 256, 256);
-  assert(normMinMaxObj[0] === 115 && normMinMaxObj[1] === 64 && normMinMaxObj[2] === 166 && normMinMaxObj[3] === 115, 'BBox: object schema {minX, minY, maxX, maxY} parsed correctly');
-
-  const normX1Y1Obj = normalizeBoundingBox({ x1: 450, y1: 250, x2: 650, y2: 450 }, 256, 256);
-  assert(normX1Y1Obj[0] === 115 && normX1Y1Obj[1] === 64 && normX1Y1Obj[2] === 166 && normX1Y1Obj[3] === 115, 'BBox: object schema {x1, y1, x2, y2} parsed correctly');
-
-  const normHighRes = normalizeBoundingBox([1250, 2250, 2250, 3250], 256, 256);
-  assert(normHighRes[0] >= 0 && normHighRes[2] <= 256 && normHighRes[0] < normHighRes[2], 'BBox: high-res pixel coordinates (>1000) scale safely within image bounds');
-
-  // 9C: Comprehensive Multi-Organ Medical Knowledge Routing
-  const breastKnowledge = await fetchMedicalKnowledge({ diagnosis: 'Breast Lump', organ: 'breast', hasTumor: true });
-  assert(breastKnowledge.condition.includes('Ductal Carcinoma'), 'Knowledge Engine: breast organ routes to Invasive Ductal Carcinoma (not GBM)');
-
-  const kidneyKnowledge = await fetchMedicalKnowledge({ diagnosis: 'Renal Mass', organ: 'kidney', hasTumor: true });
-  assert(kidneyKnowledge.condition.includes('Renal Cell Carcinoma'), 'Knowledge Engine: kidney organ routes to Renal Cell Carcinoma (not GBM)');
-
-  const skinKnowledge = await fetchMedicalKnowledge({ diagnosis: 'Irregular Mole', organ: 'skin', hasTumor: true });
-  assert(skinKnowledge.condition.includes('Melanoma'), 'Knowledge Engine: skin organ routes to Cutaneous Malignant Melanoma (not GBM)');
-
-  const liverKnowledge = await fetchMedicalKnowledge({ diagnosis: 'Hepatic Mass', organ: 'liver', hasTumor: true });
-  assert(liverKnowledge.condition.includes('Hepatocellular Carcinoma'), 'Knowledge Engine: liver organ routes to Hepatocellular Carcinoma (not GBM)');
-
-  const colonKnowledge = await fetchMedicalKnowledge({ diagnosis: 'Colon Polyp', organ: 'colon', hasTumor: true });
-  assert(colonKnowledge.condition.includes('Colorectal Adenocarcinoma'), 'Knowledge Engine: colon organ routes to Colorectal Adenocarcinoma (not GBM)');
-
-  const prostateKnowledge = await fetchMedicalKnowledge({ diagnosis: 'Prostate Nodule', organ: 'prostate', hasTumor: true });
-  assert(prostateKnowledge.condition.includes('Prostate Adenocarcinoma'), 'Knowledge Engine: prostate organ routes to Prostate Adenocarcinoma (not GBM)');
-
-  // 9D: Multi-Organ Symptom Analyzer Fallbacks
-  const liverSymptomResult = await analyzeClinicalSymptoms({
-    text: 'Patient presents with worsening jaundice, ascites, and right upper quadrant discomfort.',
-    organHint: 'liver',
+  // 11C: Pancreas CT — Parenchymal Fatty Infiltration & Senile Atrophy
+  const fattyAtrophyPancreasText = `Contrast-enhanced abdominal CT. Diffuse fatty replacement and mild parenchymal atrophy of the pancreas consistent with age. No focal hypodense mass, cyst, or necrosis in the pancreatic head, body, or tail. Main pancreatic duct is non-dilated (1.5 mm). Common bile duct normal caliber. Unremarkable pancreas.`;
+  const e2eFattyPancreas = await runAnalysis({
+    image: {
+      fileName: 'pancreas_ct_fatty_atrophy.png',
+      contentType: 'image/svg+xml',
+      sizeBytes: pancNormalBytes.length,
+      bytes: pancNormalBytes,
+    },
+    clinicalText: fattyAtrophyPancreasText,
+    manualOrgan: 'pancreas',
   });
-  assert(
-    liverSymptomResult !== null &&
-      liverSymptomResult.differentials[0].condition.includes('Hepatocellular Carcinoma'),
-    'Symptom Analyzer: explicit organHint="liver" generates Hepatocellular Carcinoma differential',
-  );
-
-  const colonSymptomResult = await analyzeClinicalSymptoms({
-    text: '58yo with 3 months of progressive hematochezia, weight loss, and change in bowel habits.',
-    organHint: 'colon',
-  });
-  assert(
-    colonSymptomResult !== null &&
-      colonSymptomResult.differentials[0].condition.includes('Colorectal Adenocarcinoma'),
-    'Symptom Analyzer: explicit organHint="colon" generates Colorectal Adenocarcinoma differential',
-  );
-
-  const prostateSymptomResult = await analyzeClinicalSymptoms({
-    text: 'Elderly male with nocturia, weak urinary stream, and elevated serum PSA.',
-    organHint: 'prostate',
-  });
-  assert(
-    prostateSymptomResult !== null &&
-      prostateSymptomResult.differentials[0].condition.includes('Prostate'),
-    'Symptom Analyzer: explicit organHint="prostate" generates Prostate differential',
-  );
+  const fattyPancreasVerdict = calculateTumorVerdict(e2eFattyPancreas);
+  assert(e2eFattyPancreas.clinical.isNormalOrNegative === true, 'Suite 11 (Pancreas Fatty Atrophy): isNormalOrNegative is true');
+  assert(e2eFattyPancreas.clinical.findings.length === 0, 'Suite 11 (Pancreas Fatty Atrophy): Zero affirmed neoplasm findings');
+  assert(e2eFattyPancreas.inference!.metrics.areaPx === 0, 'Suite 11 (Pancreas Fatty Atrophy): Output area is 0 px');
+  assert(e2eFattyPancreas.inference!.confidence === 0.0, 'Suite 11 (Pancreas Fatty Atrophy): Confidence is 0.0');
+  assert(fattyPancreasVerdict.dangerLevel === 0, 'Suite 11 (Pancreas Fatty Atrophy): Danger Level is 0');
 
   // ──────────────────────────────────────────────────────────────────────────
-  // TEST SUITE 10: Gemini Vision End-to-End & Aspect Ratio Localization
+  // TEST SUITE 12: Pixel-Level Zero Mask Verification
   // ──────────────────────────────────────────────────────────────────────────
-  console.log(`\n${CYAN}${BOLD}[Suite 10] Gemini Vision Localization, Aspect Ratio & Dimension Fidelity${RESET}`);
+  console.log(`\n${CYAN}${BOLD}[Suite 12] Pixel-Level Zero Mask Verification${RESET}`);
 
-  // 1. Synthetic PNG byte header dimension parser (641x473)
-  const pngHeader = new Uint8Array(24);
-  pngHeader.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
-  // width: 641 (0x00000281) at byte 16
-  pngHeader[16] = 0x00; pngHeader[17] = 0x00; pngHeader[18] = 0x02; pngHeader[19] = 0x81;
-  // height: 473 (0x000001D9) at byte 20
-  pngHeader[20] = 0x00; pngHeader[21] = 0x00; pngHeader[22] = 0x01; pngHeader[23] = 0xd9;
+  function decodePngRgba(base64Png: string): Uint8Array {
+    const buf = Buffer.from(base64Png, 'base64');
+    let offset = 8;
+    const idatParts: Buffer[] = [];
+    let width = 256;
+    let height = 256;
+    while (offset + 8 <= buf.length) {
+      const len = buf.readUInt32BE(offset);
+      const type = buf.toString('ascii', offset + 4, offset + 8);
+      if (type === 'IHDR') {
+        width = buf.readUInt32BE(offset + 8);
+        height = buf.readUInt32BE(offset + 12);
+      } else if (type === 'IDAT') {
+        idatParts.push(buf.subarray(offset + 8, offset + 8 + len));
+      }
+      offset += 12 + len;
+    }
+    const decompressed = inflateSync(Buffer.concat(idatParts));
+    const stride = width * 4;
+    const rgba = new Uint8Array(width * height * 4);
+    for (let y = 0; y < height; y++) {
+      const row = decompressed.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1));
+      rgba.set(row, y * stride);
+    }
+    return rgba;
+  }
 
-  const dims = getImageDimensions(pngHeader);
-  assert(dims.width === 641 && dims.height === 473, 'Dimension Parser: Accurately extracts non-square PNG dimensions (641x473)');
+  const brainRgba = decodePngRgba(e2eBrainNormal.inference!.maskBase64);
+  assert(brainRgba.length === 256 * 256 * 4, 'Suite 12: Brain normal mask has 262,144 RGBA bytes (256x256)');
+  assert(brainRgba.every((b) => b === 0), 'Suite 12: Brain normal control mask contains strictly 0 for ALL RGBA bytes');
 
-  // 2. Synthetic JPEG byte header dimension parser (512x384)
-  const jpegHeader = new Uint8Array([
-    0xff, 0xd8, // SOI
-    0xff, 0xc0, // SOF0
-    0x00, 0x11, // length 17
-    0x08,       // precision 8
-    0x01, 0x80, // height 384
-    0x02, 0x00, // width 512
-    0x03,       // components
-  ]);
-  const jpegDims = getImageDimensions(jpegHeader);
-  assert(jpegDims.width === 512 && jpegDims.height === 384, 'Dimension Parser: Accurately extracts JPEG dimensions (512x384)');
+  const lungRgba = decodePngRgba(e2eLungNormal.inference!.maskBase64);
+  assert(lungRgba.length === 256 * 256 * 4, 'Suite 12: Lung normal mask has 262,144 RGBA bytes (256x256)');
+  assert(lungRgba.every((b) => b === 0), 'Suite 12: Lung normal control mask contains strictly 0 for ALL RGBA bytes');
 
-  // 3. Fallback dimension parser for empty/corrupted buffer
-  const fallbackDims = getImageDimensions(new Uint8Array(8));
-  assert(fallbackDims.width === 256 && fallbackDims.height === 256, 'Dimension Parser: Gracefully defaults to standard 256x256 on partial/empty buffer');
-
-  // 4. Normalized Bounding Box with non-square aspect ratio (641x473)
-  // Gemini returns [444, 258, 640, 476] (ymin, xmin, ymax, xmax on 0..1000 scale)
-  const [nbXmin, nbYmin, nbXmax, nbYmax] = normalizeBoundingBox([444, 258, 640, 476], 641, 473);
-  const expectedXmin = Math.round((258 / 1000) * 641); // 165
-  const expectedXmax = Math.round((476 / 1000) * 641); // 305
-  const expectedYmin = Math.round((444 / 1000) * 473); // 210
-  const expectedYmax = Math.round((640 / 1000) * 473); // 303
-
-  assert(
-    Math.abs(nbXmin - expectedXmin) <= 1 && Math.abs(nbXmax - expectedXmax) <= 1,
-    `BBox Normalizer: Correctly scales horizontal tumor bounds onto 641px width (${nbXmin}..${nbXmax})`,
-  );
-  assert(
-    Math.abs(nbYmin - expectedYmin) <= 1 && Math.abs(nbYmax - expectedYmax) <= 1,
-    `BBox Normalizer: Correctly scales vertical tumor bounds onto 473px height (${nbYmin}..${nbYmax})`,
-  );
-
-  // 5. Center of lesion is isolated to the anatomical hemisphere, never forced to center ventricles
-  const lesionCenterX = (nbXmin + nbXmax) / 2;
-  const lesionFractionX = lesionCenterX / 641;
-  assert(
-    lesionFractionX < 0.45 && lesionFractionX > 0.30,
-    `BBox Normalizer: Lesion center correctly positioned at hemisphere (${(lesionFractionX * 100).toFixed(1)}% of scan width), preventing central ventricle misplacement`,
-  );
-
-  // 6. Gemini Vision Configuration status check
-  const isConfigured = isGeminiVisionConfigured();
-  assert(
-    typeof isConfigured === 'boolean',
-    `Gemini Vision Config: isGeminiVisionConfigured() correctly evaluates without throwing (active=${isConfigured})`,
-  );
+  const pancreasRgba = decodePngRgba(e2ePancreasNormal.inference!.maskBase64);
+  assert(pancreasRgba.length === 256 * 256 * 4, 'Suite 12: Pancreas normal mask has 262,144 RGBA bytes (256x256)');
+  assert(pancreasRgba.every((b) => b === 0), 'Suite 12: Pancreas normal control mask contains strictly 0 for ALL RGBA bytes');
 
   // ──────────────────────────────────────────────────────────────────────────
   // SUMMARY

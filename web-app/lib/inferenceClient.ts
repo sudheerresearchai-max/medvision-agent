@@ -28,13 +28,6 @@ const MODEL_FILES: Record<ModelKey, string> = {
   brain: 'brain_unet.onnx',
   lung: 'lung_unet.onnx',
   pancreas: 'pancreas_unet.onnx',
-  breast: 'breast_unet.onnx',
-  liver: 'liver_unet.onnx',
-  kidney: 'kidney_unet.onnx',
-  skin: 'skin_unet.onnx',
-  colon: 'colon_unet.onnx',
-  prostate: 'prostate_unet.onnx',
-  general: 'multimodal_general.onnx',
 };
 
 function baseUrl(): string | null {

@@ -270,10 +270,16 @@ export function ClinicalKnowledgePanel({ knowledge }: ClinicalKnowledgePanelProp
         {/* TAB 4: Guidelines & Citations */}
         {activeTab === 'guidelines' && (
           <div className="space-y-4 animate-in fade-in-50 duration-150">
-            <h4 className="text-xs uppercase tracking-wider font-semibold text-foreground/90 flex items-center gap-1.5">
-              <BookOpen className="w-3.5 h-3.5 text-primary" />
-              Authoritative Oncology Guidelines &amp; Academic Registries
-            </h4>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h4 className="text-xs uppercase tracking-wider font-semibold text-foreground/90 flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-primary" />
+                Authoritative Oncology Guidelines &amp; Academic Registries
+              </h4>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium border border-primary/30 bg-primary/10 text-primary">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                Live Web Grounded &bull; OpenWebNinja
+              </span>
+            </div>
             <div className="grid gap-3 sm:grid-cols-2">
               {knowledge.sources.map((src, idx) => (
                 <a
@@ -281,7 +287,12 @@ export function ClinicalKnowledgePanel({ knowledge }: ClinicalKnowledgePanelProp
                   href={src.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group block p-3.5 rounded-xl border border-border/70 bg-card hover:bg-secondary/40 transition-all shadow-2xs space-y-1.5"
+                  className={cn(
+                    'group block p-3.5 rounded-xl border transition-all shadow-2xs space-y-1.5',
+                    src.isLiveWeb
+                      ? 'border-primary/40 bg-card hover:border-primary hover:bg-secondary/40'
+                      : 'border-border/70 bg-card hover:bg-secondary/40'
+                  )}
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-xs text-foreground group-hover:text-primary transition-colors flex items-center gap-1.5">
@@ -289,12 +300,19 @@ export function ClinicalKnowledgePanel({ knowledge }: ClinicalKnowledgePanelProp
                     </span>
                     <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
                   </div>
-                  <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-3">
                     {src.citation}
                   </p>
-                  <span className="inline-block px-2 py-0.5 rounded text-[9px] uppercase tracking-wider font-mono bg-secondary text-muted-foreground">
-                    {src.sourceType}
-                  </span>
+                  <div className="flex items-center gap-2 pt-0.5">
+                    <span className="inline-block px-2 py-0.5 rounded text-[9px] uppercase tracking-wider font-mono bg-secondary text-muted-foreground">
+                      {src.sourceType}
+                    </span>
+                    {src.isLiveWeb && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-medium bg-primary/15 text-primary border border-primary/25">
+                        ⚡ Real-Time Web
+                      </span>
+                    )}
+                  </div>
                 </a>
               ))}
             </div>

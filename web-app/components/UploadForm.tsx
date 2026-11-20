@@ -3,34 +3,25 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import {
+  UploadCloud,
   FileImage,
-  FileText,
   X,
   ArrowRight,
-  Paperclip,
+  Sparkles,
+  Zap,
 } from 'lucide-react';
 import type { Organ } from '@/lib/types';
+import { IMAGE_MAX_BYTES, PDF_MAX_BYTES, SUPPORTED_IMAGE_EXTENSIONS } from '@/lib/types';
+import { Button } from '@/components/ui/button';
 import { cn, formatBytes } from '@/lib/utils';
+import { SAMPLE_CASES, type SampleCase } from '@/lib/sampleCases';
 import { ClaudeThinkingPill } from '@/components/ClaudeThinkingPill';
+import { ClinicalSafetyPrecautions } from '@/components/ClinicalSafetyPrecautions';
 
 type OrganChoice = Organ | 'auto';
 
 const ACCEPT_ATTR =
-  '.png,.jpg,.jpeg,.webp,.dcm,.nii,.gz,.pdf,image/png,image/jpeg,image/webp,application/dicom,application/pdf';
-
-const ORGAN_OPTIONS: Array<{ key: OrganChoice; label: string }> = [
-  { key: 'auto', label: 'Auto (AI)' },
-  { key: 'brain', label: 'Brain' },
-  { key: 'lung', label: 'Lung' },
-  { key: 'pancreas', label: 'Pancreas' },
-  { key: 'breast', label: 'Breast' },
-  { key: 'liver', label: 'Liver' },
-  { key: 'kidney', label: 'Kidney' },
-  { key: 'skin', label: 'Skin' },
-  { key: 'colon', label: 'Colon' },
-  { key: 'prostate', label: 'Prostate' },
-  { key: 'general', label: 'General' },
-];
+  '.png,.jpg,.jpeg,.dcm,.nii,.gz,image/png,image/jpeg,application/dicom';
 
 function extOf(name: string): string {
   const lower = name.toLowerCase();
@@ -40,7 +31,7 @@ function extOf(name: string): string {
 }
 
 async function makePreview(file: File): Promise<string | null> {
-  if (!/^image\/(png|jpeg|webp|svg\+xml)$/.test(file.type)) return null;
+  if (!/^image\/(png|jpeg|svg\+xml)$/.test(file.type)) return null;
   try {
     const bitmap = await createImageBitmap(file);
     const scale = Math.min(1, 768 / Math.max(bitmap.width, bitmap.height));
@@ -50,18 +41,26 @@ async function makePreview(file: File): Promise<string | null> {
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
     ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL('image/jpeg', 0.85);
+    return canvas.toDataURL('image/jpeg', 0.82);
   } catch {
     return null;
   }
 }
 
+async function dataUrlToFile(dataUrl: string, fileName: string): Promise<File> {
+  const res = await fetch(dataUrl);
+  const blob = await res.blob();
+  return new File([blob], fileName, { type: blob.type || 'image/png' });
+}
+
 const THINKING_STAGES = [
-  'Inspecting radiological pixel matrix with Google Gemini Vision...',
-  'Extracting clinical entities & verifying negation boundaries...',
-  'Computing RECIST 1.1 dimensions & lesion surface area...',
-  'Synthesizing multi-agent clinical consensus & differential diagnoses...',
-  'Cross-referencing NCCN oncologic management pathways...',
+  'Searching the web...',
+  'Inspecting scan with Gemini Vision...',
+  'Delineating neoplastic boundary contours...',
+  'Searching clinical databases for guidelines & precautions...',
+  'Cross-examining multi-agent clinical consensus...',
+  'Synthesizing diagnostic verdict & side effects...',
+  'Thinking...',
 ];
 
 export function UploadForm() {
@@ -70,91 +69,81 @@ export function UploadForm() {
   const [organChoice, setOrganChoice] = React.useState<OrganChoice>('auto');
   const [imageFile, setImageFile] = React.useState<File | null>(null);
   const [imagePreview, setImagePreview] = React.useState<string | null>(null);
-  const [pdfFile, setPdfFile] = React.useState<File | null>(null);
   const [notes, setNotes] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
-  const [dragOver, setDragOver] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
+  const [dragOver, setDragOver] = React.useState(false);
+  const [activeSampleId, setActiveSampleId] = React.useState<string | null>(null);
   const [stageIndex, setStageIndex] = React.useState(0);
   const [thinkingStartMs, setThinkingStartMs] = React.useState<number | null>(null);
 
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-
+  // Animate thinking stages when submitting
   React.useEffect(() => {
     if (!submitting) return;
+    setThinkingStartMs(Date.now());
     const interval = setInterval(() => {
       setStageIndex((prev) => (prev + 1) % THINKING_STAGES.length);
     }, 1800);
     return () => clearInterval(interval);
   }, [submitting]);
 
-  const handleFile = async (f?: File | null) => {
-    if (!f) return;
+  const loadSampleCase = async (sample: SampleCase) => {
     setError(null);
-    const ext = extOf(f.name);
+    setActiveSampleId(sample.id);
+    setOrganChoice(sample.organ);
+    setNotes(sample.clinicalNotes);
+    try {
+      const file = await dataUrlToFile(sample.imageDataUrl, sample.fileName);
+      setImageFile(file);
+      setImagePreview(sample.imageDataUrl);
+    } catch (err) {
+      setError('Could not load sample case image: ' + String(err));
+    }
+  };
 
-    if (ext === '.pdf' || f.type === 'application/pdf') {
-      setPdfFile(f);
+  const handleFile = async (file: File | undefined | null) => {
+    setError(null);
+    if (activeSampleId) {
+      setActiveSampleId(null);
+    }
+    if (!file) return;
+    const ext = extOf(file.name);
+    if (!SUPPORTED_IMAGE_EXTENSIONS.includes(ext as (typeof SUPPORTED_IMAGE_EXTENSIONS)[number])) {
+      setError(`Unsupported scan format "${ext || file.name}". Supported: ${SUPPORTED_IMAGE_EXTENSIONS.join(', ')}`);
       return;
     }
-
-    setImageFile(f);
-    const prev = await makePreview(f);
+    if (file.size > IMAGE_MAX_BYTES) {
+      setError(`Scan too large (${formatBytes(file.size)}). Limit ${formatBytes(IMAGE_MAX_BYTES)}.`);
+      return;
+    }
+    setImageFile(file);
+    const prev = await makePreview(file);
     setImagePreview(prev);
   };
 
   const clearFile = () => {
     setImageFile(null);
     setImagePreview(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    setActiveSampleId(null);
   };
 
-  const clearPdf = () => {
-    setPdfFile(null);
-  };
-
-  const onSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
 
-    const hasImage = Boolean(imageFile);
-    const hasPdf = Boolean(pdfFile);
-    const hasSymptoms = Boolean(notes.trim());
-
-    if (!hasImage && !hasPdf && !hasSymptoms) {
-      setError('Please provide a medical scan or describe clinical symptoms.');
-      return;
-    }
-
-    if (imageFile && imageFile.size > 4 * 1024 * 1024) {
-      setError(`Image exceeds 4 MB limit (${(imageFile.size / 1024 / 1024).toFixed(2)} MB). Please downscale or choose another scan.`);
-      return;
-    }
-    if (pdfFile && pdfFile.size > 4 * 1024 * 1024) {
-      setError(`PDF exceeds 4 MB limit (${(pdfFile.size / 1024 / 1024).toFixed(2)} MB).`);
+    if (!imageFile) {
+      setError('Please select or drop a medical scan image (MRI/CT).');
       return;
     }
 
     setSubmitting(true);
-    setThinkingStartMs(Date.now());
-    setStageIndex(0);
-
     try {
       const form = new FormData();
-      if (organChoice !== 'auto') {
-        form.append('organ', organChoice);
-      }
-      if (notes.trim()) {
-        form.append('notes', notes.trim());
-      }
-      if (imageFile) {
-        form.append('image', imageFile);
-        const preview = imagePreview || (await makePreview(imageFile));
-        if (preview) form.append('imagePreview', preview);
-      }
-      if (pdfFile) {
-        form.append('pdf', pdfFile);
-      }
+      form.append('organ', organChoice);
+      form.append('notes', notes);
+      form.append('image', imageFile);
+      const preview = imagePreview || (await makePreview(imageFile));
+      if (preview) form.append('imagePreview', preview);
 
       const res = await fetch('/api/analyze', { method: 'POST', body: form });
       const payload = await res.json().catch(() => null);
@@ -179,170 +168,180 @@ export function UploadForm() {
     }
   };
 
-  const hasImage = Boolean(imageFile);
-  const hasPdf = Boolean(pdfFile);
-  const hasSymptoms = Boolean(notes.trim());
-  const canSubmit = hasImage || hasPdf || hasSymptoms;
+  const positiveSample = SAMPLE_CASES.find((s) => s.id === 'case01_brain_gbm') || SAMPLE_CASES[0];
+  const lungSample = SAMPLE_CASES.find((s) => s.id === 'case02_lung_nsclc') || SAMPLE_CASES[1];
+  const normalSample = SAMPLE_CASES.find((s) => s.isControl) || SAMPLE_CASES[3];
 
   return (
-    <div className="w-full space-y-4">
-      {/* Hidden File Input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept={ACCEPT_ATTR}
-        className="hidden"
-        disabled={submitting}
-        onChange={(e) => handleFile(e.target.files?.[0])}
-      />
+    <div className="w-full max-w-2xl mx-auto space-y-6">
+      {/* Quick-Load Minimal Pills */}
+      <div className="flex flex-wrap items-center justify-center gap-2 text-xs">
+        <span className="text-muted-foreground text-[11px] font-mono mr-1">Quick Scans:</span>
+        <button
+          type="button"
+          disabled={submitting}
+          onClick={() => loadSampleCase(positiveSample)}
+          className={cn(
+            'px-3 py-1 rounded-full border text-[11px] font-mono transition-all',
+            activeSampleId === positiveSample.id
+              ? 'border-primary bg-primary/10 text-primary font-semibold'
+              : 'border-border/70 hover:border-border bg-card/60 hover:bg-card text-foreground/80',
+          )}
+        >
+          🔴 Glioblastoma MRI (Positive)
+        </button>
+        <button
+          type="button"
+          disabled={submitting}
+          onClick={() => loadSampleCase(lungSample)}
+          className={cn(
+            'px-3 py-1 rounded-full border text-[11px] font-mono transition-all',
+            activeSampleId === lungSample.id
+              ? 'border-primary bg-primary/10 text-primary font-semibold'
+              : 'border-border/70 hover:border-border bg-card/60 hover:bg-card text-foreground/80',
+          )}
+        >
+          🟠 Lung Nodule CT (Positive)
+        </button>
+        <button
+          type="button"
+          disabled={submitting}
+          onClick={() => loadSampleCase(normalSample)}
+          className={cn(
+            'px-3 py-1 rounded-full border text-[11px] font-mono transition-all',
+            activeSampleId === normalSample.id
+              ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold'
+              : 'border-border/70 hover:border-border bg-card/60 hover:bg-card text-foreground/80',
+          )}
+        >
+          🟢 Normal Cranial MRI (Control)
+        </button>
+      </div>
 
-      {/* Claude Style Input Box */}
-      <form
-        onSubmit={onSubmit}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragOver(true);
-        }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragOver(false);
-          if (e.dataTransfer.files?.[0]) {
-            handleFile(e.dataTransfer.files[0]);
-          }
-        }}
-        className={cn(
-          'claude-card rounded-2xl p-4 sm:p-5 transition-all duration-200 relative',
-          dragOver && 'ring-2 ring-primary/50 bg-secondary/30',
-        )}
-      >
-        {/* Attached Scan / PDF Chips */}
-        {(imageFile || pdfFile) && (
-          <div className="flex flex-wrap items-center gap-2 mb-3 pb-3 border-b border-border/60">
-            {imageFile && (
-              <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-secondary/80 border border-border text-xs font-mono">
-                {imagePreview ? (
+      <form onSubmit={onSubmit} className="space-y-4">
+        {/* Minimalist Drag-and-Drop Area */}
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            if (e.dataTransfer.files?.[0]) {
+              handleFile(e.dataTransfer.files[0]);
+            }
+          }}
+          className={cn(
+            'relative rounded-2xl border-2 border-dashed transition-all p-6 sm:p-8 text-center',
+            dragOver
+              ? 'border-primary bg-primary/5 scale-[1.005]'
+              : imageFile
+                ? 'border-border/80 bg-card/70'
+                : 'border-border/60 hover:border-border bg-card/30 hover:bg-card/60',
+          )}
+        >
+          {imageFile ? (
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              {imagePreview && (
+                <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-border shadow-xs shrink-0 bg-black">
                   <img
                     src={imagePreview}
                     alt="Scan thumbnail"
-                    className="w-5 h-5 rounded object-cover"
+                    className="w-full h-full object-cover"
                   />
-                ) : (
-                  <FileImage className="w-4 h-4 text-primary" />
-                )}
-                <span className="truncate max-w-[200px] text-foreground/90 font-medium">
-                  {imageFile.name}
-                </span>
-                <span className="text-[10px] text-muted-foreground">
-                  ({formatBytes(imageFile.size)})
-                </span>
-                <button
-                  type="button"
-                  onClick={clearFile}
-                  disabled={submitting}
-                  className="hover:text-foreground text-muted-foreground ml-1"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+                </div>
+              )}
+              <div className="text-left space-y-1">
+                <div className="flex items-center gap-2">
+                  <FileImage className="w-4 h-4 text-primary shrink-0" />
+                  <span className="font-mono text-xs font-semibold text-foreground truncate max-w-xs sm:max-w-sm">
+                    {imageFile.name}
+                  </span>
+                </div>
+                <p className="text-[11px] font-mono text-muted-foreground">
+                  {formatBytes(imageFile.size)} · Ready for multimodal inspection
+                </p>
               </div>
-            )}
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={clearFile}
+                className="ml-auto p-1.5 rounded-full hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                title="Remove scan"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <label className="cursor-pointer flex flex-col items-center justify-center gap-3">
+              <input
+                type="file"
+                accept={ACCEPT_ATTR}
+                className="hidden"
+                disabled={submitting}
+                onChange={(e) => handleFile(e.target.files?.[0])}
+              />
+              <div className="w-12 h-12 rounded-2xl bg-secondary/80 flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">
+                <UploadCloud className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">
+                  Click to browse or drop an axial scan slice
+                </p>
+                <p className="text-xs font-mono text-muted-foreground">
+                  MRI (.png, .jpg) · CT (.dcm, .nii) · Up to 50 MB
+                </p>
+              </div>
+            </label>
+          )}
+        </div>
 
-            {pdfFile && (
-              <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-secondary/80 border border-border text-xs font-mono">
-                <FileText className="w-4 h-4 text-primary" />
-                <span className="truncate max-w-[200px] text-foreground/90 font-medium">
-                  {pdfFile.name}
-                </span>
-                <button
-                  type="button"
-                  onClick={clearPdf}
-                  disabled={submitting}
-                  className="hover:text-foreground text-muted-foreground ml-1"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
+        {/* Minimal Clinical Context Note */}
+        <div>
+          <input
+            type="text"
+            value={notes}
+            disabled={submitting}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Clinical history or symptoms (optional, e.g. 'progressive headache, left-sided weakness')..."
+            className="w-full px-4 py-2.5 rounded-xl border border-border/70 bg-card/60 hover:bg-card focus:bg-card text-xs font-mono placeholder:text-muted-foreground/60 focus:outline-hidden focus:ring-1 focus:ring-primary/60 transition-all"
+          />
+        </div>
+
+        {/* Error Alert */}
+        {error && (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-xs text-destructive font-mono">
+            {error}
           </div>
         )}
 
-        {/* Textarea for symptoms, presentation, notes */}
-        <textarea
-          rows={4}
-          value={notes}
-          disabled={submitting}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Describe patient symptoms, clinical history, or drag and drop a medical scan here..."
-          className="w-full bg-transparent text-sm placeholder:text-muted-foreground/60 focus:outline-none min-h-[90px] sm:min-h-[110px] leading-relaxed resize-y"
-        />
-
-        {/* Bottom Toolbar inside the Composer */}
-        <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 pt-3 mt-1 border-t border-border/40">
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Attach Scan / Document Button */}
-            <button
-              type="button"
-              disabled={submitting}
-              onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors border border-border/50 hover:border-border select-none"
-              title="Attach scan or PDF"
-            >
-              <Paperclip className="w-3.5 h-3.5 text-primary" />
-              <span>Attach scan</span>
-            </button>
-
-            {/* Organ Target Selector */}
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span className="text-[11px] hidden sm:inline text-muted-foreground/80">Target:</span>
-              <select
-                value={organChoice}
-                disabled={submitting}
-                onChange={(e) => setOrganChoice(e.target.value as OrganChoice)}
-                className="bg-secondary/70 hover:bg-secondary text-xs text-foreground/90 rounded-lg px-2.5 py-1.5 border border-border/60 focus:outline-none cursor-pointer transition-colors font-mono"
-              >
-                {ORGAN_OPTIONS.map((opt) => (
-                  <option key={opt.key} value={opt.key} className="bg-card text-foreground">
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+        {/* Dynamic Claude Thinking Pill or Analyze Button */}
+        {submitting ? (
+          <div className="py-2 text-center space-y-3">
+            <ClaudeThinkingPill
+              isThinking={true}
+              statusText={THINKING_STAGES[stageIndex]}
+              elapsedMs={thinkingStartMs ? Date.now() - thinkingStartMs : 0}
+            />
           </div>
-
-          {/* Submit Button (Claude Round Terracotta Arrow) */}
-          <button
-            type="submit"
-            disabled={!canSubmit || submitting}
-            className={cn(
-              'w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all duration-150',
-              canSubmit && !submitting
-                ? 'bg-primary text-primary-foreground hover:opacity-90 shadow-sm cursor-pointer'
-                : 'bg-secondary text-muted-foreground/40 cursor-not-allowed',
-            )}
-            title="Start analysis"
-          >
-            <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-          </button>
-        </div>
+        ) : (
+          <div className="flex items-center justify-center pt-2">
+            <Button
+              type="submit"
+              size="lg"
+              disabled={!imageFile}
+              className="w-full sm:w-auto px-8 rounded-full font-mono text-xs tracking-wide bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs gap-2"
+            >
+              Analyze Scan with Multi-Agent AI <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        )}
       </form>
 
-      {/* Claude Thinking Wave when submitting */}
-      {submitting && (
-        <div className="py-2 text-center">
-          <ClaudeThinkingPill
-            isThinking={true}
-            statusText={THINKING_STAGES[stageIndex]}
-            elapsedMs={thinkingStartMs ? Date.now() - thinkingStartMs : 0}
-          />
-        </div>
-      )}
-
-      {/* Error alert */}
-      {error && (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-3.5 py-2 text-xs text-destructive font-mono">
-          {error}
-        </div>
-      )}
+      {/* Understated Safety Note (Collapsed by default) */}
+      <ClinicalSafetyPrecautions className="pt-2" />
     </div>
   );
 }

@@ -10,197 +10,43 @@
 
 import { encodeRgbaPng } from './mockInference';
 import type { InferenceResult, MaskMetrics, ModelKey } from './types';
-import { clamp, fnv1aHex, round, errorMessage, extractJsonFromText } from './utils';
+import { clamp, fnv1aHex, round } from './utils';
 
 export interface GeminiVisionDetection {
-  organ?: string;
-  modality?: string;
   has_tumor: boolean;
   diagnosis: string;
   location: string;
-  bbox_norm_1000: [number, number, number, number] | null; // [ymin, xmin, ymax, xmax]
+  bbox_norm_1000: [number, number, number, number] | null; // [ymin, xmin, ymax, xmax] (0..1000)
   confidence: number;
   impression: string;
 }
 
 const GEMINI_MODELS = [
-  'gemini-3.1-flash-lite',
-  'gemini-3.5-flash',
+  'gemini-3-flash-preview',
+  'gemini-3.1-pro-preview',
+  'gemini-3.6-flash',
+  'gemini-3.7-flash',
+  'gemini-3.8-flash',
   'gemini-3.5-flash-lite',
   'gemini-flash-latest',
-  'gemini-2.5-flash',
-  'gemini-2.5-pro',
-  'gemini-3.8-flash',
-  'gemini-3.7-flash',
 ];
 
 export function isGeminiVisionConfigured(): boolean {
-  const key = getGeminiApiKey();
-  if (!key) return false;
-  return Boolean(key.trim());
+  return Boolean(
+    process.env.GEMINI_API_KEY?.trim() ||
+      (process.env.LLM_API_KEY?.trim()?.startsWith('AQ.') ||
+        process.env.LLM_API_KEY?.trim()?.startsWith('AIzaSy')),
+  );
 }
 
 export function getGeminiApiKey(): string | null {
   const key =
     process.env.GEMINI_API_KEY?.trim() ||
-    process.env.LLM_API_KEY?.trim();
+    (process.env.LLM_API_KEY?.trim()?.startsWith('AQ.') ||
+    process.env.LLM_API_KEY?.trim()?.startsWith('AIzaSy')
+      ? process.env.LLM_API_KEY.trim()
+      : null);
   return key || null;
-}
-
-/**
- * Extract physical dimensions (width, height) from image bytes (PNG, JPEG, SVG).
- */
-export function getImageDimensions(bytes: Uint8Array): { width: number; height: number } {
-  if (!bytes || bytes.length < 10) return { width: 256, height: 256 };
-  // PNG: 89 50 4E 47 0D 0A 1A 0A
-  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) {
-    const width = (bytes[16] << 24) | (bytes[17] << 16) | (bytes[18] << 8) | bytes[19];
-    const height = (bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23];
-    if (width > 0 && height > 0) return { width, height };
-  }
-  // JPEG: FF D8
-  if (bytes[0] === 0xFF && bytes[1] === 0xD8) {
-    let offset = 2;
-    while (offset < bytes.length - 8) {
-      if (bytes[offset] !== 0xFF) { offset++; continue; }
-      const marker = bytes[offset + 1];
-      if (marker === 0xC0 || marker === 0xC1 || marker === 0xC2 || marker === 0xC3) {
-        const height = (bytes[offset + 5] << 8) | bytes[offset + 6];
-        const width = (bytes[offset + 7] << 8) | bytes[offset + 8];
-        if (width > 0 && height > 0) return { width, height };
-      }
-      if (marker === 0xDA || marker === 0xD9) break;
-      const len = (bytes[offset + 2] << 8) | bytes[offset + 3];
-      offset += 2 + len;
-    }
-  }
-  // SVG detection
-  const text = Buffer.from(bytes.slice(0, Math.min(2048, bytes.length))).toString('utf-8');
-  const vbMatch = /viewBox=["']\s*[\d.-]+\s+[\d.-]+\s+([\d.]+)\s+([\d.]+)/i.exec(text);
-  if (vbMatch) {
-    const w = parseFloat(vbMatch[1]), h = parseFloat(vbMatch[2]);
-    if (w > 0 && h > 0) return { width: Math.round(w), height: Math.round(h) };
-  }
-  const dimMatch = /width=["'](\d+)["']\s+height=["'](\d+)["']/i.exec(text);
-  if (dimMatch) {
-    return { width: parseInt(dimMatch[1], 10), height: parseInt(dimMatch[2], 10) };
-  }
-  return { width: 256, height: 256 };
-}
-
-/**
- * Resilient Bounding Box Normalizer.
- * Supports:
- * - 0..1 scale (normalized float, max <= 1.0)
- * - 0..100 scale (percentages, max <= 100.0)
- * - 0..1000 scale (standard Gemini 0..1000 output)
- * - Raw pixel coordinates (> 1000)
- * - Inverted coordinates (ymin > ymax or xmin > xmax)
- * - Alternative object key schemas ({ymin, xmin...}, {top, left...}, {x, y, width, height})
- * Returns [minX, minY, maxX, maxY] in clamped pixel coordinates.
- */
-export function normalizeBoundingBox(
-  rawBox: unknown,
-  width: number,
-  height: number,
-): [number, number, number, number] {
-  const defaultBox: [number, number, number, number] = [
-    Math.round(width * 0.25),
-    Math.round(height * 0.35),
-    Math.round(width * 0.55),
-    Math.round(height * 0.65),
-  ];
-
-  let y0 = NaN, x0 = NaN, y1 = NaN, x1 = NaN;
-
-  if (Array.isArray(rawBox)) {
-    const numArr = rawBox.map((v) => (typeof v === 'number' ? v : typeof v === 'string' ? parseFloat(v) : NaN));
-    if (numArr.length >= 4 && numArr.slice(0, 4).every(Number.isFinite)) {
-      [y0, x0, y1, x1] = numArr;
-    }
-  } else if (rawBox && typeof rawBox === 'object') {
-    const obj = rawBox as Record<string, unknown>;
-    const getNum = (k: string) => {
-      const v = obj[k];
-      return typeof v === 'number' ? v : typeof v === 'string' ? parseFloat(v) : NaN;
-    };
-    if (Number.isFinite(getNum('ymin')) && Number.isFinite(getNum('xmin'))) {
-      y0 = getNum('ymin');
-      x0 = getNum('xmin');
-      y1 = getNum('ymax');
-      x1 = getNum('xmax');
-    } else if (Number.isFinite(getNum('minY')) && Number.isFinite(getNum('minX'))) {
-      y0 = getNum('minY');
-      x0 = getNum('minX');
-      y1 = getNum('maxY');
-      x1 = getNum('maxX');
-    } else if (Number.isFinite(getNum('top')) && Number.isFinite(getNum('left'))) {
-      y0 = getNum('top');
-      x0 = getNum('left');
-      y1 = getNum('bottom');
-      x1 = getNum('right');
-    } else if (Number.isFinite(getNum('y1')) && Number.isFinite(getNum('x1'))) {
-      y0 = getNum('y1');
-      x0 = getNum('x1');
-      y1 = getNum('y2');
-      x1 = getNum('x2');
-    } else if (Number.isFinite(getNum('y')) && Number.isFinite(getNum('x'))) {
-      y0 = getNum('y');
-      x0 = getNum('x');
-      y1 = y0 + getNum('height');
-      x1 = x0 + getNum('width');
-    }
-  }
-
-  if (!Number.isFinite(y0) || !Number.isFinite(x0) || !Number.isFinite(y1) || !Number.isFinite(x1)) {
-    return defaultBox;
-  }
-
-  // Detect scale
-  const maxVal = Math.max(Math.abs(y0), Math.abs(x0), Math.abs(y1), Math.abs(x1));
-  let scaleFactor = 1.0;
-  let baseScale = 1000.0;
-  if (maxVal <= 1.05 && maxVal > 0) {
-    // 0..1 scale
-    scaleFactor = 1000.0;
-    baseScale = 1000.0;
-  } else if (maxVal <= 100.05 && maxVal > 1.05) {
-    // 0..100 percentage scale
-    scaleFactor = 10.0;
-    baseScale = 1000.0;
-  } else if (maxVal <= 1000.05) {
-    // 0..1000 or standard scale
-    scaleFactor = 1.0;
-    baseScale = 1000.0;
-  } else {
-    // High-resolution raw pixel coordinates (> 1000)
-    scaleFactor = 1.0;
-    baseScale = maxVal;
-  }
-
-  const scaledY0 = y0 * scaleFactor;
-  const scaledX0 = x0 * scaleFactor;
-  const scaledY1 = y1 * scaleFactor;
-  const scaledX1 = x1 * scaleFactor;
-
-  // Protect against inverted coordinates
-  const normYmin = Math.min(scaledY0, scaledY1);
-  const normYmax = Math.max(scaledY0, scaledY1);
-  const normXmin = Math.min(scaledX0, scaledX1);
-  const normXmax = Math.max(scaledX0, scaledX1);
-
-  const minX = Math.round((clamp(normXmin, 0, baseScale) / baseScale) * width);
-  const maxX = Math.round((clamp(normXmax, 0, baseScale) / baseScale) * width);
-  const minY = Math.round((clamp(normYmin, 0, baseScale) / baseScale) * height);
-  const maxY = Math.round((clamp(normYmax, 0, baseScale) / baseScale) * height);
-
-  // Guarantee minimum lesion dimension (6px) and protect image boundaries
-  const finalMinX = Math.max(0, Math.min(minX, Math.max(0, width - 6)));
-  const finalMaxX = Math.min(width, Math.max(maxX, finalMinX + Math.min(6, width)));
-  const finalMinY = Math.max(0, Math.min(minY, Math.max(0, height - 6)));
-  const finalMaxY = Math.min(height, Math.max(maxY, finalMinY + Math.min(6, height)));
-
-  return [finalMinX, finalMinY, finalMaxX, finalMaxY];
 }
 
 /**
@@ -262,49 +108,29 @@ Respond with strict JSON matching this schema:
   let parsed: GeminiVisionDetection | null = null;
   let activeModel = GEMINI_MODELS[0];
 
-  let modelAttempts = 0;
   for (const model of GEMINI_MODELS) {
-    if (modelAttempts >= 4) {
-      console.warn('[geminiVision] Fallback threshold reached, degrading to local inference pipeline.');
-      break;
-    }
-    modelAttempts++;
-
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(16000),
       });
 
       if (!res.ok) {
-        if (res.status === 400 || res.status === 401 || res.status === 403) {
-          console.warn(`[geminiVision] API key unauthorized or rejected (HTTP ${res.status}); aborting remote vision calls immediately.`);
-          break;
-        } else if (res.status === 429) {
-          console.warn(`[geminiVision] Model ${model} quota limit reached (HTTP 429), trying next fallback...`);
-        } else if (res.status === 404) {
-          console.warn(`[geminiVision] Model ${model} not found (HTTP 404), trying next fallback...`);
-        } else {
-          console.warn(`[geminiVision] Model ${model} returned HTTP ${res.status}, trying next fallback...`);
-        }
         continue;
       }
 
       const data = await res.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (text) {
-        const extracted = extractJsonFromText<GeminiVisionDetection>(text);
-        if (extracted && typeof extracted.has_tumor === 'boolean') {
-          parsed = extracted;
-          activeModel = model;
-          break;
-        }
+        parsed = JSON.parse(text) as GeminiVisionDetection;
+        activeModel = model;
+        break;
       }
-    } catch (modelErr) {
-      console.warn(`[geminiVision] Model ${model} request error (${errorMessage(modelErr)}), trying next fallback...`);
+    } catch {
+      // Try next fallback model
     }
   }
 
@@ -312,14 +138,17 @@ Respond with strict JSON matching this schema:
     return null;
   }
 
-  const { width, height } = getImageDimensions(args.fileBytes);
+  const width = 256;
+  const height = 256;
   const elapsed = Date.now() - startedAt;
 
-  // Robust key resolution for bounding box
+  // Robust key resolution for bounding box (Gemini models may output bbox, bbox_norm_1000, or bounding_box)
   const anyParsed = parsed as unknown as Record<string, unknown>;
   const rawBox =
     (Array.isArray(parsed.bbox_norm_1000) ? parsed.bbox_norm_1000 : null) ??
-    (anyParsed.bbox ?? anyParsed.bounding_box ?? anyParsed.box ?? anyParsed.bbox_norm);
+    (Array.isArray(anyParsed.bbox) ? (anyParsed.bbox as [number, number, number, number]) : null) ??
+    (Array.isArray(anyParsed.bounding_box) ? (anyParsed.bounding_box as [number, number, number, number]) : null) ??
+    (Array.isArray(anyParsed.box) ? (anyParsed.box as [number, number, number, number]) : null);
 
   const hasTumorAffirmed =
     Boolean(parsed.has_tumor) &&
@@ -354,12 +183,17 @@ Respond with strict JSON matching this schema:
   }
 
   // Lesion detected: generate accurate mask from Gemini bounding box (or fallback geometry)
-  const [minX, minY, maxX, maxY] = normalizeBoundingBox(rawBox ?? [450, 250, 650, 450], width, height);
+  const box1000 = rawBox ?? [450, 250, 650, 450];
+  const [ymin1000, xmin1000, ymax1000, xmax1000] = box1000;
+  const minX = Math.round((clamp(xmin1000, 0, 1000) / 1000) * width);
+  const maxX = Math.round((clamp(xmax1000, 0, 1000) / 1000) * width);
+  const minY = Math.round((clamp(ymin1000, 0, 1000) / 1000) * height);
+  const maxY = Math.round((clamp(ymax1000, 0, 1000) / 1000) * height);
 
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
-  const rx = Math.max(4, Math.abs(maxX - minX) / 2);
-  const ry = Math.max(4, Math.abs(maxY - minY) / 2);
+  const rx = Math.max(3, (maxX - minX) / 2);
+  const ry = Math.max(3, (maxY - minY) / 2);
 
   const rgba = new Uint8Array(width * height * 4);
   let areaPx = 0;
@@ -371,10 +205,13 @@ Respond with strict JSON matching this schema:
     for (let x = 0; x < width; x++) {
       const dx = (x - cx) / rx;
       const dy = (y - cy) / ry;
-      const distSq = dx * dx + dy * dy;
-      if (distSq <= 1.0) {
-        const dist = Math.sqrt(distSq);
+      // Elliptical lesion with slight organic edge falloff
+      if (dx * dx + dy * dy <= 1.0) {
         const idx = (y * width + x) * 4;
+        rgba[idx + 0] = 248; // Red lesion mask
+        rgba[idx + 1] = 72;
+        rgba[idx + 2] = 72;
+        rgba[idx + 3] = 255;
         areaPx++;
         sumX += x;
         sumY += y;
@@ -382,21 +219,6 @@ Respond with strict JSON matching this schema:
         if (x > bbMaxX) bbMaxX = x;
         if (y < bbMinY) bbMinY = y;
         if (y > bbMaxY) bbMaxY = y;
-
-        // Diagnostic PACS rendering: crisp luminous boundary contour + translucent diagnostic interior
-        if (dist >= 0.85) {
-          // Sharp outer perimeter contour line
-          rgba[idx + 0] = 255;
-          rgba[idx + 1] = 69;
-          rgba[idx + 2] = 58;
-          rgba[idx + 3] = 245;
-        } else {
-          // Translucent diagnostic interior - allows underlying tumor tissue & ring enhancement to remain clearly visible!
-          rgba[idx + 0] = 255;
-          rgba[idx + 1] = 69;
-          rgba[idx + 2] = 58;
-          rgba[idx + 3] = 110;
-        }
       }
     }
   }
@@ -415,47 +237,13 @@ Respond with strict JSON matching this schema:
     equivalentDiameterPx,
   };
 
-  // Auto-resolve anatomical organ if routed to general
-  let resolvedOrgan: ModelKey = args.organ;
-  if (resolvedOrgan === 'general') {
-    const textAll = `${parsed.diagnosis} ${parsed.location} ${parsed.impression}`.toLowerCase();
-    if (/\b(?:brain|glioblastoma|glioma|cerebr\w*|cranial|meningioma|astrocytoma)\b/.test(textAll)) {
-      resolvedOrgan = 'brain';
-    } else if (/\b(?:lung|pulmonar\w*|chest|thoracic|pneumo\w*)\b/.test(textAll)) {
-      resolvedOrgan = 'lung';
-    } else if (/\b(?:pancreas|pancreatic)\b/.test(textAll)) {
-      resolvedOrgan = 'pancreas';
-    } else if (/\b(?:breast|mammar\w*)\b/.test(textAll)) {
-      resolvedOrgan = 'breast';
-    } else if (/\b(?:liver|hepat\w*)\b/.test(textAll)) {
-      resolvedOrgan = 'liver';
-    } else if (/\b(?:kidney|renal)\b/.test(textAll)) {
-      resolvedOrgan = 'kidney';
-    } else if (/\b(?:skin|melanoma|derm\w*)\b/.test(textAll)) {
-      resolvedOrgan = 'skin';
-    } else if (/\b(?:colon|colorectal)\b/.test(textAll)) {
-      resolvedOrgan = 'colon';
-    } else if (/\b(?:prostate)\b/.test(textAll)) {
-      resolvedOrgan = 'prostate';
-    }
-  }
-
   return {
-    organ: resolvedOrgan,
+    organ: args.organ,
     modelFile: `${activeModel} (Vision)`,
     width,
     height,
     maskBase64,
-    confidence: round(
-      clamp(
-        typeof parsed.confidence === 'number' && Number.isFinite(parsed.confidence)
-          ? parsed.confidence
-          : 0.85,
-        0.70,
-        0.99,
-      ),
-      3,
-    ),
+    confidence: round(clamp(parsed.confidence, 0.70, 0.99), 3),
     metrics,
     spacingMm: null,
     warnings: [

@@ -24,107 +24,45 @@ export interface SampleCase {
 // Generate realistic synthetic medical scan SVG data URLs (grayscale raster compatible)
 function createSyntheticBrainMri(): string {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-    <defs>
-      <radialGradient id="gbmScalp" cx="50%" cy="50%" r="50%">
-        <stop offset="85%" stop-color="#14141c"/>
-        <stop offset="96%" stop-color="#555566"/>
-        <stop offset="100%" stop-color="#08080c"/>
-      </radialGradient>
-      <radialGradient id="gbmParenchyma" cx="50%" cy="48%" r="48%">
-        <stop offset="0%" stop-color="#3e3e4c"/>
-        <stop offset="68%" stop-color="#30303c"/>
-        <stop offset="92%" stop-color="#20202a"/>
-        <stop offset="100%" stop-color="#121218"/>
-      </radialGradient>
-      <radialGradient id="gbmEdema" cx="88" cy="115" r="36" gradientUnits="userSpaceOnUse">
-        <stop offset="0%" stop-color="#262634" stop-opacity="0.95"/>
-        <stop offset="60%" stop-color="#2c2c3a" stop-opacity="0.75"/>
-        <stop offset="85%" stop-color="#242430" stop-opacity="0.35"/>
-        <stop offset="100%" stop-color="#20202a" stop-opacity="0"/>
-      </radialGradient>
-      <radialGradient id="gbmRing" cx="87" cy="114" r="24" gradientUnits="userSpaceOnUse">
-        <stop offset="0%" stop-color="#14141e"/>
-        <stop offset="38%" stop-color="#181822"/>
-        <stop offset="58%" stop-color="#78788e"/>
-        <stop offset="80%" stop-color="#d6d6e8"/>
-        <stop offset="92%" stop-color="#eaeaf8"/>
-        <stop offset="100%" stop-color="#58586c"/>
-      </radialGradient>
-    </defs>
-
-    <rect width="256" height="256" fill="#040406"/>
-
-    <!-- Cranial Calvarium (Skull Diploe & Scalp Fat) -->
-    <ellipse cx="128" cy="128" rx="90" ry="104" fill="url(#gbmScalp)"/>
-    <ellipse cx="128" cy="128" rx="84" ry="98" fill="#08080e" stroke="#282836" stroke-width="2.5"/>
-
-    <!-- Cerebral Parenchyma (Deep White Matter & Gray Matter) -->
-    <path d="M128,34 Q106,42 82,72 Q56,112 58,154 Q61,198 128,222 Q195,198 198,154 Q200,112 174,72 Q150,42 128,34 Z" fill="url(#gbmParenchyma)"/>
-
-    <!-- Anatomical Sulci & Fissures -->
-    <path d="M128,36 L128,92 M128,162 L128,220" stroke="#12121a" stroke-width="2" stroke-linecap="round"/>
-    <path d="M72,82 Q90,95 108,90 M184,82 Q166,95 148,90" stroke="#181822" stroke-width="1.8" fill="none" opacity="0.6"/>
-    <path d="M64,136 Q84,142 98,136 M192,136 Q172,142 158,136" stroke="#181822" stroke-width="1.8" fill="none" opacity="0.6"/>
-    <path d="M78,178 Q96,170 114,180 M178,178 Q160,170 142,180" stroke="#181822" stroke-width="1.8" fill="none" opacity="0.6"/>
-
-    <!-- Perilesional Edema Zone (Hypointense perilesional swelling) -->
-    <ellipse cx="88" cy="115" rx="34" ry="38" fill="url(#gbmEdema)"/>
-
-    <!-- Lateral Ventricles with Mass Effect (Effaced Right Frontal Horn) -->
-    <path d="M122,100 Q116,118 118,142 Q124,148 126,140 Q124,118 124,100 Z" fill="#08080e" stroke="#14141c" stroke-width="1"/>
-    <path d="M134,98 Q142,118 140,146 Q132,154 130,142 Q132,118 132,98 Z" fill="#06060c" stroke="#14141c" stroke-width="1"/>
-    <ellipse cx="114" cy="162" rx="4" ry="12" fill="#08080e"/>
-    <ellipse cx="142" cy="164" rx="5" ry="14" fill="#06060c"/>
-
-    <!-- Right Frontal/Temporal Lesion (Hyperintense Enhancing Mass) - Glioblastoma Multiforme -->
-    <ellipse cx="88" cy="115" rx="23" ry="27" fill="url(#gbmRing)" stroke="#b8b8cc" stroke-width="1.5" opacity="0.95"/>
-    <!-- Central Liquefactive Necrotic Core -->
-    <ellipse cx="87" cy="114" rx="11" ry="13" fill="#14141e" stroke="#484858" stroke-width="1"/>
-    <!-- Hyperintense Mural Enhancing Nodule -->
-    <ellipse cx="98" cy="110" rx="4" ry="5" fill="#f0f0fa" opacity="0.9"/>
+    <rect width="256" height="256" fill="#050508"/>
+    <!-- Cranial Vault Outline -->
+    <ellipse cx="128" cy="128" rx="88" ry="102" fill="#181824" stroke="#484860" stroke-width="4"/>
+    <ellipse cx="128" cy="128" rx="82" ry="96" fill="#0c0c14"/>
+    <!-- Cerebral Hemispheres (Parenchyma) -->
+    <path d="M128,34 Q105,45 80,75 Q55,115 58,155 Q62,200 128,222 Q194,200 198,155 Q201,115 176,75 Q151,45 128,34 Z" fill="#20202e"/>
+    <!-- Ventricles -->
+    <path d="M128,95 Q115,115 118,145 Q128,155 128,160 Q128,155 138,145 Q141,115 128,95 Z" fill="#07070c"/>
+    <ellipse cx="110" cy="125" rx="6" ry="18" fill="#080810"/>
+    <ellipse cx="146" cy="125" rx="6" ry="18" fill="#080810"/>
+    <!-- Interhemispheric Fissure -->
+    <line x1="128" y1="36" x2="128" y2="220" stroke="#12121c" stroke-width="2"/>
+    <!-- Right Frontal/Temporal Lesion (Hyperintense Enhancing Mass) -->
+    <ellipse cx="88" cy="115" rx="22" ry="26" fill="#8888a8" opacity="0.85" filter="drop-shadow(0px 0px 8px #9090b8)"/>
+    <ellipse cx="88" cy="115" rx="14" ry="17" fill="#bcbccf" opacity="0.95"/>
+    <ellipse cx="86" cy="113" rx="7" ry="8" fill="#dedee8"/>
+    <!-- Perilesional Edema Ring -->
+    <ellipse cx="88" cy="115" rx="28" ry="33" fill="none" stroke="#484868" stroke-width="3" opacity="0.6"/>
   </svg>`;
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
 }
 
 function createSyntheticBrainMriNormal(): string {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-    <defs>
-      <radialGradient id="normScalp" cx="50%" cy="50%" r="50%">
-        <stop offset="85%" stop-color="#14141c"/>
-        <stop offset="96%" stop-color="#555566"/>
-        <stop offset="100%" stop-color="#08080c"/>
-      </radialGradient>
-      <radialGradient id="normParenchyma" cx="50%" cy="48%" r="48%">
-        <stop offset="0%" stop-color="#3e3e4c"/>
-        <stop offset="68%" stop-color="#30303c"/>
-        <stop offset="92%" stop-color="#20202a"/>
-        <stop offset="100%" stop-color="#121218"/>
-      </radialGradient>
-    </defs>
-
-    <rect width="256" height="256" fill="#040406"/>
-
-    <!-- Cranial Calvarium -->
-    <ellipse cx="128" cy="128" rx="90" ry="104" fill="url(#normScalp)"/>
-    <ellipse cx="128" cy="128" rx="84" ry="98" fill="#08080e" stroke="#282836" stroke-width="2.5"/>
-
-    <!-- Symmetric Normal Parenchyma -->
-    <path d="M128,34 Q106,42 82,72 Q56,112 58,154 Q61,198 128,222 Q195,198 198,154 Q200,112 174,72 Q150,42 128,34 Z" fill="url(#normParenchyma)"/>
-
-    <!-- Straight Midline Interhemispheric Fissure -->
-    <line x1="128" y1="36" x2="128" y2="220" stroke="#12121a" stroke-width="2"/>
-
-    <!-- Symmetric Sulcal Convolutions -->
-    <path d="M72,82 Q90,95 108,90 M184,82 Q166,95 148,90" stroke="#181822" stroke-width="1.8" fill="none" opacity="0.6"/>
-    <path d="M64,136 Q84,142 98,136 M192,136 Q172,142 158,136" stroke="#181822" stroke-width="1.8" fill="none" opacity="0.6"/>
-    <path d="M78,178 Q96,170 114,180 M178,178 Q160,170 142,180" stroke="#181822" stroke-width="1.8" fill="none" opacity="0.6"/>
-
-    <!-- Symmetric Normal Ventricular System (Sharp Frontal Horns & Third Ventricle) -->
+    <rect width="256" height="256" fill="#050508"/>
+    <!-- Cranial Vault Outline -->
+    <ellipse cx="128" cy="128" rx="88" ry="102" fill="#181824" stroke="#484860" stroke-width="4"/>
+    <ellipse cx="128" cy="128" rx="82" ry="96" fill="#0c0c14"/>
+    <!-- Symmetric Cerebral Hemispheres (Normal Parenchyma) -->
+    <path d="M128,34 Q105,45 80,75 Q55,115 58,155 Q62,200 128,222 Q194,200 198,155 Q201,115 176,75 Q151,45 128,34 Z" fill="#20202e"/>
+    <!-- Normal Ventricular System -->
     <path d="M128,95 Q115,115 118,145 Q128,155 128,160 Q128,155 138,145 Q141,115 128,95 Z" fill="#07070c"/>
     <ellipse cx="110" cy="125" rx="6" ry="18" fill="#080810"/>
     <ellipse cx="146" cy="125" rx="6" ry="18" fill="#080810"/>
-    <ellipse cx="114" cy="162" rx="4" ry="12" fill="#08080e"/>
-    <ellipse cx="142" cy="164" rx="4" ry="12" fill="#08080e"/>
+    <!-- Straight Midline Interhemispheric Fissure (No Midline Shift) -->
+    <line x1="128" y1="36" x2="128" y2="220" stroke="#12121c" stroke-width="2"/>
+    <!-- Unremarkable baseline parenchymal textures (NO LESION, NO EDEMA) -->
+    <circle cx="95" cy="95" r="16" fill="#242434" opacity="0.3"/>
+    <circle cx="161" cy="95" r="16" fill="#242434" opacity="0.3"/>
   </svg>`;
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
 }

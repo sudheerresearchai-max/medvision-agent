@@ -632,6 +632,60 @@ const CURATED_KNOWLEDGE: Record<string, Omit<ClinicalKnowledgeBrief, 'retrievedA
   },
 };
 
+export interface OpenWebNinjaSearchResult {
+  title: string;
+  url: string;
+  snippet: string;
+}
+
+/**
+ * Perform real-time web search via OpenWebNinja API for up-to-the-minute oncology guidelines,
+ * evidence-based literature, side effects, and precautions.
+ */
+export async function searchRealtimeWeb(query: string): Promise<OpenWebNinjaSearchResult[]> {
+  const apiKey =
+    process.env.OPENWEBNINJA_API_KEY?.trim() ||
+    'ak_7zdihpcsvdgrectjn15us5jadl712wudlg4xkn6f44km02f';
+
+  if (!apiKey) return [];
+
+  try {
+    const url = new URL('https://api.openwebninja.com/realtime-web-search/search');
+    url.searchParams.set('q', query);
+
+    const res = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'X-API-Key': apiKey,
+        'Accept': 'application/json',
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (!res.ok) {
+      console.warn(`[OpenWebNinja] Search returned HTTP ${res.status}`);
+      return [];
+    }
+
+    const json = await res.json();
+    const organic = (json?.data?.organic_results || json?.organic_results || []) as Array<{
+      title?: string;
+      url?: string;
+      snippet?: string;
+      description?: string;
+    }>;
+
+    return organic.slice(0, 5).map((r) => ({
+      title: r.title || 'Clinical Oncology Guideline',
+      url: r.url || 'https://www.nccn.org',
+      snippet: r.snippet || r.description || '',
+    }));
+  } catch (err) {
+    console.warn('[OpenWebNinja] Real-time search failed:', err);
+    return [];
+  }
+}
+
 /**
  * Fetch online or curated evidence-based medical knowledge for the detected condition.
  */
@@ -644,18 +698,86 @@ export async function fetchMedicalKnowledge(args: {
 
   // If normal / negative study
   if (!args.hasTumor || /normal|negative|clear|unremarkable/i.test(args.diagnosis)) {
+    let liveNormalSources: MedicalSourceRef[] = [];
+    try {
+      const searchRes = await searchRealtimeWeb(`${args.organ} normal MRI CT screening guidelines RSNA ACR`);
+      if (searchRes.length > 0) {
+        liveNormalSources = searchRes.map((r) => ({
+          name: r.title,
+          sourceType: 'guideline',
+          url: r.url,
+          citation: r.snippet,
+          isLiveWeb: true,
+        }));
+      }
+    } catch {
+      // Ignore network errors in fallback
+    }
+
     return {
       ...CURATED_KNOWLEDGE.normal,
+      sources: liveNormalSources.length > 0
+        ? [...liveNormalSources, ...CURATED_KNOWLEDGE.normal.sources]
+        : CURATED_KNOWLEDGE.normal.sources,
       retrievedAt: now,
     };
   }
 
-  // Try online retrieval via Gemini API if key is present
+  // 1. Perform live real-time web search for recent guidelines, precautions, and side effects
+  const liveQuery = `${args.diagnosis} ${args.organ} oncology guidelines treatment side effects precautions NCCN`;
+  let liveSearchResults: OpenWebNinjaSearchResult[] = [];
+  try {
+    liveSearchResults = await searchRealtimeWeb(liveQuery);
+  } catch {
+    // Continue if offline
+  }
+
+  const liveSources: MedicalSourceRef[] = liveSearchResults.map((r) => ({
+    name: r.title,
+    sourceType: 'guideline',
+    url: r.url,
+    citation: r.snippet,
+    isLiveWeb: true,
+  }));
+
+  // Helper to resolve curated knowledge fallback
+  const getFallback = (): Omit<ClinicalKnowledgeBrief, 'retrievedAt'> => {
+    const diagLower = args.diagnosis.toLowerCase();
+    if (diagLower.includes('glioblastoma') || diagLower.includes('gbm') || diagLower.includes('glioma') || args.organ === 'brain') {
+      return CURATED_KNOWLEDGE.gbm;
+    } else if (diagLower.includes('lung') || diagLower.includes('nsclc') || diagLower.includes('carcinoma') || args.organ === 'lung') {
+      return CURATED_KNOWLEDGE.nsclc;
+    } else if (diagLower.includes('pancrea') || args.organ === 'pancreas') {
+      return CURATED_KNOWLEDGE.pancreas;
+    } else if (diagLower.includes('breast') || diagLower.includes('ductal') || diagLower.includes('mammar') || args.organ === 'breast') {
+      return CURATED_KNOWLEDGE.breast;
+    } else if (diagLower.includes('kidney') || diagLower.includes('renal') || diagLower.includes('rcc') || args.organ === 'kidney') {
+      return CURATED_KNOWLEDGE.kidney;
+    } else if (diagLower.includes('melanoma') || diagLower.includes('skin') || args.organ === 'skin') {
+      return CURATED_KNOWLEDGE.skin;
+    } else if (diagLower.includes('liver') || diagLower.includes('hcc') || diagLower.includes('hepat') || args.organ === 'liver') {
+      return CURATED_KNOWLEDGE.liver;
+    } else if (diagLower.includes('colon') || diagLower.includes('colorectal') || diagLower.includes('bowel') || args.organ === 'colon') {
+      return CURATED_KNOWLEDGE.colon;
+    } else if (diagLower.includes('prostate') || diagLower.includes('psa') || args.organ === 'prostate') {
+      return CURATED_KNOWLEDGE.prostate;
+    }
+    return CURATED_KNOWLEDGE.gbm;
+  };
+
+  // 2. Try online synthesis via Gemini API if key is present
   const apiKey = getGeminiApiKey();
   if (apiKey) {
     try {
+      const webGrounding = liveSearchResults.length > 0
+        ? `\nREAL-TIME GROUNDING WEB CITATIONS (from OpenWebNinja):\n` +
+          liveSearchResults.map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}\nExcerpt: ${r.snippet}`).join('\n\n')
+        : '';
+
       const prompt = `You are an expert clinical oncologist and academic medical researcher.
 Provide authoritative clinical oncology intelligence for: "${args.diagnosis}" (${args.organ.toUpperCase()} scan).
+${webGrounding}
+
 Generate comprehensive, factual, professional medical details:
 1. condition (Formal name, e.g. Glioblastoma Multiforme, IDH-wildtype)
 2. category (e.g. WHO Grade 4 Central Nervous System Malignancy)
@@ -697,13 +819,12 @@ Respond with strict JSON matching this schema:
 }`;
 
       const models = [
-        'gemini-3.5-flash-lite',
-        'gemini-3.1-flash-lite',
-        'gemini-3.8-flash',
-        'gemini-3.7-flash',
-        'gemini-3.5-flash',
+        'gemini-2.0-flash',
+        'gemini-1.5-flash',
+        'gemini-1.5-flash-8b',
+        'gemini-2.0-flash-lite',
+        'gemini-1.5-pro',
         'gemini-flash-latest',
-        'gemini-2.5-pro',
       ];
 
       for (const m of models) {
@@ -736,8 +857,12 @@ Respond with strict JSON matching this schema:
           if (text) {
             const parsed = extractJsonFromText<Omit<ClinicalKnowledgeBrief, 'retrievedAt'>>(text);
             if (parsed && parsed.condition && parsed.commonSymptoms && parsed.clinicalSideEffects) {
+              const combinedSources = liveSources.length > 0
+                ? [...liveSources, ...(parsed.sources || [])]
+                : parsed.sources || [];
               return {
                 ...parsed,
+                sources: combinedSources,
                 retrievedAt: now,
               };
             }
@@ -751,27 +876,13 @@ Respond with strict JSON matching this schema:
     }
   }
 
-  // Fallback to rich curated knowledge base
-  const diagLower = args.diagnosis.toLowerCase();
-  if (diagLower.includes('glioblastoma') || diagLower.includes('gbm') || diagLower.includes('glioma') || args.organ === 'brain') {
-    return { ...CURATED_KNOWLEDGE.gbm, retrievedAt: now };
-  } else if (diagLower.includes('lung') || diagLower.includes('nsclc') || diagLower.includes('carcinoma') || args.organ === 'lung') {
-    return { ...CURATED_KNOWLEDGE.nsclc, retrievedAt: now };
-  } else if (diagLower.includes('pancrea') || args.organ === 'pancreas') {
-    return { ...CURATED_KNOWLEDGE.pancreas, retrievedAt: now };
-  } else if (diagLower.includes('breast') || diagLower.includes('ductal') || diagLower.includes('mammar') || args.organ === 'breast') {
-    return { ...CURATED_KNOWLEDGE.breast, retrievedAt: now };
-  } else if (diagLower.includes('kidney') || diagLower.includes('renal') || diagLower.includes('rcc') || args.organ === 'kidney') {
-    return { ...CURATED_KNOWLEDGE.kidney, retrievedAt: now };
-  } else if (diagLower.includes('melanoma') || diagLower.includes('skin') || args.organ === 'skin') {
-    return { ...CURATED_KNOWLEDGE.skin, retrievedAt: now };
-  } else if (diagLower.includes('liver') || diagLower.includes('hcc') || diagLower.includes('hepat') || args.organ === 'liver') {
-    return { ...CURATED_KNOWLEDGE.liver, retrievedAt: now };
-  } else if (diagLower.includes('colon') || diagLower.includes('colorectal') || diagLower.includes('bowel') || args.organ === 'colon') {
-    return { ...CURATED_KNOWLEDGE.colon, retrievedAt: now };
-  } else if (diagLower.includes('prostate') || diagLower.includes('psa') || args.organ === 'prostate') {
-    return { ...CURATED_KNOWLEDGE.prostate, retrievedAt: now };
-  }
-
-  return { ...CURATED_KNOWLEDGE.gbm, retrievedAt: now };
+  // Fallback to rich curated knowledge base merged with real-time web search citations
+  const fallback = getFallback();
+  return {
+    ...fallback,
+    sources: liveSources.length > 0
+      ? [...liveSources, ...fallback.sources]
+      : fallback.sources,
+    retrievedAt: now,
+  };
 }

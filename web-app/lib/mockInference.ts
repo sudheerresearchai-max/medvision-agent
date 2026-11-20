@@ -8,7 +8,7 @@
  * Zero native dependencies: includes a minimal PNG (RGBA) encoder on top of
  * Node's built-in zlib.
  */
-import { deflateSync } from 'node:zlib';
+import { deflateSync } from 'zlib';
 import { TARGET_NEOPLASM_FINDINGS } from './clinicalInfo';
 import type { InferenceResult, MaskMetrics, ModelKey } from './types';
 import { clamp, fnv1aHex, round } from './utils';
@@ -109,13 +109,6 @@ const ORGAN_SHAPE: Record<
   brain: { cx: 88, cy: 115, rx: 22, ry: 26, wobble: 2 },
   lung: { cx: 178, cy: 105, rx: 16, ry: 14, wobble: 3 },
   pancreas: { cx: 106, cy: 136, rx: 14, ry: 12, wobble: 2 },
-  breast: { cx: 140, cy: 120, rx: 18, ry: 18, wobble: 2 },
-  liver: { cx: 130, cy: 125, rx: 20, ry: 22, wobble: 3 },
-  kidney: { cx: 95, cy: 140, rx: 16, ry: 18, wobble: 2 },
-  skin: { cx: 128, cy: 128, rx: 15, ry: 15, wobble: 2 },
-  colon: { cx: 120, cy: 130, rx: 16, ry: 16, wobble: 2 },
-  prostate: { cx: 128, cy: 150, rx: 14, ry: 14, wobble: 2 },
-  general: { cx: 96, cy: 110, rx: 18, ry: 18, wobble: 2 },
 };
 
 export interface MockDetectionContext {
@@ -174,7 +167,7 @@ export function detectIsLesionPresent(
   const textPrefix = Buffer.from(imageBytes.slice(0, prefixLen)).toString('utf-8');
   if (textPrefix.includes('<svg')) {
     const hasBrainLesion =
-      /fill="#8888a8"|Perilesional Edema|Frontal\/Temporal Lesion|Enhancing Mass|Glioblastoma|gbmRing/i.test(textPrefix);
+      /fill="#8888a8"|Perilesional Edema|Frontal\/Temporal Lesion|Enhancing Mass/i.test(textPrefix);
     const hasLungLesion =
       /fill="#a4a4b8"|Spiculations|Solitary Pulmonary Nodule|Hyperdense Mass/i.test(textPrefix);
     const hasPancreasLesion =
@@ -210,13 +203,6 @@ export function detectIsLesionPresent(
   }
 
   // 4. Raster scans: check byte variance / uniform image rejection
-  if (imageBytes.length === 0) {
-    return {
-      hasLesion: false,
-      reason: 'Empty image buffer; no parenchymal anomaly detected.',
-    };
-  }
-
   let sum = 0;
   let sumSq = 0;
   const sampleCount = Math.min(500, imageBytes.length);
@@ -246,17 +232,12 @@ export function detectIsLesionPresent(
   const hasPositiveFilename =
     /\b(tumor|tumour|mass|lesion|nodule|cancer|carcinoma|gbm|glioma|case01|case02|case03)\b/.test(fn);
 
-  const hasHighContrastAnomaly = variance > 2000;
-  if (hasAffirmativeClinical || hasPositiveFilename || hasHighContrastAnomaly) {
+  if (hasAffirmativeClinical || hasPositiveFilename) {
     return {
       hasLesion: true,
       shape: ORGAN_SHAPE[organ],
       reason: `Focal lesion features identified via ${
-        hasAffirmativeClinical
-          ? 'clinical evidence'
-          : hasHighContrastAnomaly
-            ? 'high-contrast parenchymal hyperdensity'
-            : 'image metadata'
+        hasAffirmativeClinical ? 'clinical evidence' : 'image metadata'
       }.`,
     };
   }
@@ -335,18 +316,18 @@ export function generateMockPrediction(
       const dx = x - cx;
       const dy = y - cy;
       const theta = Math.atan2(dy, dx);
-      // Subtle, organic biological contour variation instead of exaggerated polygon wobbles
       const wobble =
         1 +
-        0.07 * Math.sin(theta * 3 + phase) +
-        0.04 * Math.sin(theta * 5 - phase * 0.7);
+        0.18 * Math.sin(theta * shape.wobble + phase) +
+        0.08 * Math.sin(theta * (shape.wobble + 2));
       const nx = dx / (rx * wobble);
       const ny = dy / (ry * wobble);
-      const distSq = nx * nx + ny * ny;
-
-      if (distSq <= 1.0) {
-        const dist = Math.sqrt(distSq);
+      if (nx * nx + ny * ny <= 1) {
         const idx = (y * W + x) * 4;
+        rgba[idx] = 248; // R — lesion red (#f84848)
+        rgba[idx + 1] = 72; // G
+        rgba[idx + 2] = 72; // B
+        rgba[idx + 3] = 235; // A
         metricsAccum.area++;
         metricsAccum.sumX += x;
         metricsAccum.sumY += y;
@@ -354,21 +335,6 @@ export function generateMockPrediction(
         if (y < metricsAccum.minY) metricsAccum.minY = y;
         if (x > metricsAccum.maxX) metricsAccum.maxX = x;
         if (y > metricsAccum.maxY) metricsAccum.maxY = y;
-
-        // Diagnostic PACS rendering: crisp luminous boundary contour + semi-transparent diagnostic interior (Eq. 2.7, 2.8)
-        if (dist >= 0.85) {
-          // Sharp outer perimeter contour line (alpha = 0.96 per Eq. 2.8)
-          rgba[idx + 0] = 255;
-          rgba[idx + 1] = 69;
-          rgba[idx + 2] = 58;
-          rgba[idx + 3] = 245;
-        } else {
-          // Translucent diagnostic interior (alpha = 0.43 per Eq. 2.8)
-          rgba[idx + 0] = 255;
-          rgba[idx + 1] = 69;
-          rgba[idx + 2] = 58;
-          rgba[idx + 3] = 110;
-        }
       }
     }
   }

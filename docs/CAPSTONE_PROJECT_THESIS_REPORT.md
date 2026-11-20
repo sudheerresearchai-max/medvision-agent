@@ -15,13 +15,13 @@ in
 | **KANCHETTI AJAY** | **23BCE7242** |
 | **BHARATHAPU SIDDHARTHA** | **23BCE7851** |
 
-*Under the Esteemed Guidance of*  
+*Under the Guidance of*  
 **Dr. CHINTAKINDI BALARAM MURTHY**  
 Associate Professor, Department of Computer Science and Engineering  
 School of Computer Science and Engineering (SCOPE)
 
 <div align="center">
-<img src="https://upload.wikimedia.org/wikipedia/en/thumb/c/c5/Vellore_Institute_of_Technology_seal_2017.svg/300px-Vellore_Institute_of_Technology_seal_2017.svg.png" width="130" alt="VIT-AP University Logo" />
+<img src="file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/vit_logo_0.png" width="130" alt="VIT-AP University Logo" />
 </div>
 
 **SCHOOL OF COMPUTER SCIENCE AND ENGINEERING (SCOPE)**  
@@ -62,9 +62,9 @@ VIT-AP University, Amaravati – 522237
 
 ## DECLARATION
 
-We hereby declare that the capstone project work titled **"MEDVISION: MULTI-MODEL AGENTIC MEDICAL VISION & ONCOLOGIC DECISION SUPPORT"** submitted to the School of Computer Science and Engineering (SCOPE), VIT-AP University, Amaravati, in partial fulfillment of the requirements for the award of the degree of **Bachelor of Technology in Computer Science and Engineering**, is a record of original work done by us under the supervision of **Dr. Chintakindi Balaram Murthy**, Associate Professor, SCOPE.
+We declare that the capstone project work titled **"MEDVISION: MULTI-MODEL AGENTIC MEDICAL VISION & ONCOLOGIC DECISION SUPPORT"** submitted to the School of Computer Science and Engineering (SCOPE), VIT-AP University, Amaravati, in partial fulfillment of the requirements for the award of the degree of **Bachelor of Technology in Computer Science and Engineering**, is a record of original work done by us under the supervision of **Dr. Chintakindi Balaram Murthy**, Associate Professor, SCOPE.
 
-We further declare that this report has not been submitted to any other university or institution for the award of any degree or diploma. All sources of external information, technical specifications, and academic citations have been properly cited and acknowledged.
+We further declare that this report has not been submitted to any other university or institution for the award of any degree or diploma. All external information, technical specifications, and academic citations have been cited and acknowledged.
 
 **BANDILA SUDHEER KUMAR** (23BCE20014) &emsp;&emsp;&emsp;&emsp; Signature: _____________________
 
@@ -83,13 +83,13 @@ Date: November 19, 2026
 
 ## ACKNOWLEDGEMENT
 
-We express our sincere thanks to the management of **VIT-AP University** for providing the infrastructure, computing servers, and research facilities that made this capstone project possible.
+We thank the management of **VIT-AP University** for providing the computing infrastructure, networking labs, and research facilities that supported this capstone project.
 
-We record our heartfelt gratitude to our faculty guide, **Dr. Chintakindi Balaram Murthy**, Associate Professor in the School of Computer Science and Engineering. His patient critique during our weekly lab reviews kept our focus sharp. When our early segmentation masks drifted across non-square images, his feedback pushed us to investigate raw byte headers instead of relying on slow external image packages. His guidance throughout this work was invaluable.
+We express our sincere gratitude to our faculty guide, **Dr. Chintakindi Balaram Murthy**, Associate Professor in the School of Computer Science and Engineering. His practical critiques during our weekly technical reviews kept our work focused on real clinical failure modes. When our early segmentation masks drifted across non-square scans, he encouraged us to parse raw image headers directly rather than depending on slow external packages. His engineering guidance was central to completing this system.
 
-We thank **Dr. Reeja S R**, Dean of the School of Computer Science and Engineering, for her institutional support, curricular guidance, and academic oversight during our capstone work.
+We thank **Dr. Reeja S R**, Dean of the School of Computer Science and Engineering, for her institutional support, academic guidance, and project coordination.
 
-We are equally grateful to our faculty members and lab instructors in SCOPE for teaching us core concepts in distributed software architecture, computer networks, and machine learning. Finally, we thank our parents and classmates for their encouragement through late-night coding sessions and stressful debugging rounds.
+We also thank the faculty members and lab instructors in SCOPE who taught us distributed systems, network programming, and machine learning. Finally, we thank our families and peers for their patience and encouragement throughout this project.
 
 **Bandila Sudheer Kumar** (23BCE20014)  
 **Vovuganti Nandivardhan Reddy** (23BCE7171)  
@@ -102,15 +102,15 @@ We are equally grateful to our faculty members and lab instructors in SCOPE for 
 
 ## ABSTRACT
 
-Radiologists read hundreds of MRI and CT scans every shift. When case volumes climb, fatigue creeps in. Subtle tumors get overlooked. Conventional Computer-Aided Detection (CAD) tools rarely solve this dilemma. Most act as rigid pixel classifiers that flag bright spots without reading patient notes, raising false alarms over normal brain ventricles and choroid plexus calcifications.
+Radiologists in acute hospital settings review hundreds of cross-sectional scans each shift. Heavy caseloads create diagnostic fatigue, increasing the risk of missing faint lesion borders or early-stage infiltrations. Most computer-aided detection tools do little to reduce this burden. Because they evaluate raw pixel values without reading clinical records, they routinely circle normal anatomy, such as lateral ventricles and harmless choroid plexus calcifications, triggering frequent false alarms that clinicians quickly learn to ignore.
 
-We built MedVision Agentic AI to solve these workflow breakdowns. Instead of relying on a single monolithic neural network, our system coordinates five specialized software agents. Dr. Alex Vance validates uploaded file bitstreams. Dr. Samantha Chen parses clinical notes and handles negation rules. Dr. Robert Miller runs multimodal vision inspection through Google Gemini. Dr. Emily Zhang extracts RECIST 1.1 unidimensional biomarkers. Finally, Dr. Marcus Patel synthesizes multi-agent votes into a structured consultation note.
+We developed MedVision to address these diagnostic and alignment failures. Instead of relying on an isolated neural network, our system coordinates five specialized software agents. Dr. Alex Vance validates uploaded file bitstreams and file integrity. Dr. Samantha Chen parses clinical notes and applies negation rules. Dr. Robert Miller handles multimodal vision inspection through Google Gemini. Dr. Emily Zhang computes quantitative RECIST 1.1 unidimensional biomarkers. Dr. Marcus Patel then aggregates these findings into a structured consultation note with clinical guardrails.
 
-During development, we ran into a stubborn visual defect. Standard web viewports squashed non-square $641\times 473\text{ px}$ scans into square containers. This CSS letterboxing introduced an 84-pixel lateral shift that misaligned segmentation overlays directly onto healthy brain ventricles. To fix this without heavy external image libraries, we wrote a raw binary parser (`getImageDimensions`). It reads native image dimensions from PNG IHDR headers (bytes 16–24) and JPEG markers in $0.06\text{ ms}$. In `MaskOverlay.tsx`, an inline-block container locks scans and overlays into exact $1:1$ pixel registration, rendering high-contrast boundaries ($\alpha_{\text{border}} = 0.96$) over translucent tumor interiors ($\alpha_{\text{fill}} = 0.43$).
+During interface integration, we encountered a severe alignment defect. Standard web viewports squeezed non-square $641\times 473\text{ px}$ scans into square containers. This CSS letterboxing introduced an 84-pixel lateral shift, placing tumor segmentation overlays directly over normal brain ventricles. To resolve this without heavy image processing dependencies that slow down serverless execution, we wrote a raw binary parser (`getImageDimensions`). It reads native image dimensions from PNG IHDR chunks (bytes 16 to 24) and JPEG SOF markers in $0.06\text{ ms}$. In `MaskOverlay.tsx`, an inline-block container locks scans and overlays into exact $1:1$ pixel registration, rendering high-contrast perimeter boundaries ($\alpha_{\text{border}} = 0.96$) over translucent tumor fills ($\alpha_{\text{fill}} = 0.43$).
 
-We verified the entire system across 143 automated test assertions in 10 testing suites, achieving a 100% pass rate. On normal control brain MRI scans, our clinical negation filter maintained a 0% false-positive rate ($0\text{ px}$ segmented). On clinical contrast-enhanced axial glioblastoma scans, the system pinpointed the lesion in $3.61\text{ seconds}$, extracting the longest axial diameter ($d_1 = 34.2\text{ mm}$), orthogonal minor axis ($d_2 = 26.8\text{ mm}$), and spheroidal tumor burden volume ($18,420\text{ mm}^3$). When tested on real patient scans during final verification, MedVision correctly distinguished a $442\times 442\text{ px}$ healthy control slice ($0\text{ px}$ false alarms) from a $389\times 439\text{ px}$ right frontoparietal glioblastoma ($5,194\text{ px}^2$ segmented area, $266,980\text{ px}^3$ spheroidal volume). MedVision runs as a responsive Next.js 14 web application paired with an interactive Studio PACS visualizer.
+We verified the complete system across 143 automated test assertions in 10 testing suites, achieving a 100% pass rate. On normal control brain MRI scans, our clinical negation filter achieved a 0% false-positive rate ($0\text{ px}$ segmented). On real patient scans, MedVision cleanly distinguished a $442\times 442\text{ px}$ healthy control slice ($0\text{ px}$ false alarms) from an aggressive $389\times 439\text{ px}$ right frontoparietal glioblastoma ($5,194\text{ px}^2$ segmented area, longest axial diameter $d_1 = 86\text{ px}$, orthogonal minor axis $d_2 = 77\text{ px}$, and spheroidal tumor volume of $266,980\text{ px}^3$), completing inference in $3.61\text{ seconds}$. MedVision runs as a responsive Next.js 14 web application paired with an interactive Studio PACS visualizer.
 
-**Keywords:** Multi-Agent AI, Gemini Multimodal Vision, RECIST 1.1, Medical PACS, Glioblastoma, Zero False-Positive Gating, Clinical NLP, Next.js.
+**Keywords:** Multi-Agent Systems, Gemini Multimodal Vision, RECIST 1.1 Biomarkers, Medical PACS, Glioblastoma Delineation, Zero False-Positive Gating, Clinical NLP, Next.js.
 
 <div align="center">5</div>
 
@@ -126,60 +126,57 @@ We verified the entire system across 143 automated test assertions in 10 testing
 | 4. | **1** | **Introduction** | **8** |
 | | 1.1 | Objectives | 8 |
 | | 1.2 | Background and Literature Survey | 9 |
-| | 1.3 | Organization of the Report | 10 |
-| 5. | **2** | **Multi-Model Agentic Medical Vision System** | **11** |
-| | 2.1 | Proposed System | 11 |
-| | 2.2 | Working Methodology | 12 |
-| | 2.3 | Standards | 14 |
+| | 1.3 | Organization of the Report | 9 |
+| 5. | **2** | **Multi-Model Agentic Medical Vision System** | **10** |
+| | 2.1 | Proposed System | 10 |
+| | 2.2 | Working Methodology | 11 |
+| | 2.3 | Standards | 13 |
 | | 2.4 | System Details | 14 |
-| | | 2.4.1 Software Details | 14 |
-| | | 2.4.2 Hardware Details | 17 |
-| 6. | **3** | **Cost Analysis** | **19** |
-| | 3.1 | List of components and their cost | 19 |
-| 7. | **4** | **Results and Discussions** | **20** |
-| | 4.1 | Zero False-Positive Verification Suite | 20 |
-| | 4.2 | Real Glioblastoma Case Study & Lesion Delineation | 21 |
-| | 4.3 | Model & Architecture Comparison | 22 |
-| | 4.4 | Live Diagnostic Studio PACS & Telemetry | 22 |
-| 8. | **5** | **Conclusion & Future Works** | **25** |
-| | 5.1 | Conclusion | 25 |
-| | 5.2 | Future Works | 25 |
-| 9. | **6** | **Appendix (Core Source Code)** | **26** |
-| 10. | **7** | **References** | **28** |
-| 11. | **8** | **Biodata of Project Authors** | **30** |
+| | 2.4.1 | Software Details | 14 |
+| | 2.4.2 | Hardware Details | 16 |
+| 6. | **3** | **Cost Analysis** | **18** |
+| | 3.1 | List of components and their cost | 18 |
+| 7. | **4** | **Results and Discussions** | **19** |
+| | 4.1 | Zero False-Positive Verification Suite | 19 |
+| | 4.2 | Empirical Evaluation on Clinical Brain MRI Scans | 20 |
+| | 4.3 | Model & Architecture Comparison | 21 |
+| | 4.4 | Live Diagnostic Studio PACS & Telemetry | 24 |
+| 8. | **5** | **Conclusion & Future Works** | **27** |
+| | 5.1 | Conclusion | 27 |
+| | 5.2 | Future Works | 27 |
+| 9. | **6** | **Appendix (Core Source Code)** | **28** |
+| 10. | **7** | **References** | **30** |
+| 11. | **8** | **Biodata of Project Authors** | **32** |
 
-<div align="center">6</div>
-
----
+<div class="page-break"></div>
 
 ## LIST OF TABLES
 
 | Table No. | Title | Page No. |
 | :---: | :--- | :---: |
-| **2.1** | Five-Agent Clinical Role & Responsibility Matrix | 12 |
-| **2.2** | Hyperparameters & Inference Thresholds of the Vision Pipeline | 14 |
-| **2.3** | Layer-by-Layer Dimensions of the ONNX MiniUNet Backbone | 15 |
-| **2.4** | Hardware and Computational Resource Specifications | 17 |
-| **2.5** | Memory & Aspect Ratio Padding Drift across Display Modes | 18 |
-| **2.6** | Real-Time Resource Utilization of System Components | 18 |
-| **3.1** | List of components and their costs | 19 |
-| **4.1** | Verification Milestones across 143 Assertions in 10 Suites | 21 |
+| **2.1** | Five-Agent Clinical Role & Responsibility Matrix | 11 |
+| **2.2** | Hyperparameters & Inference Thresholds of the Vision Pipeline | 13 |
+| **2.3** | Layer-by-Layer Dimensions of the ONNX MiniUNet Backbone | 14 |
+| **2.4** | Hardware and Computational Resource Specifications | 16 |
+| **2.5** | Memory & Aspect Ratio Padding Drift across Display Modes | 16 |
+| **2.6** | Real-Time Resource Utilization of System Components | 16 |
+| **3.1** | List of components and their costs | 18 |
+| **4.1** | Verification Milestones across 143 Assertions in 10 Suites | 19 |
 | **4.2** | Empirical Comparative Telemetry on Clinical Brain MRI Scans | 21 |
-| **4.3** | Benchmark Comparison of Vision Architectures & Inference Engines | 22 |
+| **4.3** | Benchmark Comparison of Vision Architectures & Inference Engines | 24 |
 
 ## LIST OF FIGURES
 
 | Figure No. | Title | Page No. |
 | :---: | :--- | :---: |
-| **1** | System Block Diagram & Asynchronous Multi-Agent Architecture | 11 |
-| **2** | Five-Stage Binary Header Dimension Extraction Pipeline | 13 |
-| **3** | Dual-Track Architecture: ONNX UNet Checkpoints and Gemini Vision API | 15 |
-| **4** | 11-Step Asynchronous Agent Orchestrator Pipeline (`lib/agent.ts`) | 16 |
-| **5** | Memory and Latency Profiling across Client and Backend Microservices | 18 |
-| **6** | Empirical Verification Pass Trajectory across 10 Automated Test Suites | 20 |
-| **7** | Empirical Validation on User Clinical Brain MRI Scans (Healthy vs Glioblastoma) | 21 |
-| **8** | MedVision Minimalist Home Workspace & Omni-Search Input Composer | 23 |
-| **9** | Studio PACS Visualizer: Real-Time Lesion Illumination & RECIST Telemetry | 24 |
+| **1** | System Block Diagram & Asynchronous Multi-Agent Architecture | 10 |
+| **2** | Five-Stage Binary Header Dimension Extraction Pipeline | 12 |
+| **3** | Dual-Track Architecture: ONNX UNet Checkpoints and Gemini Vision API | 14 |
+| **4** | 11-Step Asynchronous Agent Orchestrator Pipeline (`lib/agent.ts`) | 15 |
+| **5** | Empirical Verification Pass Trajectory across 10 Automated Test Suites | 19 |
+| **6** | Empirical Validation on User Clinical Brain MRI Scans (Healthy vs Glioblastoma) | 20 |
+| **7** | MedVision Minimalist Home Workspace & Omni-Search Input Composer | 24 |
+| **8** | Studio PACS Visualizer: Real-Time Lesion Illumination & RECIST Telemetry | 24 |
 
 <div align="center">7</div>
 
@@ -187,21 +184,21 @@ We verified the entire system across 143 automated test assertions in 10 testing
 
 # CHAPTER 1: INTRODUCTION
 
-Hospital radiology departments face heavy backlogs. Technicians acquire thousands of axial slices every day across Magnetic Resonance Imaging (MRI) and Computed Tomography (CT) scanners. Radiologists must inspect these scans rapidly, compare them against patient notes, and measure lesion sizes under strict criteria. Under tight deadlines, three technical and human bottlenecks arise:
+Hospital radiology departments face high imaging volumes. Technicians generate thousands of cross-sectional slices each day using Magnetic Resonance Imaging (MRI) and Computed Tomography (CT) scanners. Radiologists must inspect these scans quickly, cross-reference findings against patient notes, and measure lesion dimensions according to standard protocols. Under tight deadlines, three technical and operational bottlenecks occur:
 
-1. **Diagnostic Fatigue:** Reviewing hundreds of high-resolution image slices strains clinical attention. Early-stage infiltrating gliomas or small lung nodules look faint against normal tissue and can easily be overlooked.
-2. **Context-Blind CAD Detectors:** Most commercial Computer-Aided Detection software evaluates image pixels in total isolation. Because these tools cannot read the patient history, they often circle normal structures like the brain lateral ventricles or harmless calcifications, generating annoying false alarms.
-3. **Canvas Letterboxing Defects in Web Viewports:** Clinical web viewers frequently drop raw $641\times 473\text{ px}$ scans into square viewports using naive CSS rules. This creates an 84-pixel lateral offset that shifts the tumor overlay onto healthy brain tissue.
+1. **Diagnostic Fatigue:** Reviewing hundreds of high-resolution images strains clinical attention. Early-stage infiltrating gliomas or small pulmonary nodules show faint contrast against healthy tissue and can easily go unnoticed during long shifts.
+2. **Context-Blind CAD Detectors:** Most commercial Computer-Aided Detection software examines image pixels in isolation. Because these tools cannot read clinical histories, they frequently flag normal structures like lateral ventricles and benign vascular calcifications, generating repeated false alarms.
+3. **Canvas Letterboxing Errors in Web Viewports:** Web-based diagnostic tools often scale non-square scans (such as $641\times 473\text{ px}$) into square viewports using generic CSS rules. This introduces an 84-pixel lateral offset, shifting the tumor mask directly onto healthy brain tissue.
 
 ### 1.1 Objectives
 
-We set out to engineer a reliable decision-support system that solves these three issues:
-- Build an asynchronous team of five specialized software agents to coordinate triage, negation parsing, vision inspection, RECIST 1.1 measurement, and report drafting.
-- Write a zero-dependency binary header sniffer in TypeScript (`getImageDimensions`) that reads raw scan dimensions from PNG bytes 16–24 and JPEG markers in under $0.1\text{ ms}$, eliminating display padding offsets.
-- Connect Google Gemini Multimodal Vision APIs with dynamic coordinate rescaling ($[0, 1]$, $[0, 100]$, $[0, 1000]$) and dual-layer contour rendering ($\\alpha_{\\text{border}} = 0.96$, $\\alpha_{\\text{fill}} = 0.43$).
-- Create a bidirectional NegEx clinical NLP module that distinguishes indications (*"rule out brain mass"*) from confirmed negative findings (*"mass is ruled out"*).
-- Evaluate the entire codebase against an automated verification suite of **143 assertions across 10 suites**, enforcing a **0% false-positive rate** on normal scans.
-- Deploy the system in Next.js 14 with a clean, responsive interface and an interactive PACS visualizer.
+We built MedVision to resolve these three issues:
+- Coordinate an asynchronous panel of five software agents to handle intake, negation parsing, visual inspection, RECIST 1.1 measurement, and report drafting.
+- Build a zero-dependency binary header sniffer in TypeScript (`getImageDimensions`) that extracts native scan dimensions from PNG bytes 16 to 24 and JPEG markers in under $0.1\text{ ms}$, preventing viewport alignment drift.
+- Connect Google Gemini Multimodal Vision APIs with dynamic coordinate rescaling ($[0, 1]$, $[0, 100]$, $[0, 1000]$) and dual-layer contour rendering ($\alpha_{\text{border}} = 0.96$, $\alpha_{\text{fill}} = 0.43$).
+- Implement a bidirectional NegEx clinical NLP module to distinguish test indications (*"rule out brain mass"*) from confirmed negative findings (*"mass is ruled out"*).
+- Test the entire architecture against an automated verification suite of **143 assertions across 10 suites**, enforcing a **0% false-positive rate** on normal scans.
+- Deploy the system in Next.js 14 with a responsive interface and an interactive PACS visualizer.
 
 <div align="center">8</div>
 
@@ -209,19 +206,21 @@ We set out to engineer a reliable decision-support system that solves these thre
 
 ### 1.2 Background and Literature Survey
 
-Medical segmentation has long relied on convolutional encoder-decoder networks, especially the U-Net architecture created by Ronneberger et al. [1]. U-Net handles square $256\times 256$ slices cleanly on benchmark sets like BraTS or TCGA-LGG. But clinical scanners do not output uniform square images. Real scans arrive in varied aspect ratios ($641\times 473$, $512\times 384$). When fed into fixed-dimension convolutional models without bespoke preprocessing, interpolation degrades small tumor edges, and aspect ratios distort.
+Medical image segmentation has long relied on convolutional encoder-decoder networks, especially the U-Net architecture developed by Ronneberger et al. [1]. U-Net works well on standard square $256\times 256$ inputs from benchmarks like BraTS or TCGA-LGG. However, real clinical scanners output varied aspect ratios ($641\times 473$, $512\times 384$). When fed into fixed-dimension convolutional models without careful preprocessing, interpolation blurs fine tumor margins and distorts anatomical geometry.
 
-Multimodal Large Language Models (MLLMs), including Google Gemini [2] and GPT-4V, bring strong zero-shot visual perception to medical imaging. In our multi-agent architecture, the consensus diagnosis across $K$ specialized agents is calculated as:
+Multimodal Large Language Models (MLLMs), including Google Gemini [2] and GPT-4V, provide strong zero-shot visual reasoning for medical scans. In our architecture, the consensus diagnosis across $K$ specialized agents is formulated as:
 
 $$\mathcal{C}(\mathcal{M}, \mathcal{D}) = \sum_{k=1}^K w_k \cdot \log P(\text{Neoplasm} \mid \mathcal{I}_k, \mathcal{T}_k) \tag{1.1}$$
 
-Here, $\mathcal{I}_k$ represents the imaging bitstream, $\mathcal{T}_k$ is the accompanying clinical text, and $w_k$ is the agent confidence weight. For clinical negation, Chapman et al. [3] introduced the NegEx algorithm. We formalized this into a bidirectional scope rule in `lib/clinicalInfo.ts`:
+Here, $\mathcal{I}_k$ represents the image data, $\mathcal{T}_k$ is the accompanying clinical text, and $w_k$ is the confidence weight assigned to agent $k$.
+
+For clinical negation processing, Chapman et al. [3] established the NegEx algorithm. We implemented this logic as a bidirectional rule set in `lib/clinicalInfo.ts`:
 
 $$\text{Negated}(c) \iff c \in \mathcal{S}_{\text{clause}} \cap \left( \bigcup_{r \in \mathcal{R}_{\text{pre}}} \text{Scope}(r) \cup \bigcup_{r \in \mathcal{R}_{\text{post}}} \text{Scope}(r) \right) \tag{1.2}$$
 
-where $\mathcal{R}_{\text{pre}}$ and $\mathcal{R}_{\text{post}}$ represent trigger sets for preceding and trailing negation phrases.
+where $\mathcal{R}_{\text{pre}}$ and $\mathcal{R}_{\text{post}}$ represent trigger sets for preceding and trailing negation expressions.
 
-To handle different coordinate scales returned by multimodal vision models, the raw bounding box $[b_0, b_1, b_2, b_3]$ is mapped to native dimensions $(W, H)$ using scale factor $s = \max(b_0, b_1, b_2, b_3)$:
+Because multimodal vision models return coordinates on different scales, we map the raw bounding box $[b_0, b_1, b_2, b_3]$ to native dimensions $(W, H)$ using scale factor $s = \max(b_0, b_1, b_2, b_3)$:
 
 $$y_{\min}^{\text{px}} = \left\lfloor \frac{\min(b_0, b_2)}{s} \cdot H \right\rfloor, \quad x_{\min}^{\text{px}} = \left\lfloor \frac{\min(b_1, b_3)}{s} \cdot W \right\rfloor \tag{1.3}$$
 
@@ -229,14 +228,14 @@ $$y_{\max}^{\text{px}} = \left\lceil \frac{\max(b_0, b_2)}{s} \cdot H \right\rce
 
 ### 1.3 Organization of the Report
 
-The report is structured into eight chapters:
-- **Chapter 2** covers the multi-agent system design, mathematical formulas, clinical standards, and software/hardware specifications.
-- **Chapter 3** outlines the project cost breakdown in Indian Rupees (Rs.).
-- **Chapter 4** walks through verification milestones across 143 assertions, a glioblastoma case study, and live Studio PACS telemetry.
-- **Chapter 5** summarizes findings and outlines next engineering steps.
-- **Chapter 6** lists core TypeScript source code in the Appendix.
-- **Chapter 7** provides formal IEEE citations.
-- **Chapter 8** presents author biodata cards.
+The report is organized into eight chapters:
+- **Chapter 2** presents the multi-agent system design, mathematical formulas, clinical standards, and software/hardware specifications.
+- **Chapter 3** itemizes the project expenses in Indian Rupees (Rs.).
+- **Chapter 4** details the verification results across 143 assertions, a glioblastoma case study, and live Studio PACS telemetry.
+- **Chapter 5** summarizes our conclusions and outlines future development plans.
+- **Chapter 6** provides the core TypeScript source code in the Appendix.
+- **Chapter 7** lists formal IEEE citations.
+- **Chapter 8** presents the biodata cards of all four project authors.
 
 <div align="center">10</div>
 
@@ -244,21 +243,21 @@ The report is structured into eight chapters:
 
 # CHAPTER 2: MULTI-MODEL AGENTIC MEDICAL VISION SYSTEM
 
-This chapter explains our multi-agent architecture, the mathematical formulas used for lesion extraction and volume estimation, regulatory standards, and software specifications.
+This chapter explains our multi-agent architecture, mathematical formulas for lesion extraction and volume calculation, regulatory standards, and technical specifications.
 
 ### 2.1 Proposed System
 
-Figure 1 diagrams the communication flow across the five clinical software agents:
+Figure 1 illustrates the communication flow among the five clinical software agents:
 
 ![Figure 1: MedVision Multi-Agent Collaborative System Architecture](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_2_multi_agent_system_architecture.png)
 *Figure 1: System block diagram showing the 5-agent asynchronous clinical pipeline.*
 
-The system splits work into five distinct modules:
-1. **Intake Triage & Header Sniffer:** Checks file magic bytes, reads native image dimensions directly, and validates PDF attachments.
+The system divides work into five distinct modules:
+1. **Intake Triage & Header Sniffer:** Verifies magic bytes, reads native image dimensions directly, and validates PDF attachments.
 2. **Clinical NLP & Negation Engine:** Scans clinical notes for symptoms, suspected conditions, and negated phrases using bidirectional rules.
-3. **Multimodal Vision Engine:** Calls Google Gemini Vision endpoints for zero-shot lesion detection and coordinate estimation.
-4. **Quantitative Biomarker Engine:** Derives RECIST 1.1 diameters ($d_1, d_2$) and estimates prolate spheroidal tumor volume.
-5. **Interactive Studio PACS Visualizer:** Draws semi-transparent lesion contours directly on top of the original scan in Next.js 14.
+3. **Multimodal Vision Engine:** Sends scans to Google Gemini Vision endpoints for zero-shot lesion localization and bounding box extraction.
+4. **Quantitative Biomarker Engine:** Measures RECIST 1.1 diameters ($d_1, d_2$) and computes prolate spheroidal tumor volume.
+5. **Interactive Studio PACS Visualizer:** Renders semi-transparent lesion contours directly over the original scan in Next.js 14.
 
 <div align="center">11</div>
 
@@ -266,8 +265,8 @@ The system splits work into five distinct modules:
 
 ### 2.2 Working Methodology
 
-We model the triage and diagnostic flow as a Clinical Decision Process tuple $\langle \mathcal{S}, \mathcal{A}, \mathcal{P}, \mathcal{R}, \gamma \rangle$:
-- **State Space ($\mathcal{S}$):** The state $s_t = \langle \mathcal{I}_{\text{raw}}, \mathcal{T}_{\text{notes}}, \mathcal{O}_{\text{organ}} \rangle$ consists of the raw image array $\mathcal{I}_{\text{raw}} \in \mathbb{R}^{H \times W \times C}$, patient text $\mathcal{T}_{\text{notes}}$, and detected organ $\mathcal{O}_{\text{organ}} \in \{\text{Brain}, \text{Lung}, \text{Pancreas}, \text{General}\}$.
+We formulate the triage and diagnostic flow as a Clinical Decision Process tuple $\langle \mathcal{S}, \mathcal{A}, \mathcal{P}, \mathcal{R}, \gamma \rangle$:
+- **State Space ($\mathcal{S}$):** The state $s_t = \langle \mathcal{I}_{\text{raw}}, \mathcal{T}_{\text{notes}}, \mathcal{O}_{\text{organ}} \rangle$ includes raw pixel array $\mathcal{I}_{\text{raw}} \in \mathbb{R}^{H \times W \times C}$, patient text $\mathcal{T}_{\text{notes}}$, and identified organ $\mathcal{O}_{\text{organ}} \in \{\text{Brain}, \text{Lung}, \text{Pancreas}, \text{General}\}$.
 - **Action Space ($\mathcal{A}$):** The panel selects routing paths (Table 2.1), model dispatch options, and clinical urgency ratings.
 
 Table 2.1 Five-Agent Clinical Role & Responsibility Matrix
@@ -281,19 +280,19 @@ Table 2.1 Five-Agent Clinical Role & Responsibility Matrix
 
 #### Target Lesion Extraction & RECIST 1.1 Formulation
 
-Once the model identifies a lesion, the binary mask $\mathcal{M} \in \{0, 1\}^{H \times W}$ defines the affected area. The boundary contour $\partial \mathcal{M}$ is computed using an 8-connected morphological boundary operator:
+When the model detects a lesion, the binary mask $\mathcal{M} \in \{0, 1\}^{H \times W}$ defines the affected area. An 8-connected morphological boundary operator extracts the perimeter contour $\partial \mathcal{M}$:
 
 $$\partial \mathcal{M} = \left\{ (x, y) \in \mathcal{M} \;\middle|\; \min_{(i, j) \in \mathcal{N}_8(x, y)} \mathcal{M}(i, j) = 0 \right\} \tag{2.1}$$
 
-Under international RECIST 1.1 guidelines [4], the longest axial diameter ($d_1$) is calculated as:
+Under international RECIST 1.1 guidelines [4], we calculate the longest axial diameter ($d_1$) as:
 
 $$d_1 = \max_{p_i, p_j \in \partial \mathcal{M}} \| p_i - p_j \|_2 \cdot s_x \quad \text{such that } d_1 \ge 10.0\text{ mm} \tag{2.2}$$
 
-where $s_x$ is pixel spacing in millimeters. The orthogonal short axis ($d_2$) is measured perpendicular to the longest axis:
+where $s_x$ denotes pixel spacing in millimeters. We measure the orthogonal short axis ($d_2$) perpendicular to the longest axis:
 
 $$d_2 = \max_{\substack{q_i, q_j \in \partial \mathcal{M} \\ (q_i - q_j) \perp (p_i - p_j)}} \| q_i - q_j \|_2 \cdot s_y \tag{2.3}$$
 
-We calculate 3D spheroidal tumor burden volume ($\mathcal{V}$) using the prolate ellipsoid formula:
+We estimate total 3D spheroidal tumor burden volume ($\mathcal{V}$) using the prolate ellipsoid formula:
 
 $$\mathcal{V} = \frac{\pi}{6} \cdot d_1 \cdot d_2^2 \tag{2.4}$$
 
@@ -303,7 +302,7 @@ $$\mathcal{V} = \frac{\pi}{6} \cdot d_1 \cdot d_2^2 \tag{2.4}$$
 
 #### Binary Image Header Dimension Extraction Pipeline
 
-A typical uncompressed axial MRI slice has $641\times 473\times 3$ channels ($909,579$ bytes). Decoding that entire array on every request slows down serverless handlers. Instead, our sniffer reads image dimensions directly from file headers:
+An uncompressed axial MRI slice has $641\times 473\times 3$ channels ($909,579$ bytes). Fully decoding that array on every request increases latency in serverless handlers. Instead, our sniffer reads image dimensions directly from file headers:
 
 ```
 +---------------------------------------------------------------------------------+
@@ -328,19 +327,19 @@ A typical uncompressed axial MRI slice has $641\times 473\times 3$ channels ($90
 ```
 *Figure 2: Five-stage binary header dimension extraction and dual-layer contour generation.*
 
-The native width $W$ and height $H$ are unpacked via big-endian bit shifts:
+Big-endian bit shifts unpack native width $W$ and height $H$:
 
 $$W = (b_{16} \ll 24) \mid (b_{17} \ll 16) \mid (b_{18} \ll 8) \mid b_{19} \tag{2.5}$$
 
 $$H = (b_{20} \ll 24) \mid (b_{21} \ll 16) \mid (b_{22} \ll 8) \mid b_{23} \tag{2.6}$$
 
-The dual-layer alpha composite $\mathcal{I}_{\text{overlay}}(x, y)$ over scan $\mathcal{I}_{\text{scan}}(x, y)$ is defined by:
+The dual-layer alpha composite $\mathcal{I}_{\text{overlay}}(x, y)$ over scan $\mathcal{I}_{\text{scan}}(x, y)$ blends as:
 
 $$\mathcal{I}_{\text{overlay}}(x, y) = \alpha(x, y) \cdot \mathbf{C}_{\text{palette}} + (1 - \alpha(x, y)) \cdot \mathcal{I}_{\text{scan}}(x, y) \tag{2.7}$$
 
-where the spatial alpha map $\alpha(x, y)$ provides diagnostic transparency:
+where the spatial alpha map $\alpha(x, y)$ maintains diagnostic clarity:
 
-$$\alpha(x, y) = \begin{cases} 0.96 & \text{if } (x, y) \in \partial \mathcal{M} \quad (\text{sharp outer perimeter}) \\ 0.43 & \text{if } (x, y) \in \mathcal{M} \setminus \partial \mathcal{M} \quad (\text{translucent diagnostic interior}) \\ 0.00 & \text{otherwise} \end{cases} \tag{2.8}$$
+$$\alpha(x, y) = \begin{cases} 0.96 & \text{if } (x, y) \in \partial \mathcal{M} \quad (\text{sharp outer perimeter}) \\ 0.43 & \text{if } (x, y) \in \mathcal{M} \setminus \partial \mathcal{M} \quad (\text{translucent interior}) \\ 0.00 & \text{otherwise} \end{cases} \tag{2.8}$$
 
 <div align="center">13</div>
 
@@ -351,21 +350,21 @@ Table 2.2 Hyperparameters & Inference Thresholds of the Vision Pipeline
 | :--- | :--- | :--- |
 | Primary Multimodal Model | `gemini-3.1-flash-lite` | Primary visual lesion segmentation endpoint |
 | Secondary Fallback Model | `gemini-3.5-flash` | Cascade fallback for rate limits or complex lesions |
-| Minimum Lesion Radius ($r_{\min}$) | $10\text{ px}$ | Prevents sub-threshold false suppression of genuine tumors |
+| Minimum Lesion Radius ($r_{\min}$) | $10\text{ px}$ | Prevents false suppression of genuine small tumors |
 | Noise Rejection Area Threshold | $30\text{ px}$ | Filters isolated single-pixel acquisition artifacts |
 | Outer Contour Opacity ($\alpha_{\text{border}}$) | $0.96$ ($245/255$) | High-contrast boundary visibility for radiologist review |
-| Interior Fill Opacity ($\alpha_{\text{fill}}$) | $0.43$ ($110/255$) | Preserves internal parenchymal texture and vasogenic edema |
+| Interior Fill Opacity ($\alpha_{\text{fill}}$) | $0.43$ ($110/255$) | Preserves internal tissue texture and vasogenic edema |
 | Temperature ($\tau$) | $0.10$ | Enforces deterministic clinical coordinate extraction |
 | Ingestion Timeout ($T_{\max}$) | $60\text{ seconds}$ | Serverless execution limit for large DICOM uploads |
 
 ### 2.3 Standards
 
-Our implementation follows several medical, clinical, and software specifications:
+Our implementation complies with standard clinical and technical guidelines:
 - **RECIST 1.1 Criteria:** Response Evaluation Criteria in Solid Tumors governing measurable unidimensional axial diameters ($\ge 10\text{ mm}$).
 - **WHO CNS5 Classification (2021):** Guidelines distinguishing diffuse astrocytomas, oligodendrogliomas, and IDH-wildtype glioblastoma.
-- **DICOM Part 3.3 / NIfTI-1:** Standard file formats for axial cross-sectional imaging series.
+- **DICOM Part 3.3 / NIfTI-1:** Standard file structures for cross-sectional imaging series.
 - **IEEE 754 Floating-Point Arithmetic:** Coordinates and model scores stored as 32-bit floats; binary masks stored in 8-bit unsigned buffers (`Uint8Array`).
-- **W3C Web Architecture:** Interface built with Next.js 14 App Router, WebSockets for live status updates, and responsive CSS Grid/Flexbox layouts.
+- **W3C Web Standards:** Architecture built with Next.js 14 App Router, WebSockets for status updates, and responsive CSS Grid/Flexbox layouts.
 
 ### 2.4 System Details
 
@@ -384,7 +383,7 @@ Our implementation follows several medical, clinical, and software specification
 
 ##### ii) Model Architecture & Feature Extraction
 
-MedVision supports a dual-track architecture: lightweight local ONNX MiniUNet checkpoints and cloud foundational Gemini Multimodal Vision (Figure 3, Table 2.3).
+MedVision supports dual inference pathways: local ONNX MiniUNet checkpoints and foundational Gemini Multimodal Vision (Figure 3, Table 2.3).
 
 ```
 +-----------------------------------------------------------------------------------+
@@ -433,11 +432,11 @@ Table 2.3 Layer-by-Layer Dimensions of the ONNX MiniUNet Backbone
 
 ##### iii) 11-Step Asynchronous Agent Orchestrator Pipeline
 
-The core execution loop in `lib/agent.ts` executes an explicit 11-step pipeline (Figure 4), logging telemetry and clinical reasoning at every stage:
+The execution loop in `lib/agent.ts` runs an 11-step pipeline (Figure 4), recording telemetry and reasoning at each stage:
 
 ```
 +-----------------------------------------------------------------------------------+
-| Figure 5: 11-Step Asynchronous Agent Orchestrator Pipeline (lib/agent.ts)         |
+| Figure 4: 11-Step Asynchronous Agent Orchestrator Pipeline (lib/agent.ts)         |
 |                                                                                   |
 |  [Step 1: validateImage]        Check binary magic bytes (PNG, JPEG, WebP, DICOM)  |
 |          │                                                                        |
@@ -466,11 +465,11 @@ The core execution loop in `lib/agent.ts` executes an explicit 11-step pipeline 
 
 ##### iv) Studio PACS Diagnostic Workspace
 
-The web client (`components/MaskOverlay.tsx`) provides an interactive radiologist workspace:
-- **View Modes:** Overlay mode (blended scan and mask), Split mode (draggable horizontal divider), and Mask-only mode.
-- **Window/Level Presets:** Brain Window (soft tissue contrast), Lung Window (high dynamic range), Bone Window (cortical bone highlight).
+The web client (`components/MaskOverlay.tsx`) provides an interactive viewing interface:
+- **View Modes:** Overlay mode (blended scan and mask), Split mode (draggable divider), and Mask-only mode.
+- **Window/Level Presets:** Brain Window (soft tissue contrast), Lung Window (wide dynamic range), Bone Window (cortical bone definition).
 - **Four-Color Diagnostic Palette:** Crimson Coral (`#EF4444`), Diagnostic Cyan (`#06B6D4`), Thermal Amber (`#F59E0B`), and Emerald Clear (`#10B981`).
-- **Telemetry Readout:** Real-time display of native matrix resolution (`MATRIX: 641×473 · RECIST 1.1`), processing latency, and organ certainty.
+- **Telemetry Readout:** Real-time display of native matrix dimensions (`MATRIX: 641×473 · RECIST 1.1`), processing latency, and organ certainty.
 
 <div align="center">16</div>
 
@@ -479,7 +478,7 @@ The web client (`components/MaskOverlay.tsx`) provides an interactive radiologis
 #### 2.4.2 Hardware Details
 
 ##### i) Computational Platform
-We developed and benchmarked MedVision across three hardware setups: local development machines, campus workstations, and remote cloud runners (Table 2.4).
+We benchmarked MedVision across three hardware configurations: local laptops, campus workstations, and cloud runners (Table 2.4).
 
 Table 2.4 Hardware and Computational Resource Specifications
 | Hardware Component | Development Station | Campus Test Server | Cloud Inference Environment |
@@ -547,14 +546,14 @@ All hardware workstations were personal student machines. Dataset access was ope
 
 # CHAPTER 4: RESULTS AND DISCUSSIONS
 
-This chapter covers our automated test suite results, a glioblastoma MRI case study, model comparisons, and interactive Studio PACS visualizer performance.
+This chapter presents our automated test suite results, an empirical glioblastoma MRI case study, model comparisons, and interactive Studio PACS visualizer performance.
 
 ### 4.1 Zero False-Positive Verification Suite
 
-Early in development, our mock segmenter kept triggering on normal ventricles because cerebrospinal fluid shows up bright on T2 sequences. A radiologist testing our prototype pointed out that mistaking ventricular fluid for an infiltrating glioma destroys clinical trust. We treated this as a blocking defect. We built a dedicated verification testbed (`test-negation-and-false-positives.ts`) containing 143 automated assertions partitioned into 10 testing suites (Figure 6, Table 4.1). The suite enforces zero false-positive segmentations on clean scans before code merges.
+Early in development, our mock segmenter repeatedly triggered on normal ventricles because cerebrospinal fluid appears hyperintense on T2 sequences. A radiologist testing our prototype pointed out that mistaking ventricular fluid for an infiltrating glioma destroys clinical trust. We treated this as a blocking defect and constructed a verification testbed (`test-negation-and-false-positives.ts`) containing 143 automated assertions across 10 testing suites (Figure 5, Table 4.1). The suite enforces zero false-positive segmentations on clean scans before code merges.
 
-![Figure 6: Empirical Verification Pass Trajectory Across 10 Test Suites](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_7_verification_pass_trajectory.png)
-*Figure 6: Cumulative verification pass trajectory across all 10 automated test suites (143 assertions passed, 100% pass rate).*
+![Figure 5: Empirical Verification Pass Trajectory Across 10 Test Suites](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_7_verification_pass_trajectory.png)
+*Figure 5: Cumulative verification pass trajectory across all 10 automated test suites (143 assertions passed, 100% pass rate).*
 
 The test suite confirmed four core capabilities:
 1. **Clinical Negation Handling (Suites 1 & 6):** Statements indicating normal scans (*"unremarkable brain MRI"*) or post-negated diagnoses (*"glioma is ruled out"*) yield an exact $0\text{ px}$ segmentation mask.
@@ -587,10 +586,10 @@ We evaluated MedVision directly against two clinical patient brain MRI scans pro
 1. **Scan 1 (Healthy Normal Control):** An axial T2-weighted brain MRI slice ($442\times 442\text{ px}$, JPEG), depicting normal bilateral cerebral hemispheres, patent lateral ventricles, and zero intracranial masses.
 2. **Scan 2 (Pathological Neoplasm):** An axial contrast-enhanced T1-weighted brain MRI slice ($389\times 439\text{ px}$, JPEG), exhibiting a large, hyperintense, heterogeneously enhancing high-grade glial neoplasm in the right frontoparietal lobe with surrounding edema and mass effect on adjacent ventricular structures.
 
-Figure 7 presents the side-by-side diagnostic output generated by the five-agent clinical panel for both scans.
+Figure 6 presents the side-by-side diagnostic output generated by the five-agent clinical panel for both scans.
 
-![Figure 7: Empirical Validation on User Clinical Brain MRI Scans](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_8_real_scan_comparative_evaluation.png)
-*Figure 7: Empirical multi-agent evaluation on user clinical brain MRI scans. Left: Healthy control slice (T2 axial, 442x442 px) exhibiting zero false-positive segmentation (0 px detected, 100% specificity). Right: Pathological glioblastoma slice (T1CE axial, 389x439 px) exhibiting precise lesion localization (74, 188, 77, 86), RECIST 1.1 caliper extraction (d1=86 px, d2=77 px), and spheroidal tumor volume calculation (266,980 px³).*
+![Figure 6: Empirical Validation on User Clinical Brain MRI Scans](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_8_real_scan_comparative_evaluation.png)
+*Figure 6: Empirical multi-agent evaluation on user clinical brain MRI scans. Left: Healthy control slice (T2 axial, 442x442 px) exhibiting zero false-positive segmentation (0 px detected, 100% specificity). Right: Pathological glioblastoma slice (T1CE axial, 389x439 px) exhibiting precise lesion localization (74, 188, 77, 86), RECIST 1.1 caliper extraction (d1=86 px, d2=77 px), and spheroidal tumor volume calculation (266,980 px³).*
 
 Table 4.2 summarizes the quantitative telemetry extracted by MedVision across both scans.
 
@@ -637,7 +636,6 @@ $$\mathcal{V} = \frac{\pi}{6} \cdot d_1 \cdot d_2^2 = \frac{\pi}{6} \cdot 86 \cd
 4. **Dual-Layer Visual Delineation:** In `MaskOverlay.tsx`, the segmented area ($5,194\text{ px}^2$, $3.04\%$ parenchymal coverage) rendered with a translucent fill ($\alpha_{\text{fill}} = 0.43$) bounded by a sharp boundary contour ($\alpha_{\text{border}} = 0.96$).
 5. **Clinical Multi-Agent Consensus:** The panel produced a consensus confidence score of $0.968$, classifying the patient at Acuity Level 5/5 (Critical Neoplasm) with immediate neurosurgical triage alerts.
 
-
 ### 4.3 Model & Architecture Comparison
 
 Table 4.3 compares the three inference modes we evaluated: Local ONNX MiniUNet, Cloud Gemini 3.1 Flash Lite Vision, and Hybrid Multi-Agent Consensus.
@@ -650,20 +648,20 @@ Table 4.3 Benchmark Comparison of Vision Architectures & Inference Engines
 | **Trainable Parameters** | $45,169$ | Foundational Scale | Multi-Model Ensemble |
 | **Zero False-Positive Rate** | $91.4\%$ | $98.0\%$ | **$100.0\%$ (Verified)** |
 | **Inference Latency** | **$42\text{ ms}$** | $3,615\text{ ms}$ | $3,850\text{ ms}$ |
-| **Clinical Narrative Context** | None (Pixels only) | High | **Comprehensive (NLP + Vision)** |
+| **Clinical Narrative Context** | None (Pixels only) | High | **Structured (NLP + Vision)** |
 | **RECIST 1.1 Automated Telemetry**| Manual derivation | Prompt-approximated | **Automated Sub-Millimeter** |
 
 The local ONNX MiniUNet is fast ($42\text{ ms}$), but it cannot parse clinical text. Google Gemini 3.1 Flash Lite extracts semantic lesion boundaries across non-standard resolutions reliably. The hybrid multi-agent consensus combines both, reaching 100% specificity on healthy control scans.
 
 ### 4.4 Live Diagnostic Studio PACS & Telemetry
 
-MedVision runs as an interactive web platform in Next.js 14. Figure 8 shows the minimalist home workspace and Figure 9 shows the Studio PACS visualizer.
+MedVision runs as an interactive web platform in Next.js 14. Figure 7 shows the minimalist home workspace and Figure 8 shows the Studio PACS visualizer.
 
-![Figure 8: MedVision Minimalist Web Workspace](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_2_3_web_application_home.png)
-*Figure 8: Minimalist home workspace featuring unified input composer and clinical chips.*
+![Figure 7: MedVision Minimalist Web Workspace](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_2_3_web_application_home.png)
+*Figure 7: Minimalist home workspace featuring unified input composer and clinical chips.*
 
-![Figure 9: Studio PACS Visualizer with Verified Lesion Delineation](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_2_7_interactive_pacs_lesion_visualizer.png)
-*Figure 9: Studio PACS visualizer displaying real glioblastoma scan with zero padding drift and RECIST telemetry.*
+![Figure 8: Studio PACS Visualizer with Verified Lesion Delineation](file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/fig_2_7_interactive_pacs_lesion_visualizer.png)
+*Figure 8: Studio PACS visualizer displaying real glioblastoma scan with zero padding drift and RECIST telemetry.*
 
 <div align="center">24</div>
 
@@ -676,9 +674,9 @@ MedVision runs as an interactive web platform in Next.js 14. Figure 8 shows the 
 In this Capstone Project, we designed, built, and tested **MedVision Agentic AI**, an autonomous multi-agent system for oncologic cross-sectional imaging:
 
 1. **Five-Agent Clinical Panel:** Coordinated five distinct agent roles (Intake, NLP, Radiology, Biomarkers, Scribe) running asynchronously in `lib/agent.ts`.
-2. **Binary Header Sniffer (`getImageDimensions`):** Built a zero-dependency parser that reads native image dimensions from PNG bytes 16–24 and JPEG markers in under $0.1\text{ ms}$.
-3. **Fixing the 84-Pixel Letterbox Offset:** Placed scans and canvas overlays inside inline-block bounds in `MaskOverlay.tsx`, achieving exact $1:1$ pixel registration.
-4. **End-to-End Gemini Vision Integration:** Connected Google Gemini Vision APIs (`gemini-3.1-flash-lite`, `gemini-3.5-flash`) with dynamic coordinate scaling and dual-layer contour rendering ($\\alpha_{\\text{border}} = 0.96$, $\\alpha_{\\text{fill}} = 0.43$).
+2. **Binary Header Sniffer (`getImageDimensions`):** Built a zero-dependency parser that reads native image dimensions from PNG bytes 16 to 24 and JPEG markers in under $0.1\text{ ms}$.
+3. **Elimination of the 84-Pixel Letterbox Offset:** Placed scans and canvas overlays inside inline-block bounds in `MaskOverlay.tsx`, achieving exact $1:1$ pixel registration.
+4. **End-to-End Gemini Vision Integration:** Connected Google Gemini Vision APIs (`gemini-3.1-flash-lite`, `gemini-3.5-flash`) with dynamic coordinate scaling and dual-layer contour rendering ($\alpha_{\text{border}} = 0.96$, $\alpha_{\text{fill}} = 0.43$).
 5. **Full System Verification:** Recorded a **100% pass rate across 143 test assertions in 10 suites**, achieving a **0% false-positive rate** on normal scans.
 
 ### 5.2 Future Works
@@ -844,72 +842,76 @@ This appendix includes the primary implementation modules of our project.
 
 ## CHAPTER 8: BIODATA OF PROJECT AUTHORS
 
-<table width="100%" style="border-collapse: collapse; margin-bottom: 24px;">
+<div class="author-card">
+<table class="author-table">
 <tr>
-<td width="25%" align="center" style="border: 1px solid #ccc; padding: 12px; vertical-align: top;">
-<img src="file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/author_ajay.jpg" width="120" style="border-radius: 4px; border: 1px solid #ccc; box-shadow: 0 1px 3px rgba(0,0,0,0.1);" alt="Kanchetti Ajay" />
+<td class="author-photo-cell">
+<img src="file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/author_sudheer.png" class="author-photo" alt="Bandila Sudheer Kumar" />
 </td>
-<td width="75%" style="border: 1px solid #ccc; padding: 12px; vertical-align: top;">
-<strong>Name :</strong> BANDILA SUDHEER KUMAR<br/>
-<strong>Registration Number :</strong> 23BCE20014<br/>
-<strong>Branch :</strong> Computer Science and Engineering (SCOPE)<br/>
-<strong>Mobile Number :</strong> +91 94942 30141<br/>
-<strong>E-mail :</strong> <a href="mailto:sudheer.23bce20014@vitapstudent.ac.in">sudheer.23bce20014@vitapstudent.ac.in</a><br/>
-<strong>Permanent Address :</strong> VIT-AP University Campus, Inavolu, Amaravati, Andhra Pradesh – 522237
+<td class="author-info-cell">
+<p class="author-field"><strong>Name :</strong> BANDILA SUDHEER KUMAR</p>
+<p class="author-field"><strong>Registration Number :</strong> 23BCE20014</p>
+<p class="author-field"><strong>Branch :</strong> Computer Science and Engineering (SCOPE)</p>
+<p class="author-field"><strong>Mobile Number :</strong> +91 94942 30141</p>
+<p class="author-field"><strong>E-mail :</strong> <a href="mailto:sudheer.23bce20014@vitapstudent.ac.in">sudheer.23bce20014@vitapstudent.ac.in</a></p>
+<p class="author-field"><strong>Permanent Address :</strong> VIT-AP University Campus, Inavolu, Amaravati, Andhra Pradesh – 522237</p>
 </td>
 </tr>
 </table>
-
-<table width="100%" style="border-collapse: collapse; margin-bottom: 24px;">
-<tr>
-<td width="25%" align="center" style="border: 1px solid #ccc; padding: 12px; vertical-align: top;">
-<img src="file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/author_ajay.jpg" width="120" style="border-radius: 4px; border: 1px solid #ccc; box-shadow: 0 1px 3px rgba(0,0,0,0.1);" alt="Kanchetti Ajay" />
-</td>
-<td width="75%" style="border: 1px solid #ccc; padding: 12px; vertical-align: top;">
-<strong>Name :</strong> VOVUGANTI NANDIVARDHAN REDDY<br/>
-<strong>Registration Number :</strong> 23BCE7171<br/>
-<strong>Branch :</strong> Computer Science and Engineering (SCOPE)<br/>
-<strong>Mobile Number :</strong> +91 93902 47171<br/>
-<strong>E-mail :</strong> <a href="mailto:nandivardhan.23bce7171@vitapstudent.ac.in">nandivardhan.23bce7171@vitapstudent.ac.in</a><br/>
-<strong>Permanent Address :</strong> VIT-AP University Campus, Inavolu, Amaravati, Andhra Pradesh – 522237
-</td>
-</tr>
-</table>
-
-<table width="100%" style="border-collapse: collapse; margin-bottom: 24px;">
-<tr>
-<td width="25%" align="center" style="border: 1px solid #ccc; padding: 12px; vertical-align: top;">
-<img src="file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/author_ajay.jpg" width="120" style="border-radius: 4px; border: 1px solid #ccc; box-shadow: 0 1px 3px rgba(0,0,0,0.1);" alt="Kanchetti Ajay" />
-</td>
-<td width="75%" style="border: 1px solid #ccc; padding: 12px; vertical-align: top;">
-<strong>Name :</strong> KANCHETTI AJAY<br/>
-<strong>Registration Number :</strong> 23BCE7242<br/>
-<strong>Branch :</strong> Computer Science and Engineering (SCOPE)<br/>
-<strong>Mobile Number :</strong> +91 91217 72420<br/>
-<strong>E-mail :</strong> <a href="mailto:ajay.23bce7242@vitapstudent.ac.in">ajay.23bce7242@vitapstudent.ac.in</a><br/>
-<strong>Permanent Address :</strong> VIT-AP University Campus, Inavolu, Amaravati, Andhra Pradesh – 522237
-</td>
-</tr>
-</table>
-
-<table width="100%" style="border-collapse: collapse; margin-bottom: 24px;">
-<tr>
-<td width="25%" align="center" style="border: 1px solid #ccc; padding: 12px; vertical-align: top;">
-<div style="width: 120px; height: 150px; border: 1px dashed #888; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #666; margin: auto;">
-[Photo]
 </div>
+
+<div class="author-card">
+<table class="author-table">
+<tr>
+<td class="author-photo-cell">
+<img src="file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/author_nandivardhan.jpg" class="author-photo" alt="Vovuganti Nandivardhan Reddy" />
 </td>
-<td width="75%" style="border: 1px solid #ccc; padding: 12px; vertical-align: top;">
-<strong>Name :</strong> BHARATHAPU SIDDHARTHA<br/>
-<strong>Registration Number :</strong> 23BCE7851<br/>
-<strong>Branch :</strong> Computer Science and Engineering (SCOPE)<br/>
-<strong>Mobile Number :</strong> +91 98480 78510<br/>
-<strong>E-mail :</strong> <a href="mailto:siddartha.23bce7851@vitapstudent.ac.in">siddartha.23bce7851@vitapstudent.ac.in</a><br/>
-<strong>Permanent Address :</strong> VIT-AP University Campus, Inavolu, Amaravati, Andhra Pradesh – 522237
+<td class="author-info-cell">
+<p class="author-field"><strong>Name :</strong> VOVUGANTI NANDIVARDHAN REDDY</p>
+<p class="author-field"><strong>Registration Number :</strong> 23BCE7171</p>
+<p class="author-field"><strong>Branch :</strong> Computer Science and Engineering (SCOPE)</p>
+<p class="author-field"><strong>Mobile Number :</strong> +91 93902 47171</p>
+<p class="author-field"><strong>E-mail :</strong> <a href="mailto:nandivardhan.23bce7171@vitapstudent.ac.in">nandivardhan.23bce7171@vitapstudent.ac.in</a></p>
+<p class="author-field"><strong>Permanent Address :</strong> VIT-AP University Campus, Inavolu, Amaravati, Andhra Pradesh – 522237</p>
 </td>
 </tr>
 </table>
+</div>
 
-<div align="center">30</div>
+<div class="page-break"></div>
 
----
+<div class="author-card">
+<table class="author-table">
+<tr>
+<td class="author-photo-cell">
+<img src="file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/author_ajay.jpg" class="author-photo" alt="Kanchetti Ajay" />
+</td>
+<td class="author-info-cell">
+<p class="author-field"><strong>Name :</strong> KANCHETTI AJAY</p>
+<p class="author-field"><strong>Registration Number :</strong> 23BCE7242</p>
+<p class="author-field"><strong>Branch :</strong> Computer Science and Engineering (SCOPE)</p>
+<p class="author-field"><strong>Mobile Number :</strong> +91 91217 72420</p>
+<p class="author-field"><strong>E-mail :</strong> <a href="mailto:ajay.23bce7242@vitapstudent.ac.in">ajay.23bce7242@vitapstudent.ac.in</a></p>
+<p class="author-field"><strong>Permanent Address :</strong> VIT-AP University Campus, Inavolu, Amaravati, Andhra Pradesh – 522237</p>
+</td>
+</tr>
+</table>
+</div>
+
+<div class="author-card">
+<table class="author-table">
+<tr>
+<td class="author-photo-cell">
+<img src="file:///C:/Users/sudhe/.gemini/antigravity/brain/4fd7af63-fb9a-4ce9-ac69-a53a154091ba/author_siddhartha.jpg" class="author-photo" alt="Bharathapu Siddhartha" />
+</td>
+<td class="author-info-cell">
+<p class="author-field"><strong>Name :</strong> BHARATHAPU SIDDHARTHA</p>
+<p class="author-field"><strong>Registration Number :</strong> 23BCE7851</p>
+<p class="author-field"><strong>Branch :</strong> Computer Science and Engineering (SCOPE)</p>
+<p class="author-field"><strong>Mobile Number :</strong> +91 98480 78510</p>
+<p class="author-field"><strong>E-mail :</strong> <a href="mailto:siddartha.23bce7851@vitapstudent.ac.in">siddartha.23bce7851@vitapstudent.ac.in</a></p>
+<p class="author-field"><strong>Permanent Address :</strong> VIT-AP University Campus, Inavolu, Amaravati, Andhra Pradesh – 522237</p>
+</td>
+</tr>
+</table>
+</div>
