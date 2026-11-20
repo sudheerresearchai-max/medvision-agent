@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Sparkles, ShieldCheck, ArrowRight, FolderOpen, BookOpen } from 'lucide-react';
+import { Sparkles, ShieldCheck, ArrowRight, FolderOpen, BookOpen, Brain, Wind, Dna } from 'lucide-react';
 import { UploadForm } from '@/components/UploadForm';
 import { MULTI_AGENT_PROFILES } from '@/lib/multiAgent/types';
 import { cn } from '@/lib/utils';
